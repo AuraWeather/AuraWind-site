@@ -225,9 +225,18 @@
             });
             const marker = L.marker([st.lat, st.lon], { icon }).addTo(layerStations);
             marker.bindTooltip(`${st.station_name || st.station_id}<br>${Math.round(st.wspd_kn)} kt`);
-            marker.bindPopup(popupHTML(st));
-            marker.on('mouseover', () => marker.openPopup());
-            marker.on('mouseout', () => marker.closePopup());
+            // OPEN ON CLICK, SINGLE POPUP
+            marker.bindPopup(popupHTML(st), { maxWidth: 600, autoClose: true, closeOnClick: true, closeButton: false });
+
+            // click to open; close any existing popup first
+            marker.on('click', () => {
+                if (map._popup && map._popup._source !== marker) map.closePopup();
+                marker.openPopup();
+            });
+
+            // clicking empty map closes it (you already have this, keep it)
+            map.on('click', () => map.closePopup());
+
         }
         function fitToDataBounds(points) {
             if (!points.length) return;
