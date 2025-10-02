@@ -3,11 +3,10 @@
 
 <head>
     <meta charset="utf-8" />
-    <title>AuraWind — Solent Live Observations (v10)</title>
-
+    <title>AuraWind — Solent Live Observations</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Leaflet -->
+    <!-- Leaflet (no SRI to avoid blocking) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -16,7 +15,6 @@
             --bg: #0b1120;
             --card: #111827ee;
             --text: #e5e7eb;
-            --muted: #9ca3af;
             --accent: #14b8a6;
         }
 
@@ -43,20 +41,20 @@
             background: linear-gradient(180deg, #0b1120, #0b1120cc);
             border-bottom: 1px solid #0f172a;
             backdrop-filter: blur(6px);
-            z-index: 1000;
+            z-index: 1000
         }
 
         header h1 {
             font-size: 1rem;
             margin: 0;
-            font-weight: 600;
+            font-weight: 600
         }
 
-        header .spacer {
+        .spacer {
             flex: 1
         }
 
-        header .pill {
+        .pill {
             display: inline-flex;
             align-items: center;
             gap: .45rem;
@@ -64,31 +62,31 @@
             border: 1px solid #1f2937;
             background: var(--card);
             border-radius: 999px;
-            font-size: .8rem;
+            font-size: .8rem
         }
 
-        header button {
+        button {
             background: var(--accent);
             color: #062b2a;
             border: 0;
             border-radius: 10px;
             padding: .45rem .7rem;
             font-weight: 700;
-            cursor: pointer;
+            cursor: pointer
         }
 
-        header button:disabled {
+        button:disabled {
             opacity: .6;
-            cursor: default;
+            cursor: default
         }
 
         #map {
             width: 100%;
-            height: 100%;
+            height: 100%
         }
 
         .leaflet-container {
-            background: #0b1120;
+            background: #0b1120
         }
 
         .legend {
@@ -102,28 +100,28 @@
             padding: 10px 12px;
             color: var(--text);
             box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
-            font: 12px/1.2 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            font: 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial
         }
 
         .legend h3 {
             margin: 0 0 6px 0;
             font-size: 12px;
             font-weight: 700;
-            color: #d1d5db;
+            color: #d1d5db
         }
 
         .legend .row {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin: 4px 0;
+            margin: 4px 0
         }
 
         .chip {
             width: 18px;
             height: 10px;
             border-radius: 3px;
-            border: 1px solid #0006;
+            border: 1px solid #0006
         }
 
         .popbtn {
@@ -134,7 +132,7 @@
             border-radius: 4px;
             font: 12px sans-serif;
             background: #fff;
-            color: #000;
+            color: #000
         }
     </style>
 </head>
@@ -151,10 +149,16 @@
     </div>
 
     <script>
-        console.log('AuraWind index loaded v10');
+        console.log('AuraWind index loaded');
+
+        // ---- global error surfacing so the pill doesn’t hang silently
+        const statusEl = document.getElementById('status');
+        const setStatus = s => { if (statusEl) statusEl.textContent = s; };
+        window.addEventListener('error', e => { console.error('Global error:', e.error || e.message); setStatus('Script error'); });
+        window.addEventListener('unhandledrejection', e => { console.error('Unhandled promise:', e.reason); setStatus('Load failed'); });
 
         /* ---------------- Config ---------------- */
-        const OBS_URL = './solent_obs.json';      // relative path
+        const OBS_URL = './solent_obs.json';      // relative to index.html
         const AUTO_REFRESH_MS = 10 * 60 * 1000;   // 10 minutes
         const ARROW_SIZE_PX = 96;
         const ARROW_FONT_PX = 20;
@@ -162,7 +166,8 @@
         const COLORS = ["#00008b", "#4169e1", "#00ffcc", "#00ff00", "#00cc00",
             "#ff9900", "#ff0000", "#b22222", "#8b008b", "#800080"];
 
-        function lerp(a, b, t) { return a + (b - a) * t; }
+        // ---- helpers
+        const lerp = (a, b, t) => a + (b - a) * t;
         function mixHex(a, b, t) {
             const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
             const ar = (pa >> 16) & 255, ag = (pa >> 8) & 255, ab = pa & 255;
@@ -174,55 +179,46 @@
             if (spd == null || Number.isNaN(spd)) return "#999999";
             for (let i = 0; i < BREAKS.length - 1; i++) {
                 const lo = BREAKS[i], hi = BREAKS[i + 1];
-                if (spd <= hi) {
-                    const t = Math.max(0, Math.min(1, (spd - lo) / Math.max(1e-9, (hi - lo))));
-                    return mixHex(COLORS[i], COLORS[i + 1], t);
-                }
+                if (spd <= hi) { const t = Math.max(0, Math.min(1, (spd - lo) / Math.max(1e-9, hi - lo))); return mixHex(COLORS[i], COLORS[i + 1], t); }
             }
-            return COLORS[COLORS.length - 1];
+            return COLORS.at(-1);
         }
-        function rotateFromDirDeg(d) { return (Number(d) + 180) % 360; }
+        const rotateFromDirDeg = d => (Number(d) + 180) % 360;
         function svgStationArrow(color, size = ARROW_SIZE_PX) {
             const stroke = Math.max(4, size / 12).toFixed(1);
-            return `<svg width="${size}" height="${size}" viewBox="0 0 64 64"
-          xmlns="http://www.w3.org/2000/svg"
-          style="filter: drop-shadow(0 0 3px rgba(0,0,0,0.35));">
+            return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
+        style="filter: drop-shadow(0 0 3px rgba(0,0,0,0.35));">
         <g transform="translate(32,32)">
-          <line x1="0" y1="20" x2="0" y2="-16" stroke="${color}"
-                stroke-width="${stroke}" stroke-linecap="round"/>
+          <line x1="0" y1="20" x2="0" y2="-16" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"/>
           <polygon points="0,-26 -10,-8 10,-8" fill="${color}"/>
         </g></svg>`;
         }
 
-        function popupHTML(st) {
-            const sid = (st.station_id || '').toString();
-            const name = st.station_name || sid || 'Station';
-            return `<div style="width:240px;padding:6px;">
-        <b>${name}</b><br>${Math.round(st.wspd_kn)} kt<br>${Math.round(st.wdir_degT)}°
-      </div>`;
-        }
+        // ---- popup (simple text for now)
+        const popupHTML = st => `<div style="width:240px;padding:6px;">
+      <b>${st.station_name || st.station_id || 'Station'}</b><br>
+      ${Math.round(st.wspd_kn)} kt<br>${Math.round(st.wdir_degT)}°
+    </div>`;
 
+        // ---- map init
         const map = L.map('map', { zoomControl: true });
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
             { attribution: '&copy; OpenStreetMap, &copy; CARTO' }).addTo(map);
         const layerStations = L.layerGroup().addTo(map);
-
-        const statusEl = document.getElementById('status');
         const refreshBtn = document.getElementById('refreshBtn');
         refreshBtn.addEventListener('click', () => loadObs(true));
         map.on('click', () => map.closePopup());
 
         function clearStations() { layerStations.clearLayers(); }
         function addStationMarker(st) {
-            if (!st.lat || !st.lon || !st.wspd_kn || !st.wdir_degT) return;
+            if (st.lat == null || st.lon == null || st.wspd_kn == null || st.wdir_degT == null) return;
             const color = colorForSpeed(st.wspd_kn);
             const rotate = rotateFromDirDeg(st.wdir_degT);
             const arrow = svgStationArrow(color, ARROW_SIZE_PX);
             const html = `<div style="transform:rotate(${rotate}deg)">${arrow}</div>
-        <div style="position:relative;top:-${ARROW_SIZE_PX / 2 - 2}px;width:${ARROW_SIZE_PX}px;
-        text-align:center;font:600 ${ARROW_FONT_PX}px/1 system-ui;
-        color:#111;text-shadow:0 0 2px #fff,0 0 8px rgba(255,255,255,0.95);">
-        ${Math.round(st.wspd_kn)}</div>`;
+        <div style="position:relative;top:-${ARROW_SIZE_PX / 2 - 2}px;width:${ARROW_SIZE_PX}px;text-align:center;
+          font:600 ${ARROW_FONT_PX}px/1 system-ui;color:#111;
+          text-shadow:0 0 2px #fff,0 0 8px rgba(255,255,255,.95);">${Math.round(st.wspd_kn)}</div>`;
             const icon = L.divIcon({
                 html, iconSize: [ARROW_SIZE_PX, ARROW_SIZE_PX],
                 iconAnchor: [ARROW_SIZE_PX / 2, ARROW_SIZE_PX / 2], className: ''
@@ -242,92 +238,26 @@
                     lonMin = Math.min(lonMin, p.lon); lonMax = Math.max(lonMax, p.lon);
                 }
             }
-            const sw = L.latLng(latMin - 0.06, lonMin - 0.1), ne = L.latLng(latMax + 0.06, lonMax + 0.1);
-            map.fitBounds(L.latLngBounds(sw, ne), { padding: [20, 20] });
+            map.fitBounds([[latMin - 0.06, lonMin - 0.10], [latMax + 0.06, lonMax + 0.10]], { padding: [20, 20] });
         }
 
         let autoTimer = null;
         async function loadObs(fromButton = false) {
             try {
-                refreshBtn.disabled = true;
-                statusEl.textContent = fromButton ? 'Refreshing…' : 'Loading…';
-
+                refreshBtn.disabled = true; setStatus(fromButton ? 'Refreshing…' : 'Loading…');
                 const url = `${OBS_URL}?ts=${Date.now()}`;
-                console.log('Fetching obs URL:', url);
-
                 const res = await fetch(url, { cache: 'no-store' });
-                console.log('Fetch status:', res.status, res.statusText);
+                if (!res.ok) { setStatus(`Fetch ${res.status}`); throw new Error(`HTTP ${res.status}`); }
 
-                if (!res.ok) {
-                    statusEl.textContent = `Fetch ${res.status}`;
-                    throw new Error(`HTTP ${res.status} ${res.statusText} for ${url}`);
+                let data; try { data = await res.json(); }
+                catch (e) {
+                    const txt = await res.text(); console.error('JSON parse failed:', txt.slice(0, 200));
+                    setStatus('Invalid JSON'); throw e;
                 }
 
-                let data;
-                try {
-                    data = await res.json();
-                } catch (e) {
-                    const txt = await res.text();
-                    console.error('JSON parse failed. First 200 chars:', txt.slice(0, 200));
-                    statusEl.textContent = 'Invalid JSON';
-                    throw e;
-                }
-
+                // Accept your schema: wind_speed_kt / wind_dir_deg / site_id (with fallbacks)
                 let rows = Array.isArray(data?.obs) ? data.obs : Array.isArray(data) ? data : [];
-
-                // helper: find a key by regex list (case-insensitive)
-                const keyMatch = (obj, patterns) => {
-                    const keys = Object.keys(obj || {});
-                    for (const rx of patterns) {
-                        const k = keys.find(k => rx.test(k.toLowerCase()));
-                        if (k) return k;
-                    }
-                    return null;
-                };
-
-                // try to infer keys from the first row
-                const sample = rows[0] || {};
-                const kLat = keyMatch(sample, [/^lat$/, /latitude/]);
-                const kLon = keyMatch(sample, [/^lon$|^lng$|^long$/, /longitude/]);
-                const kSpd = keyMatch(sample, [/^wspd.*kn/, /^wind.*kn/, /^wspd$/, /^wind.?speed/, /^spd$/]);
-                const kSpdMS = keyMatch(sample, [/^wspd.*m.?s/, /^wind.*m.?s/, /mps$/]);
-                const kSpdMPH = keyMatch(sample, [/mph$/]);
-                const kDir = keyMatch(sample, [/^wdir.*(deg|t)$/, /^dir.*(deg|t)$/, /^wind.*dir/, /^dir$/]);
-                const kName = keyMatch(sample, [/^station.*name$/, /^name$/, /^site$/, /^station$/, /^label$/]);
-                const kID = keyMatch(sample, [/^station.*id$/, /^id$/, /^code$/]);
-
-                console.log('key map:', { kLat, kLon, kSpd, kSpdMS, kSpdMPH, kDir, kName, kID });
-
-                // unit converters
-                const toNum = v => (v === '' || v == null ? null : Number(v));
-                const knFrom = r => {
-                    const vKn = kSpd ? toNum(r[kSpd]) : null;
-                    const vMS = kSpdMS ? toNum(r[kSpdMS]) : null;
-                    const vMPH = kSpdMPH ? toNum(r[kSpdMPH]) : null;
-                    if (vKn != null && !Number.isNaN(vKn)) return vKn;
-                    if (vMS != null && !Number.isNaN(vMS)) return vMS * 1.943844;
-                    if (vMPH != null && !Number.isNaN(vMPH)) return vMPH * 0.868976;
-                    return null;
-                };
-
-                // const obs = rows.map(r => {
-                //     const lat = kLat ? toNum(r[kLat]) : null;
-                //     const lon = kLon ? toNum(r[kLon]) : null;
-                //     const wspd_kn = knFrom(r);
-                //     let dir = kDir ? toNum(r[kDir]) : null;
-                //     if (dir != null && !Number.isNaN(dir)) {
-                //         // normalize to [0,360)
-                //         dir = ((dir % 360) + 360) % 360;
-                //     } else {
-                //         dir = null;
-                //     }
-                //     return {
-                //         lat, lon, wspd_kn, wdir_degT: dir,
-                //         station_name: (kName && r[kName]) || (kID && r[kID]) || 'Station',
-                //         station_id: (kID && r[kID]) || null
-                //     };
-                // });
-                obs = obs.map(r => ({
+                let obs = rows.map(r => ({
                     lat: r.lat ?? r.latitude,
                     lon: r.lon ?? r.longitude,
                     wspd_kn: r.wspd_kn ?? r.wind_speed_kt ?? r.wspd ?? r.wind_knots,
@@ -336,18 +266,8 @@
                     station_id: r.station_id ?? r.site_id ?? r.id
                 }));
 
-
-
-
-
-
-                // keep rows with all essentials
+                // keep only valid rows
                 const ok = obs.filter(r => r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null);
-                if (!ok.length) {
-                    console.warn('Sample of raw rows:', rows.slice(0, 3));
-                    console.warn('Sample after map:', obs.slice(0, 3));
-                }
-
 
                 clearStations();
                 for (const r of ok) addStationMarker(r);
@@ -355,23 +275,24 @@
                 if (ok.length) {
                     if (!map._fitDone || fromButton) { fitToDataBounds(ok); map._fitDone = true; }
                     const gen = data?.meta?.generated_at || new Date().toISOString();
-                    statusEl.textContent = `Stations: ${ok.length} • Updated: ${gen}`;
+                    setStatus(`Stations: ${ok.length} • Updated: ${gen}`);
                 } else {
-                    console.warn('No valid stations after parsing. Sample:', obs.slice(0, 3));
-                    statusEl.textContent = 'No stations in data';
+                    setStatus('No stations in data');
+                    console.warn('Sample rows:', rows.slice(0, 3));
                 }
             } catch (err) {
                 console.error('loadObs error:', err);
-                // leave whatever status text we already set above (Fetch ### / Invalid JSON)
             } finally {
                 refreshBtn.disabled = false;
                 if (autoTimer) clearTimeout(autoTimer);
                 autoTimer = setTimeout(loadObs, AUTO_REFRESH_MS);
             }
         }
+
         map.whenReady(() => loadObs());
     </script>
 
+    <!-- Legend -->
     <div class="legend" id="legend">
         <h3>Wind speed (kt)</h3>
         <div class="row"><span class="chip" style="background:#00008b"></span> 0–3</div>
