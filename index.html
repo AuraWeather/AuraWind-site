@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="utf-8" />
-    <title>AuraWind — Solent Live Observations</title>
+    <title>AuraWind — Solent Live Observations (v10)</title>
+
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <!-- Leaflet -->
@@ -152,6 +153,8 @@
     </div>
 
     <script>
+        console.log('AuraWind index loaded v10');
+
         /* ---------------- Config ---------------- */
         const OBS_URL = './solent_obs.json';      // relative path
         const AUTO_REFRESH_MS = 10 * 60 * 1000;   // 10 minutes
@@ -250,15 +253,28 @@
             try {
                 refreshBtn.disabled = true;
                 statusEl.textContent = fromButton ? 'Refreshing…' : 'Loading…';
+
                 const url = `${OBS_URL}?ts=${Date.now()}`;
+                console.log('Fetching obs URL:', url);
+
                 const res = await fetch(url, { cache: 'no-store' });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                console.log('Fetch status:', res.status, res.statusText);
+
+                if (!res.ok) {
+                    statusEl.textContent = `Fetch ${res.status}`;
+                    throw new Error(`HTTP ${res.status} ${res.statusText} for ${url}`);
+                }
+
                 let data;
-                try { data = await res.json(); } catch (e) {
+                try {
+                    data = await res.json();
+                } catch (e) {
                     const txt = await res.text();
                     console.error('JSON parse failed. First 200 chars:', txt.slice(0, 200));
-                    throw new Error('Invalid JSON');
+                    statusEl.textContent = 'Invalid JSON';
+                    throw e;
                 }
+
                 let obs = Array.isArray(data?.obs) ? data.obs : Array.isArray(data) ? data : [];
                 obs = obs.map(r => ({
                     lat: r.lat ?? r.Lat ?? r.latitude,
@@ -268,18 +284,26 @@
                     station_name: r.station_name ?? r.name ?? r.Site ?? r.station_id ?? r.id,
                     station_id: r.station_id ?? r.id ?? r.code
                 }));
+
                 const ok = obs.filter(r => r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null);
+
                 clearStations();
                 for (const r of ok) addStationMarker(r);
+
                 if (ok.length) {
                     if (!map._fitDone || fromButton) { fitToDataBounds(ok); map._fitDone = true; }
                     const gen = data?.meta?.generated_at || new Date().toISOString();
                     statusEl.textContent = `Stations: ${ok.length} • Updated: ${gen}`;
+                } else {
+                    console.warn('No valid stations after parsing. Sample:', obs.slice(0, 3));
+                    statusEl.textContent = 'No stations in data';
                 }
-                else { statusEl.textContent = 'No stations in data'; }
-            } catch (err) { console.error(err); statusEl.textContent = 'Load failed'; }
-            finally {
-                refreshBtn.disabled = false; if (autoTimer) clearTimeout(autoTimer);
+            } catch (err) {
+                console.error('loadObs error:', err);
+                // leave whatever status text we already set above (Fetch ### / Invalid JSON)
+            } finally {
+                refreshBtn.disabled = false;
+                if (autoTimer) clearTimeout(autoTimer);
                 autoTimer = setTimeout(loadObs, AUTO_REFRESH_MS);
             }
         }
