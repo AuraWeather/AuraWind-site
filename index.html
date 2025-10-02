@@ -310,23 +310,36 @@
                     return null;
                 };
 
-                const obs = rows.map(r => {
-                    const lat = kLat ? toNum(r[kLat]) : null;
-                    const lon = kLon ? toNum(r[kLon]) : null;
-                    const wspd_kn = knFrom(r);
-                    let dir = kDir ? toNum(r[kDir]) : null;
-                    if (dir != null && !Number.isNaN(dir)) {
-                        // normalize to [0,360)
-                        dir = ((dir % 360) + 360) % 360;
-                    } else {
-                        dir = null;
-                    }
-                    return {
-                        lat, lon, wspd_kn, wdir_degT: dir,
-                        station_name: (kName && r[kName]) || (kID && r[kID]) || 'Station',
-                        station_id: (kID && r[kID]) || null
-                    };
-                });
+                // const obs = rows.map(r => {
+                //     const lat = kLat ? toNum(r[kLat]) : null;
+                //     const lon = kLon ? toNum(r[kLon]) : null;
+                //     const wspd_kn = knFrom(r);
+                //     let dir = kDir ? toNum(r[kDir]) : null;
+                //     if (dir != null && !Number.isNaN(dir)) {
+                //         // normalize to [0,360)
+                //         dir = ((dir % 360) + 360) % 360;
+                //     } else {
+                //         dir = null;
+                //     }
+                //     return {
+                //         lat, lon, wspd_kn, wdir_degT: dir,
+                //         station_name: (kName && r[kName]) || (kID && r[kID]) || 'Station',
+                //         station_id: (kID && r[kID]) || null
+                //     };
+                // });
+
+                obs = obs.map(r => ({
+                    lat: r.lat,
+                    lon: r.lon,
+                    wspd_kn: r.wspd_kn ?? r.wind_speed_kt ?? r.wspd ?? r.wind_knots,
+                    wdir_degT: r.wdir_degT ?? r.wind_dir_deg ?? r.wdir ?? r.direction,
+                    station_name: r.station_name ?? r.name ?? r.Site ?? r.station_id ?? r.id,
+                    station_id: r.station_id ?? r.site_id ?? r.id
+                }));
+
+
+
+
 
                 // keep rows with all essentials
                 const ok = obs.filter(r => r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null);
