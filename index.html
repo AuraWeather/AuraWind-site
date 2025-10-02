@@ -327,15 +327,15 @@
                 //         station_id: (kID && r[kID]) || null
                 //     };
                 // });
-
                 obs = obs.map(r => ({
-                    lat: r.lat,
-                    lon: r.lon,
+                    lat: r.lat ?? r.latitude,
+                    lon: r.lon ?? r.longitude,
                     wspd_kn: r.wspd_kn ?? r.wind_speed_kt ?? r.wspd ?? r.wind_knots,
                     wdir_degT: r.wdir_degT ?? r.wind_dir_deg ?? r.wdir ?? r.direction,
-                    station_name: r.station_name ?? r.name ?? r.Site ?? r.station_id ?? r.id,
+                    station_name: r.station_name ?? r.name ?? r.Site ?? r.station_id ?? r.site_id ?? r.id,
                     station_id: r.station_id ?? r.site_id ?? r.id
                 }));
+
 
 
 
