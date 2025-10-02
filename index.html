@@ -1,174 +1,406 @@
 <!doctype html>
-<html>
+<html lang="en">
+
 <head>
-  <meta charset="utf-8" />
-  <title>AuraWind — latest</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
-  />
-  <style>
-    html, body, #map { height: 100%; margin: 0; }
-    .legend {
-      background: white; padding: .5rem .75rem; border-radius: .5rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,.15); font: 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-    }
-    .leaflet-popup-content canvas { width: 320px !important; height: 160px !important; }
-    .obs-arrow {
-      width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,.9);
-      display: grid; place-items: center; border: 1px solid rgba(0,0,0,.2);
-    }
-    .obs-arrow svg { transform-origin: 50% 50%; }
-  </style>
+    <meta charset="utf-8" />
+    <title>AuraWind — Solent Live Observations</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20G6GNh2g7rN9P0w7wQK4C5lZQv2z9Y+ZjUuyO7p3XQ=" crossorigin=""></script>
+
+    <style>
+        :root {
+            --bg: #0b1120;
+            /* slate-950 */
+            --card: #111827ee;
+            /* slate-900 */
+            --text: #e5e7eb;
+            /* slate-200 */
+            --muted: #9ca3af;
+            /* slate-400 */
+            --accent: #14b8a6;
+            /* teal-500 */
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        #app {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            grid-template-rows: auto 1fr;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            padding: .6rem .9rem;
+            background: linear-gradient(180deg, #0b1120, #0b1120cc);
+            border-bottom: 1px solid #0f172a;
+            backdrop-filter: blur(6px);
+            z-index: 1000;
+        }
+
+        header h1 {
+            font-size: 1rem;
+            margin: 0;
+            font-weight: 600;
+            letter-spacing: .2px;
+        }
+
+        header .spacer {
+            flex: 1
+        }
+
+        header .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .45rem;
+            padding: .35rem .6rem;
+            border: 1px solid #1f2937;
+            background: var(--card);
+            border-radius: 999px;
+            font-size: .8rem;
+        }
+
+        header button {
+            background: var(--accent);
+            color: #062b2a;
+            border: 0;
+            border-radius: 10px;
+            padding: .45rem .7rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        header button:disabled {
+            opacity: .6;
+            cursor: default;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .leaflet-container {
+            background: #0b1120;
+        }
+
+        /* legend */
+        .legend {
+            position: absolute;
+            right: 12px;
+            bottom: 12px;
+            z-index: 999;
+            background: var(--card);
+            border: 1px solid #1f2937;
+            border-radius: 12px;
+            padding: 10px 12px;
+            color: var(--text);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+            font: 12px/1.2 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        }
+
+        .legend h3 {
+            margin: 0 0 6px 0;
+            font-size: 12px;
+            font-weight: 700;
+            color: #d1d5db;
+        }
+
+        .legend .row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+        }
+
+        .chip {
+            width: 18px;
+            height: 10px;
+            border-radius: 3px;
+            border: 1px solid #0006;
+        }
+
+        /* popup toggle buttons */
+        .popbtn {
+            cursor: pointer;
+            padding: 4px 8px;
+            margin-right: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font: 12px sans-serif;
+            background: #fff;
+            color: #000;
+        }
+    </style>
 </head>
+
 <body>
-<div id="map"></div>
+    <div id="app">
+        <header>
+            <h1>AuraWind — Solent Live Observations</h1>
+            <div class="pill" id="status">Loading…</div>
+            <div class="spacer"></div>
+            <button id="refreshBtn" title="Refresh now">Refresh</button>
+        </header>
+        <div id="map"></div>
+    </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- App script -->
+    <script>
+        /* ---------------- Config ---------------- */
+        const OBS_URL = './solent_obs.json';      // relative path (served from web/)
+        const AUTO_REFRESH_MS = 10 * 60 * 1000;   // 10 minutes
 
-<script>
-const BOUNDS = [[50.64, -1.42], [50.9, -0.95]];
-const CENTER = [(BOUNDS[0][0]+BOUNDS[1][0])/2, (BOUNDS[0][1]+BOUNDS[1][1])/2];
+        // Station arrow sizing
+        const ARROW_SIZE_PX = 96;      // make bigger/smaller as you like
+        const ARROW_FONT_PX = 20;
 
-const map = L.map('map', {
-  center: CENTER, zoom: 11, minZoom: 9, maxBounds: BOUNDS
-});
+        // Colour scale (kt) — same breaks as your Python
+        const BREAKS = [0, 3, 5, 10, 20, 22, 30, 33, 40, 60];
+        const COLORS = [
+            "#00008b", "#4169e1", "#00ffcc", "#00ff00", "#00cc00",
+            "#ff9900", "#ff0000", "#b22222", "#8b008b", "#800080"
+        ];
 
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19, attribution: '&copy; OpenStreetMap'
-}).addTo(map);
+        /* ------------- Utilities -------------- */
+        function lerp(a, b, t) { return a + (b - a) * t; }
+        function mixHex(a, b, t) {
+            const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+            const ar = (pa >> 16) & 255, ag = (pa >> 8) & 255, ab = pa & 255;
+            const br = (pb >> 16) & 255, bg = (pb >> 8) & 255, bb = pb & 255;
+            const r = Math.round(lerp(ar, br, t)), g = Math.round(lerp(ag, bg, t)), b2 = Math.round(lerp(ab, bb, t));
+            return `#${(r << 16 | g << 8 | b2).toString(16).padStart(6, '0')}`;
+        }
+        function colorForSpeed(spd) {
+            if (spd == null || Number.isNaN(spd)) return "#999999";
+            for (let i = 0; i < BREAKS.length - 1; i++) {
+                const lo = BREAKS[i], hi = BREAKS[i + 1];
+                if (spd <= hi) {
+                    const t = Math.max(0, Math.min(1, (spd - lo) / Math.max(1e-9, (hi - lo))));
+                    return mixHex(COLORS[i], COLORS[i + 1], t);
+                }
+            }
+            return COLORS[COLORS.length - 1];
+        }
+        function rotateFromDirDeg(dirFrom) {
+            // FROM direction → rotate arrow to TO direction
+            return (Number(dirFrom) + 180) % 360;
+        }
 
-// --- Overlays ---
-const flowOverlay = L.imageOverlay('solent_flow.png', BOUNDS, { opacity: 0.75 });
+        /* Arrow SVG (scaled to ARROW_SIZE_PX) */
+        function svgStationArrow(color, size = ARROW_SIZE_PX) {
+            const stroke = Math.max(4, size / 12).toFixed(1);
+            return `
+<svg width="${size}" height="${size}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
+     style="filter: drop-shadow(0 0 3px rgba(0,0,0,0.35));">
+  <g transform="translate(32,32)">
+    <line x1="0" y1="20" x2="0" y2="-16" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"/>
+    <polygon points="0,-26 -10,-8 10,-8" fill="${color}"/>
+  </g>
+</svg>`.trim();
+        }
 
-// conditionally add a wind-barbs PNG if it exists
-async function addBarbsIfExists(layersControl) {
-  try {
-    const res = await fetch('solent_barbs.png', { method: 'HEAD' });
-    if (res.ok) {
-      const barbs = L.imageOverlay('solent_barbs.png', BOUNDS, { opacity: 0.9 });
-      layersControl.addOverlay(barbs, 'Wind barbs (png)');
-    }
-  } catch (_) {}
-}
+        /* --------- Graph popup (3h/6h/24h toggle) ---------- */
+        function popupHTML(st) {
+            // If your filenames use another id (e.g., site_id), replace station_id below:
+            const sid = (st.station_id || '').toString();
+            const name = st.station_name || sid || 'Station';
 
-const obsLayer = L.layerGroup().addTo(map); // default ON
+            const imgs = {
+                "3h": `./forecasts/${sid}_compare_3h.png`,
+                "6h": `./forecasts/${sid}_compare_6h.png`,
+                "24h": `./forecasts/${sid}_compare_24h.png`,
+            };
+            const ids = { "3h": `img_${sid}_3h`, "6h": `img_${sid}_6h`, "24h": `img_${sid}_24h` };
 
-function speedColor(kn) {
-  if (kn == null) return '#666';
-  if (kn < 8) return '#3CB371';
-  if (kn < 15) return '#F3C623';
-  if (kn < 22) return '#F78C1F';
-  return '#E74C3C';
-}
+            const radios = `
+    <input type="radio" name="win_${sid}" id="rb_${ids["3h"]}" checked style="display:none;" />
+    <input type="radio" name="win_${sid}" id="rb_${ids["6h"]}" style="display:none;" />
+    <input type="radio" name="win_${sid}" id="rb_${ids["24h"]}" style="display:none;" />
+  `;
 
-function arrowIcon(speedKn, dirDeg) {
-  const color = speedColor(speedKn);
-  const svg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="${color}" xmlns="http://www.w3.org/2000/svg" style="transform: rotate(${dirDeg ?? 0}deg);">
-    <path d="M12 2l4 7h-3v7h-2V9H8l4-7z"/>
-  </svg>`;
-  return L.divIcon({
-    html: `<div class="obs-arrow">${svg}</div>`,
-    className: '', iconSize: [22,22], iconAnchor: [11,11]
-  });
-}
+            const labels = `
+    <label for="rb_${ids["3h"]}" class="popbtn">Last 3h</label>
+    <label for="rb_${ids["6h"]}" class="popbtn">Last 6h</label>
+    <label for="rb_${ids["24h"]}" class="popbtn">Last 24h</label>
+  `;
 
-fetch('obs_recent.json').then(r => r.json()).then(data => {
-  (data.stations || []).forEach(st => {
-    if (st.lat == null || st.lon == null) return;
-    const last = (st.series || []).filter(x => x.ts).slice(-1)[0] || {};
-    const m = L.marker([st.lat, st.lon], { icon: arrowIcon(last.wspd_kn, last.wdir_degT) });
-    m.bindPopup(() => {
-      const id = 'c' + Math.random().toString(36).slice(2,8);
-      const name = st.station_name || st.station_id;
-      const t = last.ts || '';
-      const wspd = last.wspd_kn == null ? '—' : last.wspd_kn.toFixed(1);
-      const wdir = last.wdir_degT == null ? '—' : Math.round(last.wdir_degT);
-      const div = document.createElement('div');
-      div.innerHTML = `<b>${name}</b><br><small>${t}</small><br>
-                       <small>Latest: ${wspd} kn @ ${wdir}°T</small><br>
-                       <canvas id="${id}"></canvas>`;
-      setTimeout(() => renderChart(id, st), 10);
-      return div;
-    });
-    m.addTo(obsLayer);
-  });
-});
+            const css = `
+    <style>
+      #rb_${ids["3h"]}:checked ~ .imgwrap #${ids["3h"]} { display:block; }
+      #rb_${ids["6h"]}:checked ~ .imgwrap #${ids["6h"]} { display:block; }
+      #rb_${ids["24h"]}:checked ~ .imgwrap #${ids["24h"]} { display:block; }
+      .imgwrap img { display:none; }
+    </style>
+  `;
 
-function renderChart(canvasId, st) {
-  const now = new Date();
-  const cutoff = new Date(now.getTime() - 3*3600*1000);
-  const obs = (st.series || [])
-    .map(x => ({ t: new Date(x.ts), v: x.wspd_kn }))
-    .filter(x => x.t >= cutoff && x.v != null);
+            const imgTag = (k) =>
+                `<img id="${ids[k]}" src="${imgs[k]}" onerror="this.style.display='none'"
+          style="width:100%; border-radius:6px; box-shadow:0 2px 10px rgba(0,0,0,0.15);" />`;
 
-  const url = new URL('https://api.open-meteo.com/v1/forecast');
-  url.searchParams.set('latitude', st.lat);
-  url.searchParams.set('longitude', st.lon);
-  url.searchParams.set('hourly', 'wind_speed_10m,wind_direction_10m');
-  url.searchParams.set('past_days', '1');
-  url.searchParams.set('timezone', 'UTC');
+            return `
+    <div style="width:560px; padding:6px;">
+      <div style="font:600 14px/1.2 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; margin-bottom:6px;">
+        ${name} — Observations vs Open-Meteo
+      </div>
+      ${css}
+      <div class="radios_${sid}">
+        ${radios}
+        <div style="margin:4px 0 8px;">${labels}</div>
+        <div class="imgwrap">
+          ${imgTag("3h")}
+          ${imgTag("6h")}
+          ${imgTag("24h")}
+        </div>
+      </div>
+      <div style="color:#555; font:12px/1.2 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; margin-top:6px;">
+        Move your mouse away or click the map to close
+      </div>
+    </div>
+  `;
+        }
 
-  fetch(url).then(r => r.json()).then(j => {
-    const times = (j.hourly && j.hourly.time) || [];
-    const spd = (j.hourly && j.hourly.wind_speed_10m) || [];
-    const om = times.map((t, i) => ({ t: new Date(t), v: spd[i]*1.94384449 }))
-                    .filter(p => p.t >= cutoff);
+        /* ---------- Map boot ---------- */
+        const map = L.map('map', { zoomControl: true });
+        const tiles = L.tileLayer(
+            'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+            { attribution: '&copy; OpenStreetMap, &copy; CARTO' }
+        ).addTo(map);
 
-    const labels = [];
-    const obsY = [];
-    const omY  = [];
+        const layerStations = L.layerGroup().addTo(map);
 
-    const allT = Array.from(new Set([...obs.map(x=>x.t.toISOString()), ...om.map(x=>x.t.toISOString())]))
-                      .map(s => new Date(s))
-                      .sort((a,b)=>a-b);
-    allT.forEach(t => {
-      labels.push(t.toISOString().slice(11,16));
-      const o = obs.find(x => Math.abs(x.t - t) < 45*60*1000);
-      const m = om.find(x => Math.abs(x.t - t) < 45*60*1000);
-      obsY.push(o ? o.v : null);
-      omY.push(m ? m.v : null);
-    });
+        // status UI
+        const statusEl = document.getElementById('status');
+        const refreshBtn = document.getElementById('refreshBtn');
+        refreshBtn.addEventListener('click', () => loadObs(true));
 
-    const ctx = document.getElementById(canvasId).getContext('2d');
-    new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          { label: 'Obs (kn)', data: obsY, spanGaps:true },
-          { label: 'Open-Meteo 10m (kn)', data: omY, spanGaps:true }
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: true } },
-        scales: { y: { beginAtZero: true, suggestedMax: 30 } }
-      }
-    });
-  }).catch(() => {});
-}
+        // Close any open popup when clicking the map background
+        map.on('click', () => map.closePopup());
 
-// Controls
-const overlays = { "Observations (arrows)": obsLayer, "Flow heatmap": flowOverlay };
-const ctl = L.control.layers(null, overlays, { collapsed: false }).addTo(map);
-addBarbsIfExists(ctl);
+        /* ---------- Rendering ---------- */
+        function clearStations() { layerStations.clearLayers(); }
 
-const legend = L.control({position:'bottomright'});
-legend.onAdd = function () {
-  const div = L.DomUtil.create('div', 'legend');
-  div.innerHTML = '<b>Wind speed (kn)</b><br>' +
-    '<span style="color:#3CB371">●</span> &lt;8 &nbsp; ' +
-    '<span style="color:#F3C623">●</span> 8–15 &nbsp; ' +
-    '<span style="color:#F78C1F">●</span> 15–22 &nbsp; ' +
-    '<span style="color:#E74C3C">●</span> &gt;22';
-  return div;
-};
-legend.addTo(map);
-</script>
-</body></html>
+        function addStationMarker(st) {
+            const lat = st.lat, lon = st.lon;
+            const ws = st.wspd_kn, wdFrom = st.wdir_degT;
+            if (lat == null || lon == null || ws == null || wdFrom == null) return;
+
+            const color = colorForSpeed(ws);
+            const rotate = rotateFromDirDeg(wdFrom);
+            const arrow = svgStationArrow(color, ARROW_SIZE_PX);
+
+            const html = `
+  <div style="position:relative; transform: rotate(${rotate}deg); transform-origin:center;">
+    ${arrow}
+  </div>
+  <div style="
+        position:relative; top:-${ARROW_SIZE_PX / 2 - 2}px;
+        width:${ARROW_SIZE_PX}px; text-align:center;
+        font:600 ${ARROW_FONT_PX}px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+        color:#111; text-shadow:0 0 2px #fff, 0 0 8px rgba(255,255,255,0.95);">
+    ${Math.round(ws)}
+  </div>`.trim();
+
+            const icon = L.divIcon({
+                html,
+                iconSize: [ARROW_SIZE_PX, ARROW_SIZE_PX],
+                iconAnchor: [ARROW_SIZE_PX / 2, ARROW_SIZE_PX / 2],
+                className: ''
+            });
+
+            const name = st.station_name || st.station_id || 'station';
+            const tooltip = `<b>${name}</b><br>${Math.round(ws)} kt from ${Math.round(wdFrom)}&deg;`;
+
+            const marker = L.marker([lat, lon], { icon }).addTo(layerStations);
+            marker.bindTooltip(tooltip);
+
+            // Bind the graph popup; hover to open, mouseout to close
+            marker.bindPopup(popupHTML(st), { maxWidth: 600, autoClose: true, closeButton: false });
+            marker.on('mouseover', () => marker.openPopup());
+            marker.on('mouseout', () => marker.closePopup());
+        }
+
+        function fitToDataBounds(points) {
+            if (!points.length) return;
+            let latMin = 90, latMax = -90, lonMin = 180, lonMax = -180;
+            for (const p of points) {
+                if (p.lat == null || p.lon == null) continue;
+                latMin = Math.min(latMin, p.lat);
+                latMax = Math.max(latMax, p.lat);
+                lonMin = Math.min(lonMin, p.lon);
+                lonMax = Math.max(lonMax, p.lon);
+            }
+            const padLat = 0.06, padLon = 0.10;
+            const sw = L.latLng(latMin - padLat, lonMin - padLon);
+            const ne = L.latLng(latMax + padLat, lonMax + padLon);
+            map.fitBounds(L.latLngBounds(sw, ne), { padding: [20, 20] });
+        }
+
+        /* ---------- Data load ---------- */
+        let autoTimer = null;
+
+        async function loadObs(fromButton = false) {
+            try {
+                refreshBtn.disabled = true;
+                statusEl.textContent = fromButton ? 'Refreshing…' : 'Loading…';
+
+                const url = `${OBS_URL}?ts=${Date.now()}`; // cache-bust
+                const res = await fetch(url, { cache: 'no-store' });
+                if (!res.ok) throw new Error(`fetch ${res.status}`);
+                const data = await res.json();
+
+                const obs = Array.isArray(data?.obs) ? data.obs : [];
+                clearStations();
+                for (const r of obs) addStationMarker(r);
+                if (!map._loaded) fitToDataBounds(obs);
+                if (map._loaded && fromButton) fitToDataBounds(obs);
+
+                const gen = data?.meta?.generated_at || 'unknown';
+                const count = data?.meta?.count ?? obs.length;
+                statusEl.textContent = `Stations: ${count} • Updated: ${gen}`;
+            } catch (err) {
+                console.error(err);
+                statusEl.textContent = 'Load failed';
+            } finally {
+                refreshBtn.disabled = false;
+                if (autoTimer) clearTimeout(autoTimer);
+                autoTimer = setTimeout(loadObs, AUTO_REFRESH_MS);
+            }
+        }
+
+        // Start
+        map.whenReady(() => loadObs());
+    </script>
+
+    <!-- Speed legend -->
+    <div class="legend" id="legend">
+        <h3>Wind speed (kt)</h3>
+        <div class="row"><span class="chip" style="background:#00008b"></span> 0–3</div>
+        <div class="row"><span class="chip" style="background:#4169e1"></span> 3–5</div>
+        <div class="row"><span class="chip" style="background:#00ffcc"></span> 5–10</div>
+        <div class="row"><span class="chip" style="background:#00ff00"></span> 10–20</div>
+        <div class="row"><span class="chip" style="background:#00cc00"></span> 20–22</div>
+        <div class="row"><span class="chip" style="background:#ff9900"></span> 22–30</div>
+        <div class="row"><span class="chip" style="background:#ff0000"></span> 30–33</div>
+        <div class="row"><span class="chip" style="background:#b22222"></span> 33–40</div>
+        <div class="row"><span class="chip" style="background:#8b008b"></span> 40–60</div>
+        <div class="row"><span class="chip" style="background:#800080"></span> 60+</div>
+    </div>
+
+</body>
+
+</html>
