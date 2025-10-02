@@ -15,15 +15,10 @@
     <style>
         :root {
             --bg: #0b1120;
-            /* slate-950 */
             --card: #111827ee;
-            /* slate-900 */
             --text: #e5e7eb;
-            /* slate-200 */
             --muted: #9ca3af;
-            /* slate-400 */
             --accent: #14b8a6;
-            /* teal-500 */
         }
 
         html,
@@ -56,7 +51,6 @@
             font-size: 1rem;
             margin: 0;
             font-weight: 600;
-            letter-spacing: .2px;
         }
 
         header .spacer {
@@ -98,7 +92,6 @@
             background: #0b1120;
         }
 
-        /* legend */
         .legend {
             position: absolute;
             right: 12px;
@@ -134,7 +127,6 @@
             border: 1px solid #0006;
         }
 
-        /* popup toggle buttons */
         .popbtn {
             cursor: pointer;
             padding: 4px 8px;
@@ -159,24 +151,16 @@
         <div id="map"></div>
     </div>
 
-    <!-- App script -->
     <script>
         /* ---------------- Config ---------------- */
-        const OBS_URL = './solent_obs.json';      // relative path (served from web/)
+        const OBS_URL = './solent_obs.json';      // relative path
         const AUTO_REFRESH_MS = 10 * 60 * 1000;   // 10 minutes
-
-        // Station arrow sizing
-        const ARROW_SIZE_PX = 96;      // make bigger/smaller as you like
+        const ARROW_SIZE_PX = 96;
         const ARROW_FONT_PX = 20;
-
-        // Colour scale (kt) — same breaks as your Python
         const BREAKS = [0, 3, 5, 10, 20, 22, 30, 33, 40, 60];
-        const COLORS = [
-            "#00008b", "#4169e1", "#00ffcc", "#00ff00", "#00cc00",
-            "#ff9900", "#ff0000", "#b22222", "#8b008b", "#800080"
-        ];
+        const COLORS = ["#00008b", "#4169e1", "#00ffcc", "#00ff00", "#00cc00",
+            "#ff9900", "#ff0000", "#b22222", "#8b008b", "#800080"];
 
-        /* ------------- Utilities -------------- */
         function lerp(a, b, t) { return a + (b - a) * t; }
         function mixHex(a, b, t) {
             const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
@@ -196,197 +180,112 @@
             }
             return COLORS[COLORS.length - 1];
         }
-        function rotateFromDirDeg(dirFrom) {
-            // FROM direction → rotate arrow to TO direction
-            return (Number(dirFrom) + 180) % 360;
-        }
-
-        /* Arrow SVG (scaled to ARROW_SIZE_PX) */
+        function rotateFromDirDeg(d) { return (Number(d) + 180) % 360; }
         function svgStationArrow(color, size = ARROW_SIZE_PX) {
             const stroke = Math.max(4, size / 12).toFixed(1);
-            return `
-<svg width="${size}" height="${size}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
-     style="filter: drop-shadow(0 0 3px rgba(0,0,0,0.35));">
-  <g transform="translate(32,32)">
-    <line x1="0" y1="20" x2="0" y2="-16" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"/>
-    <polygon points="0,-26 -10,-8 10,-8" fill="${color}"/>
-  </g>
-</svg>`.trim();
+            return `<svg width="${size}" height="${size}" viewBox="0 0 64 64"
+          xmlns="http://www.w3.org/2000/svg"
+          style="filter: drop-shadow(0 0 3px rgba(0,0,0,0.35));">
+        <g transform="translate(32,32)">
+          <line x1="0" y1="20" x2="0" y2="-16" stroke="${color}"
+                stroke-width="${stroke}" stroke-linecap="round"/>
+          <polygon points="0,-26 -10,-8 10,-8" fill="${color}"/>
+        </g></svg>`;
         }
 
-        /* --------- Graph popup (3h/6h/24h toggle) ---------- */
         function popupHTML(st) {
-            // If your filenames use another id (e.g., site_id), replace station_id below:
             const sid = (st.station_id || '').toString();
             const name = st.station_name || sid || 'Station';
-
-            const imgs = {
-                "3h": `./forecasts/${sid}_compare_3h.png`,
-                "6h": `./forecasts/${sid}_compare_6h.png`,
-                "24h": `./forecasts/${sid}_compare_24h.png`,
-            };
-            const ids = { "3h": `img_${sid}_3h`, "6h": `img_${sid}_6h`, "24h": `img_${sid}_24h` };
-
-            const radios = `
-    <input type="radio" name="win_${sid}" id="rb_${ids["3h"]}" checked style="display:none;" />
-    <input type="radio" name="win_${sid}" id="rb_${ids["6h"]}" style="display:none;" />
-    <input type="radio" name="win_${sid}" id="rb_${ids["24h"]}" style="display:none;" />
-  `;
-
-            const labels = `
-    <label for="rb_${ids["3h"]}" class="popbtn">Last 3h</label>
-    <label for="rb_${ids["6h"]}" class="popbtn">Last 6h</label>
-    <label for="rb_${ids["24h"]}" class="popbtn">Last 24h</label>
-  `;
-
-            const css = `
-    <style>
-      #rb_${ids["3h"]}:checked ~ .imgwrap #${ids["3h"]} { display:block; }
-      #rb_${ids["6h"]}:checked ~ .imgwrap #${ids["6h"]} { display:block; }
-      #rb_${ids["24h"]}:checked ~ .imgwrap #${ids["24h"]} { display:block; }
-      .imgwrap img { display:none; }
-    </style>
-  `;
-
-            const imgTag = (k) =>
-                `<img id="${ids[k]}" src="${imgs[k]}" onerror="this.style.display='none'"
-          style="width:100%; border-radius:6px; box-shadow:0 2px 10px rgba(0,0,0,0.15);" />`;
-
-            return `
-    <div style="width:560px; padding:6px;">
-      <div style="font:600 14px/1.2 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; margin-bottom:6px;">
-        ${name} — Observations vs Open-Meteo
-      </div>
-      ${css}
-      <div class="radios_${sid}">
-        ${radios}
-        <div style="margin:4px 0 8px;">${labels}</div>
-        <div class="imgwrap">
-          ${imgTag("3h")}
-          ${imgTag("6h")}
-          ${imgTag("24h")}
-        </div>
-      </div>
-      <div style="color:#555; font:12px/1.2 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; margin-top:6px;">
-        Move your mouse away or click the map to close
-      </div>
-    </div>
-  `;
+            return `<div style="width:240px;padding:6px;">
+        <b>${name}</b><br>${Math.round(st.wspd_kn)} kt<br>${Math.round(st.wdir_degT)}°
+      </div>`;
         }
 
-        /* ---------- Map boot ---------- */
         const map = L.map('map', { zoomControl: true });
-        const tiles = L.tileLayer(
-            'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-            { attribution: '&copy; OpenStreetMap, &copy; CARTO' }
-        ).addTo(map);
-
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+            { attribution: '&copy; OpenStreetMap, &copy; CARTO' }).addTo(map);
         const layerStations = L.layerGroup().addTo(map);
 
-        // status UI
         const statusEl = document.getElementById('status');
         const refreshBtn = document.getElementById('refreshBtn');
         refreshBtn.addEventListener('click', () => loadObs(true));
-
-        // Close any open popup when clicking the map background
         map.on('click', () => map.closePopup());
 
-        /* ---------- Rendering ---------- */
         function clearStations() { layerStations.clearLayers(); }
-
         function addStationMarker(st) {
-            const lat = st.lat, lon = st.lon;
-            const ws = st.wspd_kn, wdFrom = st.wdir_degT;
-            if (lat == null || lon == null || ws == null || wdFrom == null) return;
-
-            const color = colorForSpeed(ws);
-            const rotate = rotateFromDirDeg(wdFrom);
+            if (!st.lat || !st.lon || !st.wspd_kn || !st.wdir_degT) return;
+            const color = colorForSpeed(st.wspd_kn);
+            const rotate = rotateFromDirDeg(st.wdir_degT);
             const arrow = svgStationArrow(color, ARROW_SIZE_PX);
-
-            const html = `
-  <div style="position:relative; transform: rotate(${rotate}deg); transform-origin:center;">
-    ${arrow}
-  </div>
-  <div style="
-        position:relative; top:-${ARROW_SIZE_PX / 2 - 2}px;
-        width:${ARROW_SIZE_PX}px; text-align:center;
-        font:600 ${ARROW_FONT_PX}px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
-        color:#111; text-shadow:0 0 2px #fff, 0 0 8px rgba(255,255,255,0.95);">
-    ${Math.round(ws)}
-  </div>`.trim();
-
+            const html = `<div style="transform:rotate(${rotate}deg)">${arrow}</div>
+        <div style="position:relative;top:-${ARROW_SIZE_PX / 2 - 2}px;width:${ARROW_SIZE_PX}px;
+        text-align:center;font:600 ${ARROW_FONT_PX}px/1 system-ui;
+        color:#111;text-shadow:0 0 2px #fff,0 0 8px rgba(255,255,255,0.95);">
+        ${Math.round(st.wspd_kn)}</div>`;
             const icon = L.divIcon({
-                html,
-                iconSize: [ARROW_SIZE_PX, ARROW_SIZE_PX],
-                iconAnchor: [ARROW_SIZE_PX / 2, ARROW_SIZE_PX / 2],
-                className: ''
+                html, iconSize: [ARROW_SIZE_PX, ARROW_SIZE_PX],
+                iconAnchor: [ARROW_SIZE_PX / 2, ARROW_SIZE_PX / 2], className: ''
             });
-
-            const name = st.station_name || st.station_id || 'station';
-            const tooltip = `<b>${name}</b><br>${Math.round(ws)} kt from ${Math.round(wdFrom)}&deg;`;
-
-            const marker = L.marker([lat, lon], { icon }).addTo(layerStations);
-            marker.bindTooltip(tooltip);
-
-            // Bind the graph popup; hover to open, mouseout to close
-            marker.bindPopup(popupHTML(st), { maxWidth: 600, autoClose: true, closeButton: false });
+            const marker = L.marker([st.lat, st.lon], { icon }).addTo(layerStations);
+            marker.bindTooltip(`${st.station_name || st.station_id}<br>${Math.round(st.wspd_kn)} kt`);
+            marker.bindPopup(popupHTML(st));
             marker.on('mouseover', () => marker.openPopup());
             marker.on('mouseout', () => marker.closePopup());
         }
-
         function fitToDataBounds(points) {
             if (!points.length) return;
             let latMin = 90, latMax = -90, lonMin = 180, lonMax = -180;
             for (const p of points) {
-                if (p.lat == null || p.lon == null) continue;
-                latMin = Math.min(latMin, p.lat);
-                latMax = Math.max(latMax, p.lat);
-                lonMin = Math.min(lonMin, p.lon);
-                lonMax = Math.max(lonMax, p.lon);
+                if (p.lat != null && p.lon != null) {
+                    latMin = Math.min(latMin, p.lat); latMax = Math.max(latMax, p.lat);
+                    lonMin = Math.min(lonMin, p.lon); lonMax = Math.max(lonMax, p.lon);
+                }
             }
-            const padLat = 0.06, padLon = 0.10;
-            const sw = L.latLng(latMin - padLat, lonMin - padLon);
-            const ne = L.latLng(latMax + padLat, lonMax + padLon);
+            const sw = L.latLng(latMin - 0.06, lonMin - 0.1), ne = L.latLng(latMax + 0.06, lonMax + 0.1);
             map.fitBounds(L.latLngBounds(sw, ne), { padding: [20, 20] });
         }
 
-        /* ---------- Data load ---------- */
         let autoTimer = null;
-
         async function loadObs(fromButton = false) {
             try {
                 refreshBtn.disabled = true;
                 statusEl.textContent = fromButton ? 'Refreshing…' : 'Loading…';
-
-                const url = `${OBS_URL}?ts=${Date.now()}`; // cache-bust
+                const url = `${OBS_URL}?ts=${Date.now()}`;
                 const res = await fetch(url, { cache: 'no-store' });
-                if (!res.ok) throw new Error(`fetch ${res.status}`);
-                const data = await res.json();
-
-                const obs = Array.isArray(data?.obs) ? data.obs : [];
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                let data;
+                try { data = await res.json(); } catch (e) {
+                    const txt = await res.text();
+                    console.error('JSON parse failed. First 200 chars:', txt.slice(0, 200));
+                    throw new Error('Invalid JSON');
+                }
+                let obs = Array.isArray(data?.obs) ? data.obs : Array.isArray(data) ? data : [];
+                obs = obs.map(r => ({
+                    lat: r.lat ?? r.Lat ?? r.latitude,
+                    lon: r.lon ?? r.Lon ?? r.longitude,
+                    wspd_kn: r.wspd_kn ?? r.wind_speed_kn ?? r.wspd ?? r.wind_knots,
+                    wdir_degT: r.wdir_degT ?? r.wdir ?? r.wind_dir_degT ?? r.direction,
+                    station_name: r.station_name ?? r.name ?? r.Site ?? r.station_id ?? r.id,
+                    station_id: r.station_id ?? r.id ?? r.code
+                }));
+                const ok = obs.filter(r => r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null);
                 clearStations();
-                for (const r of obs) addStationMarker(r);
-                if (!map._loaded) fitToDataBounds(obs);
-                if (map._loaded && fromButton) fitToDataBounds(obs);
-
-                const gen = data?.meta?.generated_at || 'unknown';
-                const count = data?.meta?.count ?? obs.length;
-                statusEl.textContent = `Stations: ${count} • Updated: ${gen}`;
-            } catch (err) {
-                console.error(err);
-                statusEl.textContent = 'Load failed';
-            } finally {
-                refreshBtn.disabled = false;
-                if (autoTimer) clearTimeout(autoTimer);
+                for (const r of ok) addStationMarker(r);
+                if (ok.length) {
+                    if (!map._fitDone || fromButton) { fitToDataBounds(ok); map._fitDone = true; }
+                    const gen = data?.meta?.generated_at || new Date().toISOString();
+                    statusEl.textContent = `Stations: ${ok.length} • Updated: ${gen}`;
+                }
+                else { statusEl.textContent = 'No stations in data'; }
+            } catch (err) { console.error(err); statusEl.textContent = 'Load failed'; }
+            finally {
+                refreshBtn.disabled = false; if (autoTimer) clearTimeout(autoTimer);
                 autoTimer = setTimeout(loadObs, AUTO_REFRESH_MS);
             }
         }
-
-        // Start
         map.whenReady(() => loadObs());
     </script>
 
-    <!-- Speed legend -->
     <div class="legend" id="legend">
         <h3>Wind speed (kt)</h3>
         <div class="row"><span class="chip" style="background:#00008b"></span> 0–3</div>
@@ -400,7 +299,6 @@
         <div class="row"><span class="chip" style="background:#8b008b"></span> 40–60</div>
         <div class="row"><span class="chip" style="background:#800080"></span> 60+</div>
     </div>
-
 </body>
 
 </html>
