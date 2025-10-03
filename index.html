@@ -179,7 +179,10 @@
             if (spd == null || Number.isNaN(spd)) return "#999999";
             for (let i = 0; i < BREAKS.length - 1; i++) {
                 const lo = BREAKS[i], hi = BREAKS[i + 1];
-                if (spd <= hi) { const t = Math.max(0, Math.min(1, (spd - lo) / Math.max(1e-9, hi - lo))); return mixHex(COLORS[i], COLORS[i + 1], t); }
+                if (spd <= hi) {
+                    const t = Math.max(0, Math.min(1, (spd - lo) / Math.max(1e-9, hi - lo)));
+                    return mixHex(COLORS[i], COLORS[i + 1], t);
+                }
             }
             return COLORS.at(-1);
         }
@@ -194,14 +197,13 @@
         </g></svg>`;
         }
 
-        // ---- popup (simple text for now)
+        // ---- popup HTML: use station_id (your JSON code string) everywhere
         const popupHTML = (st) => `
-            <div style="width:260px;padding:6px;">
-                <b>${st.code}</b><br>
-                ${Math.round(st.wspd_kn)} kt<br>${Math.round(st.wdir_degT)}°
-                <div id="ts-pane-${st.code}" style="margin-top:8px;"></div>
-            </div>`;
-
+      <div style="width:260px;padding:6px;">
+        <b>${st.station_id}</b><br>
+        ${Math.round(st.wspd_kn)} kt<br>${Math.round(st.wdir_degT)}°
+        <div id="ts-pane-${st.station_id}" style="margin-top:8px;"></div>
+      </div>`;
 
         // ---- map init
         const map = L.map('map', { zoomControl: true });
@@ -210,11 +212,15 @@
         const layerStations = L.layerGroup().addTo(map);
         const refreshBtn = document.getElementById('refreshBtn');
         refreshBtn.addEventListener('click', () => loadObs(true));
+
+        // One global click-to-close is enough (don’t re-bind inside markers)
         map.on('click', () => map.closePopup());
 
         function clearStations() { layerStations.clearLayers(); }
+
         function addStationMarker(st) {
             if (st.lat == null || st.lon == null || st.wspd_kn == null || st.wdir_degT == null) return;
+
             const color = colorForSpeed(st.wspd_kn);
             const rotate = rotateFromDirDeg(st.wdir_degT);
             const arrow = svgStationArrow(color, ARROW_SIZE_PX);
@@ -226,26 +232,30 @@
                 html, iconSize: [ARROW_SIZE_PX, ARROW_SIZE_PX],
                 iconAnchor: [ARROW_SIZE_PX / 2, ARROW_SIZE_PX / 2], className: ''
             });
+
             const marker = L.marker([st.lat, st.lon], { icon }).addTo(layerStations);
             marker.bindTooltip(`${st.station_name || st.station_id}<br>${Math.round(st.wspd_kn)} kt`);
-            // OPEN ON CLICK, SINGLE POPUP
+
+            // Bind popup: uses station_id for title and mount id
             marker.bindPopup(popupHTML(st), { maxWidth: 600, autoClose: true, closeOnClick: true, closeButton: false });
-            marker.on('popupopen', () => {
-                const node = document.getElementById(`ts-pane-${st.code}`);
-                if (node) attachTimeseriesTo(node, st.code, 24); // default 24h
-            });
 
-
-            // click to open; close any existing popup first
+            // Open + mount chart
             marker.on('click', () => {
+                console.log('[popup click]', { station_id: st.station_id, wspd: st.wspd_kn, wdir: st.wdir_degT });
                 if (map._popup && map._popup._source !== marker) map.closePopup();
                 marker.openPopup();
             });
 
-            // clicking empty map closes it (you already have this, keep it)
-            map.on('click', () => map.closePopup());
-
+            marker.on('popupopen', () => {
+                const mountId = `ts-pane-${st.station_id}`;
+                const mount = document.getElementById(mountId);
+                console.log('[popupopen]', { mountId, found: !!mount });
+                if (mount && window.attachTimeseriesTo) {
+                    attachTimeseriesTo(mount, st.station_id, 24); // pass the code; helper will resolve UUID
+                }
+            });
         }
+
         function fitToDataBounds(points) {
             if (!points.length) return;
             let latMin = 90, latMax = -90, lonMin = 180, lonMax = -180;
@@ -280,7 +290,7 @@
                     wspd_kn: r.wspd_kn ?? r.wind_speed_kt ?? r.wspd ?? r.wind_knots,
                     wdir_degT: r.wdir_degT ?? r.wind_dir_deg ?? r.wdir ?? r.direction,
                     station_name: r.station_name ?? r.name ?? r.Site ?? r.station_id ?? r.site_id ?? r.id,
-                    station_id: r.station_id ?? r.site_id ?? r.id
+                    station_id: r.station_id ?? r.site_id ?? r.id            // <-- this string is your code (e.g. WL_STONE_POINT)
                 }));
 
                 // keep only valid rows
@@ -324,13 +334,17 @@
         <div class="row"><span class="chip" style="background:#800080"></span> 60+</div>
     </div>
 
+    <!-- Supabase + Plotly -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 
+    <!-- Time-series helper (by CODE -> resolve UUID, then query observations) -->
     <script>
-        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";   // replace
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";                      // replace
+        // ===== Fill these with your project creds =====
+        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";   // <-- REPLACE
+        const SUPABASE_ANON_KEY = "YeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";                      // <-- REPLACE
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('[TS] Supabase URL:', SUPABASE_URL);
 
         function windowISO(hours, ref = new Date()) {
             const end = new Date(ref);
@@ -349,6 +363,7 @@
             return out;
         }
 
+        // code (e.g. 'WL_STONE_POINT') -> station UUID
         async function getStationIdByCode(stationCode) {
             const { data, error } = await supabase
                 .from('stations')
@@ -360,8 +375,10 @@
             return data?.id || null;
         }
 
+        // observations for UUID in window
         async function fetchObsSeriesByCode(stationCode, hours) {
             const stationId = await getStationIdByCode(stationCode);
+            console.log('[fetch] resolve code->uuid', { stationCode, stationId, hours });
             if (!stationId) return [];
             const { startISO, endISO } = windowISO(hours);
             const { data, error } = await supabase
@@ -372,36 +389,37 @@
                 .lte('observed_at', endISO)
                 .order('observed_at', { ascending: true });
             if (error) { console.error('[observations select]', error); return []; }
+            console.log('[fetch] rows:', data?.length ?? 0);
             return (data || []).map(r => ({
-                ts: r.observed_at,
-                wspd: r.wind_speed,
-                gust: r.wind_gust,
-                wdir: r.wind_direction
+                ts: r.observed_at, wspd: r.wind_speed, gust: r.wind_gust, wdir: r.wind_direction
             }));
         }
 
+        // mount chart into popup
         async function attachTimeseriesTo(containerEl, stationCode, defaultHours = 6) {
             containerEl.innerHTML = `
-    <div style="width:360px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <span style="font-size:12px;opacity:.7;">Window:</span>
-        <select class="ts-window" style="font-size:12px;padding:2px 4px;">
-          <option value="3">3h</option>
-          <option value="6" selected>6h</option>
-          <option value="24">24h</option>
-        </select>
-      </div>
-      <div class="ts-chart" style="width:100%;height:240px;"></div>
-      <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
-    </div>`;
+        <div style="width:360px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="font-size:12px;opacity:.7;">Window:</span>
+            <select class="ts-window" style="font-size:12px;padding:2px 4px;">
+              <option value="3">3h</option>
+              <option value="6" selected>6h</option>
+              <option value="24">24h</option>
+            </select>
+          </div>
+          <div class="ts-chart" style="width:100%;height:240px;"></div>
+          <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
+        </div>`;
             const sel = containerEl.querySelector('.ts-window');
             const chartEl = containerEl.querySelector('.ts-chart');
             const statusEl = containerEl.querySelector('.ts-status');
 
             async function load(hours) {
                 statusEl.textContent = 'Loading…';
+                console.log('[load]', { stationCode, hours });
                 const rows = await fetchObsSeriesByCode(stationCode, hours);
                 if (!rows.length) { Plotly.purge(chartEl); statusEl.textContent = 'No data'; return; }
+
                 Plotly.newPlot(chartEl, [
                     { x: rows.map(r => r.ts), y: rows.map(r => r.wspd), name: 'Wind', mode: 'lines' },
                     { x: rows.map(r => r.ts), y: rows.map(r => r.gust), name: 'Gust', mode: 'lines' },
@@ -412,8 +430,10 @@
                     yaxis2: { title: 'Deg', overlaying: 'y', side: 'right' },
                     legend: { orientation: 'h' }, height: 240
                 }, { displayModeBar: false, responsive: true });
+
                 statusEl.textContent = `${rows.length} pts`;
             }
+
             sel.addEventListener('change', () => load(parseInt(sel.value, 10)));
             sel.value = String(defaultHours);
             load(defaultHours);
