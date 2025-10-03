@@ -273,12 +273,16 @@
         const SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        async function fetchObsSeries(stationId, refISO, hours) {
-            const { data, error } = await supabase.rpc('api_get_obs_timeseries',
-                { p_station_id: stationId, p_ref_time: refISO, p_hours: hours });
-            if (error) { console.error(error); return []; }
+        async function fetchObsSeriesByCode(stationCode, refISO, hours) {
+            const { data, error } = await supabase.rpc('api_get_obs_timeseries_by_code', {
+                p_station_code: stationCode,
+                p_ref_time: refISO,
+                p_hours: hours
+            });
+            if (error) { console.error('RPC error', error); return []; }
             return data || [];
         }
+
         function unwrapDegrees(series) {
             if (!series.length) return series; const out = []; let acc;
             for (const v of series) {
@@ -287,32 +291,71 @@
                 let dv = v - (acc % 360); if (dv > 180) dv -= 360; if (dv < -180) dv += 360; acc += dv; out.push(acc);
             } return out;
         }
-        async function attachTimeseriesTo(containerEl, stationId, refISO = new Date().toISOString(), defaultHours = 6) {
-            containerEl.innerHTML = `<div style="width:360px;">
-   <div><span style="font-size:12px;opacity:.7;">Window:</span>
-   <select class="ts-window"><option value="3">3h</option><option value="6" selected>6h</option><option value="24">24h</option></select>
-   <span style="font-size:11px;opacity:.65;float:right;">${new Date(refISO).toLocaleString()}</span></div>
-   <div class="ts-chart" style="width:100%;height:240px;"></div>
-   <div class="ts-status" style="font-size:12px;opacity:.7;"></div></div>`;
+        async function attachTimeseriesTo(containerEl, stationCode, refISO = new Date().toISOString(), defaultHours = 6) {
+            containerEl.innerHTML = `
+            <div style="width:360px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <span style="font-size:12px;opacity:.7;">Window:</span>
+                <select class="ts-window" style="font-size:12px;padding:2px 4px;">
+                <option value="3">3h</option>
+                <option value="6" selected>6h</option>
+                <option value="24">24h</option>
+                </select>
+                <span style="margin-left:auto;font-size:11px;opacity:.65;">${new Date(refISO).toLocaleString()}</span>
+            </div>
+            <div class="ts-chart" style="width:100%;height:240px;"></div>
+            <div class="ts-status" style="font-size:12px;opacity:.7;margin-top:6px;"></div>
+            </div>
+        `;
+
             const sel = containerEl.querySelector('.ts-window');
             const chartDiv = containerEl.querySelector('.ts-chart');
             const statusEl = containerEl.querySelector('.ts-status');
+
             async function load(hours) {
                 statusEl.textContent = 'Loading…';
-                const rows = await fetchObsSeries(stationId, refISO, hours);
-                const ts = rows.map(r => r.ts), wspd = rows.map(r => r.wind_speed),
-                    gust = rows.map(r => r.wind_gust), wdir = unwrapDegrees(rows.map(r => r.wind_direction));
-                Plotly.newPlot(chartDiv, [
-                    { x: ts, y: wspd, name: 'Wind', mode: 'lines' },
-                    { x: ts, y: gust, name: 'Gust', mode: 'lines' },
-                    { x: ts, y: wdir, name: 'Dir', mode: 'lines', yaxis: 'y2' }],
-                    { margin: { l: 40, r: 40, t: 8, b: 28 }, yaxis: { title: 'Speed' }, yaxis2: { title: 'Deg', overlaying: 'y', side: 'right' }, legend: { orientation: 'h' }, height: 240 },
-                    { displayModeBar: false, responsive: true });
-                statusEl.textContent = '';
+                try {
+                    const rows = await fetchObsSeriesByCode(stationCode, refISO, hours);
+
+                    if (!rows.length) {
+                        statusEl.textContent = 'No data for this window';
+                        Plotly.purge(chartDiv);
+                        return;
+                    }
+
+                    const ts = rows.map(r => r.ts);
+                    const wspd = rows.map(r => r.wind_speed);
+                    const gust = rows.map(r => r.wind_gust);
+                    const wdirU = unwrapDegrees(rows.map(r => r.wind_direction));
+
+                    const traces = [
+                        { x: ts, y: wspd, name: 'Wind', mode: 'lines' },
+                        { x: ts, y: gust, name: 'Gust', mode: 'lines' },
+                        { x: ts, y: wdirU, name: 'Dir (unwrap)', mode: 'lines', yaxis: 'y2' },
+                    ];
+
+                    const layout = {
+                        margin: { l: 48, r: 48, t: 8, b: 28 },
+                        xaxis: { title: '' },
+                        yaxis: { title: 'Speed' },
+                        yaxis2: { title: 'Deg', overlaying: 'y', side: 'right' },
+                        legend: { orientation: 'h' },
+                        height: 240
+                    };
+
+                    Plotly.newPlot(chartDiv, traces, layout, { displayModeBar: false, responsive: true });
+                    statusEl.textContent = '';
+                } catch (err) {
+                    console.error(err);
+                    statusEl.textContent = 'Failed to load series';
+                }
             }
+
             sel.addEventListener('change', () => load(parseInt(sel.value, 10)));
-            sel.value = String(defaultHours); load(defaultHours);
+            sel.value = String(defaultHours);
+            load(defaultHours);
         }
+
     </script>
 </body>
 
