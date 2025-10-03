@@ -195,10 +195,13 @@
         }
 
         // ---- popup (simple text for now)
-        const popupHTML = st => `<div style="width:240px;padding:6px;">
-      <b>${st.station_name || st.station_id || 'Station'}</b><br>
-      ${Math.round(st.wspd_kn)} kt<br>${Math.round(st.wdir_degT)}°
-    </div>`;
+        const popupHTML = (st) => `
+            <div style="width:260px;padding:6px;">
+                <b>${st.code}</b><br>
+                ${Math.round(st.wspd_kn)} kt<br>${Math.round(st.wdir_degT)}°
+                <div id="ts-pane-${st.code}" style="margin-top:8px;"></div>
+            </div>`;
+
 
         // ---- map init
         const map = L.map('map', { zoomControl: true });
@@ -227,6 +230,11 @@
             marker.bindTooltip(`${st.station_name || st.station_id}<br>${Math.round(st.wspd_kn)} kt`);
             // OPEN ON CLICK, SINGLE POPUP
             marker.bindPopup(popupHTML(st), { maxWidth: 600, autoClose: true, closeOnClick: true, closeButton: false });
+            marker.on('popupopen', () => {
+                const node = document.getElementById(`ts-pane-${st.code}`);
+                if (node) attachTimeseriesTo(node, st.code, 24); // default 24h
+            });
+
 
             // click to open; close any existing popup first
             marker.on('click', () => {
@@ -315,6 +323,103 @@
         <div class="row"><span class="chip" style="background:#8b008b"></span> 40–60</div>
         <div class="row"><span class="chip" style="background:#800080"></span> 60+</div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+    <script>
+        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";   // replace
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";                      // replace
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function windowISO(hours, ref = new Date()) {
+            const end = new Date(ref);
+            const start = new Date(end.getTime() - hours * 3600 * 1000);
+            return { startISO: start.toISOString(), endISO: end.toISOString() };
+        }
+        function unwrapDegrees(series) {
+            if (!series || !series.length) return series;
+            const out = []; let acc;
+            for (const v of series) {
+                if (v == null || isNaN(v)) { out.push(null); continue; }
+                if (acc === undefined) { acc = v; out.push(acc); continue; }
+                let dv = v - (acc % 360); if (dv > 180) dv -= 360; if (dv < -180) dv += 360;
+                acc += dv; out.push(acc);
+            }
+            return out;
+        }
+
+        async function getStationIdByCode(stationCode) {
+            const { data, error } = await supabase
+                .from('stations')
+                .select('id')
+                .eq('code', stationCode)
+                .limit(1)
+                .maybeSingle();
+            if (error) { console.error('[stations lookup]', error); return null; }
+            return data?.id || null;
+        }
+
+        async function fetchObsSeriesByCode(stationCode, hours) {
+            const stationId = await getStationIdByCode(stationCode);
+            if (!stationId) return [];
+            const { startISO, endISO } = windowISO(hours);
+            const { data, error } = await supabase
+                .from('observations')
+                .select('observed_at, wind_speed, wind_gust, wind_direction')
+                .eq('station_id', stationId)
+                .gte('observed_at', startISO)
+                .lte('observed_at', endISO)
+                .order('observed_at', { ascending: true });
+            if (error) { console.error('[observations select]', error); return []; }
+            return (data || []).map(r => ({
+                ts: r.observed_at,
+                wspd: r.wind_speed,
+                gust: r.wind_gust,
+                wdir: r.wind_direction
+            }));
+        }
+
+        async function attachTimeseriesTo(containerEl, stationCode, defaultHours = 6) {
+            containerEl.innerHTML = `
+    <div style="width:360px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="font-size:12px;opacity:.7;">Window:</span>
+        <select class="ts-window" style="font-size:12px;padding:2px 4px;">
+          <option value="3">3h</option>
+          <option value="6" selected>6h</option>
+          <option value="24">24h</option>
+        </select>
+      </div>
+      <div class="ts-chart" style="width:100%;height:240px;"></div>
+      <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
+    </div>`;
+            const sel = containerEl.querySelector('.ts-window');
+            const chartEl = containerEl.querySelector('.ts-chart');
+            const statusEl = containerEl.querySelector('.ts-status');
+
+            async function load(hours) {
+                statusEl.textContent = 'Loading…';
+                const rows = await fetchObsSeriesByCode(stationCode, hours);
+                if (!rows.length) { Plotly.purge(chartEl); statusEl.textContent = 'No data'; return; }
+                Plotly.newPlot(chartEl, [
+                    { x: rows.map(r => r.ts), y: rows.map(r => r.wspd), name: 'Wind', mode: 'lines' },
+                    { x: rows.map(r => r.ts), y: rows.map(r => r.gust), name: 'Gust', mode: 'lines' },
+                    { x: rows.map(r => r.ts), y: unwrapDegrees(rows.map(r => r.wdir)), name: 'Dir', mode: 'lines', yaxis: 'y2' },
+                ], {
+                    margin: { l: 48, r: 48, t: 8, b: 28 },
+                    yaxis: { title: 'Speed' },
+                    yaxis2: { title: 'Deg', overlaying: 'y', side: 'right' },
+                    legend: { orientation: 'h' }, height: 240
+                }, { displayModeBar: false, responsive: true });
+                statusEl.textContent = `${rows.length} pts`;
+            }
+            sel.addEventListener('change', () => load(parseInt(sel.value, 10)));
+            sel.value = String(defaultHours);
+            load(defaultHours);
+        }
+    </script>
+
 </body>
 
 </html>
