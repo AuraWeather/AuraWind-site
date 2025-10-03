@@ -6,7 +6,7 @@
     <title>AuraWind — Solent Live Observations</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Leaflet -->
+    <!-- Leaflet (no SRI to avoid blocking) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -100,7 +100,7 @@
             padding: 10px 12px;
             color: var(--text);
             box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
-            font: 12px/1.2 system-ui
+            font: 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial
         }
 
         .legend h3 {
@@ -123,6 +123,17 @@
             border-radius: 3px;
             border: 1px solid #0006
         }
+
+        .popbtn {
+            cursor: pointer;
+            padding: 4px 8px;
+            margin-right: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font: 12px sans-serif;
+            background: #fff;
+            color: #000
+        }
     </style>
 </head>
 
@@ -140,7 +151,7 @@
     <script>
         console.log('AuraWind index loaded');
 
-        // surface errors to the pill
+        // ---- global error surfacing so the pill doesn’t hang silently
         const statusEl = document.getElementById('status');
         const setStatus = s => { if (statusEl) statusEl.textContent = s; };
         window.addEventListener('error', e => { console.error('Global error:', e.error || e.message); setStatus('Script error'); });
@@ -155,7 +166,7 @@
         const COLORS = ["#00008b", "#4169e1", "#00ffcc", "#00ff00", "#00cc00",
             "#ff9900", "#ff0000", "#b22222", "#8b008b", "#800080"];
 
-        // helpers
+        // ---- helpers
         const lerp = (a, b, t) => a + (b - a) * t;
         function mixHex(a, b, t) {
             const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
@@ -168,10 +179,7 @@
             if (spd == null || Number.isNaN(spd)) return "#999999";
             for (let i = 0; i < BREAKS.length - 1; i++) {
                 const lo = BREAKS[i], hi = BREAKS[i + 1];
-                if (spd <= hi) {
-                    const t = Math.max(0, Math.min(1, (spd - lo) / Math.max(1e-9, hi - lo)));
-                    return mixHex(COLORS[i], COLORS[i + 1], t);
-                }
+                if (spd <= hi) { const t = Math.max(0, Math.min(1, (spd - lo) / Math.max(1e-9, hi - lo))); return mixHex(COLORS[i], COLORS[i + 1], t); }
             }
             return COLORS.at(-1);
         }
@@ -186,15 +194,13 @@
         </g></svg>`;
         }
 
-        // popup html includes a mount for the chart
-        const popupHTML = st => `
-      <div style="width:260px;padding:6px;">
-        <b>${st.station_name || st.station_id || 'Station'}</b><br>
-        ${Math.round(st.wspd_kn)} kt<br>${Math.round(st.wdir_degT)}°
-        <div id="ts-pane-${st.station_id}" style="margin-top:8px;"></div>
-      </div>`;
+        // ---- popup (simple text for now)
+        const popupHTML = st => `<div style="width:240px;padding:6px;">
+      <b>${st.station_name || st.station_id || 'Station'}</b><br>
+      ${Math.round(st.wspd_kn)} kt<br>${Math.round(st.wdir_degT)}°
+    </div>`;
 
-        // map
+        // ---- map init
         const map = L.map('map', { zoomControl: true });
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
             { attribution: '&copy; OpenStreetMap, &copy; CARTO' }).addTo(map);
@@ -219,21 +225,19 @@
             });
             const marker = L.marker([st.lat, st.lon], { icon }).addTo(layerStations);
             marker.bindTooltip(`${st.station_name || st.station_id}<br>${Math.round(st.wspd_kn)} kt`);
+            // OPEN ON CLICK, SINGLE POPUP
             marker.bindPopup(popupHTML(st), { maxWidth: 600, autoClose: true, closeOnClick: true, closeButton: false });
 
+            // click to open; close any existing popup first
             marker.on('click', () => {
                 if (map._popup && map._popup._source !== marker) map.closePopup();
                 marker.openPopup();
-                // mount the time-series pane (let server decide ref time)
-                setTimeout(() => {
-                    const node = document.getElementById(`ts-pane-${st.station_id}`);
-                    if (node) attachTimeseriesTo(node, st.station_id, undefined, 24); // try 24h default for testing
-                }, 100);
             });
 
+            // clicking empty map closes it (you already have this, keep it)
             map.on('click', () => map.closePopup());
-        }
 
+        }
         function fitToDataBounds(points) {
             if (!points.length) return;
             let latMin = 90, latMax = -90, lonMin = 180, lonMax = -180;
@@ -255,9 +259,12 @@
                 if (!res.ok) { setStatus(`Fetch ${res.status}`); throw new Error(`HTTP ${res.status}`); }
 
                 let data; try { data = await res.json(); }
-                catch (e) { const txt = await res.text(); console.error('JSON parse failed:', txt.slice(0, 200)); setStatus('Invalid JSON'); throw e; }
+                catch (e) {
+                    const txt = await res.text(); console.error('JSON parse failed:', txt.slice(0, 200));
+                    setStatus('Invalid JSON'); throw e;
+                }
 
-                // normalise
+                // Accept your schema: wind_speed_kt / wind_dir_deg / site_id (with fallbacks)
                 let rows = Array.isArray(data?.obs) ? data.obs : Array.isArray(data) ? data : [];
                 let obs = rows.map(r => ({
                     lat: r.lat ?? r.latitude,
@@ -265,9 +272,10 @@
                     wspd_kn: r.wspd_kn ?? r.wind_speed_kt ?? r.wspd ?? r.wind_knots,
                     wdir_degT: r.wdir_degT ?? r.wind_dir_deg ?? r.wdir ?? r.direction,
                     station_name: r.station_name ?? r.name ?? r.Site ?? r.station_id ?? r.site_id ?? r.id,
-                    station_id: r.station_id ?? r.site_id ?? r.id               // <-- this is your CODE (e.g. WL_STONE_POINT)
+                    station_id: r.station_id ?? r.site_id ?? r.id
                 }));
 
+                // keep only valid rows
                 const ok = obs.filter(r => r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null);
 
                 clearStations();
@@ -279,6 +287,7 @@
                     setStatus(`Stations: ${ok.length} • Updated: ${gen}`);
                 } else {
                     setStatus('No stations in data');
+                    console.warn('Sample rows:', rows.slice(0, 3));
                 }
             } catch (err) {
                 console.error('loadObs error:', err);
@@ -306,102 +315,6 @@
         <div class="row"><span class="chip" style="background:#8b008b"></span> 40–60</div>
         <div class="row"><span class="chip" style="background:#800080"></span> 60+</div>
     </div>
-
-    <!-- Supabase + Plotly + Timeseries -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
-    <script>
-        // const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";  // <-- replace
-        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co"
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";                     // <-- replace
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        async function fetchObsSeriesByCode(stationCode, refISO, hours) {
-            try {
-                const args = { p_station_code: stationCode, p_hours: hours };
-                if (refISO) args.p_ref_time = refISO; // omit to use server now()
-                const { data, error } = await supabase.rpc('api_get_obs_timeseries_by_code', args);
-                if (error) { console.error('[TS] RPC error:', error); return { rows: [], error }; }
-                console.log(`[TS] ${stationCode} ${hours}h → ${(data?.length ?? 0)} rows`);
-                return { rows: data || [], error: null };
-            } catch (err) {
-                console.error('[TS] fetch exception:', err);
-                return { rows: [], error: err };
-            }
-        }
-
-        function unwrapDegrees(series) {
-            if (!series || !series.length) return series;
-            const out = []; let acc;
-            for (const v of series) {
-                if (v == null || isNaN(v)) { out.push(null); continue; }
-                if (acc === undefined) { acc = v; out.push(acc); continue; }
-                let dv = v - (acc % 360); if (dv > 180) dv -= 360; if (dv < -180) dv += 360;
-                acc += dv; out.push(acc);
-            }
-            return out;
-        }
-
-        async function attachTimeseriesTo(containerEl, stationCode, refISO = undefined, defaultHours = 6) {
-            containerEl.innerHTML = `
-        <div style="width:360px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <span style="font-size:12px;opacity:.7;">Window:</span>
-            <select class="ts-window" style="font-size:12px;padding:2px 4px;">
-              <option value="3">3h</option>
-              <option value="6" selected>6h</option>
-              <option value="24">24h</option>
-            </select>
-            <span class="ts-ref" style="margin-left:auto;font-size:11px;opacity:.65;"></span>
-          </div>
-          <div class="ts-chart" style="width:100%;height:240px;"></div>
-          <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
-        </div>
-      `;
-
-            const sel = containerEl.querySelector('.ts-window');
-            const chartEl = containerEl.querySelector('.ts-chart');
-            const statusEl = containerEl.querySelector('.ts-status');
-            const refLbl = containerEl.querySelector('.ts-ref');
-
-            function showStatus(msg) { statusEl.textContent = msg; }
-
-            async function load(hours) {
-                showStatus('Loading…');
-                refLbl.textContent = refISO ? new Date(refISO).toLocaleString() : 'server now()';
-
-                const { rows, error } = await fetchObsSeriesByCode(stationCode, refISO, hours);
-                if (error) { showStatus('Error fetching series (see console)'); Plotly.purge(chartEl); return; }
-                if (!rows.length) { showStatus('No data for this window'); Plotly.purge(chartEl); return; }
-
-                const ts = rows.map(r => r.ts);
-                const wspd = rows.map(r => r.wind_speed);
-                const gust = rows.map(r => r.wind_gust);
-                const wdir = unwrapDegrees(rows.map(r => r.wind_direction));
-
-                Plotly.newPlot(chartEl, [
-                    { x: ts, y: wspd, name: 'Wind', mode: 'lines' },
-                    { x: ts, y: gust, name: 'Gust', mode: 'lines' },
-                    { x: ts, y: wdir, name: 'Dir (unwrap)', mode: 'lines', yaxis: 'y2' },
-                ], {
-                    margin: { l: 48, r: 48, t: 8, b: 28 },
-                    xaxis: { title: '' },
-                    yaxis: { title: 'Speed' },
-                    yaxis2: { title: 'Deg', overlaying: 'y', side: 'right' },
-                    legend: { orientation: 'h' },
-                    height: 240
-                }, { displayModeBar: false, responsive: true });
-
-                showStatus(`${rows.length} pts`);
-            }
-
-            sel.addEventListener('change', () => load(parseInt(sel.value, 10)));
-            sel.value = String(defaultHours);
-            load(defaultHours);
-        }
-
-        console.log('[TS] Supabase URL:', SUPABASE_URL);
-    </script>
 </body>
 
 </html>
