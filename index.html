@@ -217,8 +217,9 @@
                 // after popup opens, attach chart
                 setTimeout(() => {
                     const node = document.getElementById(`ts-pane-${st.station_id}`);
-                    if (node) attachTimeseriesTo(node, st.station_id, new Date().toISOString(), 6);
+                    if (node) attachTimeseriesTo(node, st.station_id, undefined, 6);
                 }, 100);
+
             });
         }
         function fitToDataBounds(points) {
