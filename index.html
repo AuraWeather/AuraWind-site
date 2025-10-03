@@ -1,333 +1,52 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="utf-8" />
-    <title>AuraWind — Solent Live Observations</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-    <!-- Leaflet -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+    <title>AuraWind</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        :root {
-            --bg: #0b1120;
-            --card: #111827ee;
-            --text: #e5e7eb;
-            --accent: #14b8a6;
-        }
-
         html,
-        body {
+        body,
+        #map {
             height: 100%;
             margin: 0;
-            background: var(--bg);
-            color: var(--text);
+            padding: 0;
         }
 
-        #app {
-            position: fixed;
-            inset: 0;
-            display: grid;
-            grid-template-rows: auto 1fr;
+        .leaflet-popup-content {
+            margin: 4px 4px;
         }
 
-        header {
-            display: flex;
-            align-items: center;
-            gap: .75rem;
-            padding: .6rem .9rem;
-            background: linear-gradient(180deg, #0b1120, #0b1120cc);
-            border-bottom: 1px solid #0f172a;
-            backdrop-filter: blur(6px);
-            z-index: 1000
-        }
-
-        header h1 {
-            font-size: 1rem;
-            margin: 0;
-            font-weight: 600
-        }
-
-        .spacer {
-            flex: 1
-        }
-
-        .pill {
-            display: inline-flex;
-            align-items: center;
-            gap: .45rem;
-            padding: .35rem .6rem;
-            border: 1px solid #1f2937;
-            background: var(--card);
-            border-radius: 999px;
-            font-size: .8rem
-        }
-
-        button {
-            background: var(--accent);
-            color: #062b2a;
-            border: 0;
-            border-radius: 10px;
-            padding: .45rem .7rem;
-            font-weight: 700;
-            cursor: pointer
-        }
-
-        button:disabled {
-            opacity: .6;
-            cursor: default
-        }
-
-        #map {
-            width: 100%;
-            height: 100%
-        }
-
-        .leaflet-container {
-            background: #0b1120
-        }
-
-        .legend {
-            position: absolute;
-            right: 12px;
-            bottom: 12px;
-            z-index: 999;
-            background: var(--card);
-            border: 1px solid #1f2937;
-            border-radius: 12px;
-            padding: 10px 12px;
-            color: var(--text);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
-            font: 12px/1.2 system-ui
-        }
-
-        .legend h3 {
-            margin: 0 0 6px 0;
-            font-size: 12px;
-            font-weight: 700;
-            color: #d1d5db
-        }
-
-        .legend .row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin: 4px 0
-        }
-
-        .chip {
-            width: 18px;
-            height: 10px;
-            border-radius: 3px;
-            border: 1px solid #0006
+        .ts-btn.ts-on {
+            background: #333;
+            color: #fff;
         }
     </style>
 </head>
 
 <body>
-    <div id="app">
-        <header>
-            <h1>AuraWind — Solent Live Observations</h1>
-            <div class="pill" id="status">Loading…</div>
-            <div class="spacer"></div>
-            <button id="refreshBtn" title="Refresh now">Refresh</button>
-        </header>
-        <div id="map"></div>
-    </div>
+    <div id="map"></div>
 
-    <script>
-        console.log('AuraWind index loaded');
-
-        // surface errors to the pill
-        const statusEl = document.getElementById('status');
-        const setStatus = s => { if (statusEl) statusEl.textContent = s; };
-        window.addEventListener('error', e => { console.error('Global error:', e.error || e.message); setStatus('Script error'); });
-        window.addEventListener('unhandledrejection', e => { console.error('Unhandled promise:', e.reason); setStatus('Load failed'); });
-
-        /* ---------------- Config ---------------- */
-        const OBS_URL = './solent_obs.json';      // relative to index.html
-        const AUTO_REFRESH_MS = 10 * 60 * 1000;   // 10 minutes
-        const ARROW_SIZE_PX = 96;
-        const ARROW_FONT_PX = 20;
-        const BREAKS = [0, 3, 5, 10, 20, 22, 30, 33, 40, 60];
-        const COLORS = ["#00008b", "#4169e1", "#00ffcc", "#00ff00", "#00cc00",
-            "#ff9900", "#ff0000", "#b22222", "#8b008b", "#800080"];
-
-        // helpers
-        const lerp = (a, b, t) => a + (b - a) * t;
-        function mixHex(a, b, t) {
-            const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
-            const ar = (pa >> 16) & 255, ag = (pa >> 8) & 255, ab = pa & 255;
-            const br = (pb >> 16) & 255, bg = (pb >> 8) & 255, bb = pb & 255;
-            const r = Math.round(lerp(ar, br, t)), g = Math.round(lerp(ag, bg, t)), b2 = Math.round(lerp(ab, bb, t));
-            return `#${(r << 16 | g << 8 | b2).toString(16).padStart(6, '0')}`;
-        }
-        function colorForSpeed(spd) {
-            if (spd == null || Number.isNaN(spd)) return "#999999";
-            for (let i = 0; i < BREAKS.length - 1; i++) {
-                const lo = BREAKS[i], hi = BREAKS[i + 1];
-                if (spd <= hi) {
-                    const t = Math.max(0, Math.min(1, (spd - lo) / Math.max(1e-9, hi - lo)));
-                    return mixHex(COLORS[i], COLORS[i + 1], t);
-                }
-            }
-            return COLORS.at(-1);
-        }
-        const rotateFromDirDeg = d => (Number(d) + 180) % 360;
-        function svgStationArrow(color, size = ARROW_SIZE_PX) {
-            const stroke = Math.max(4, size / 12).toFixed(1);
-            return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
-        style="filter: drop-shadow(0 0 3px rgba(0,0,0,0.35));">
-        <g transform="translate(32,32)">
-          <line x1="0" y1="20" x2="0" y2="-16" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"/>
-          <polygon points="0,-26 -10,-8 10,-8" fill="${color}"/>
-        </g></svg>`;
-        }
-
-        // popup html includes a mount for the chart
-        const popupHTML = st => `
-      <div style="width:260px;padding:6px;">
-        <b>${st.station_name || st.station_id || 'Station'}</b><br>
-        ${Math.round(st.wspd_kn)} kt<br>${Math.round(st.wdir_degT)}°
-        <div id="ts-pane-${st.station_id}" style="margin-top:8px;"></div>
-      </div>`;
-
-        // map
-        const map = L.map('map', { zoomControl: true });
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-            { attribution: '&copy; OpenStreetMap, &copy; CARTO' }).addTo(map);
-        const layerStations = L.layerGroup().addTo(map);
-        const refreshBtn = document.getElementById('refreshBtn');
-        refreshBtn.addEventListener('click', () => loadObs(true));
-        map.on('click', () => map.closePopup());
-
-        function clearStations() { layerStations.clearLayers(); }
-        function addStationMarker(st) {
-            if (st.lat == null || st.lon == null || st.wspd_kn == null || st.wdir_degT == null) return;
-            const color = colorForSpeed(st.wspd_kn);
-            const rotate = rotateFromDirDeg(st.wdir_degT);
-            const arrow = svgStationArrow(color, ARROW_SIZE_PX);
-            const html = `<div style="transform:rotate(${rotate}deg)">${arrow}</div>
-        <div style="position:relative;top:-${ARROW_SIZE_PX / 2 - 2}px;width:${ARROW_SIZE_PX}px;text-align:center;
-          font:600 ${ARROW_FONT_PX}px/1 system-ui;color:#111;
-          text-shadow:0 0 2px #fff,0 0 8px rgba(255,255,255,.95);">${Math.round(st.wspd_kn)}</div>`;
-            const icon = L.divIcon({
-                html, iconSize: [ARROW_SIZE_PX, ARROW_SIZE_PX],
-                iconAnchor: [ARROW_SIZE_PX / 2, ARROW_SIZE_PX / 2], className: ''
-            });
-            const marker = L.marker([st.lat, st.lon], { icon }).addTo(layerStations);
-            marker.bindTooltip(`${st.station_name || st.station_id}<br>${Math.round(st.wspd_kn)} kt`);
-            marker.bindPopup(popupHTML(st), { maxWidth: 600, autoClose: true, closeOnClick: true, closeButton: false });
-
-            marker.on('click', () => {
-                if (map._popup && map._popup._source !== marker) map.closePopup();
-                marker.openPopup();
-                // mount the time-series pane (let server decide ref time)
-                setTimeout(() => {
-                    const node = document.getElementById(`ts-pane-${st.station_id}`);
-                    if (node) attachTimeseriesTo(node, st.station_id, undefined, 24); // try 24h default for testing
-                }, 100);
-            });
-
-            map.on('click', () => map.closePopup());
-        }
-
-        function fitToDataBounds(points) {
-            if (!points.length) return;
-            let latMin = 90, latMax = -90, lonMin = 180, lonMax = -180;
-            for (const p of points) {
-                if (p.lat != null && p.lon != null) {
-                    latMin = Math.min(latMin, p.lat); latMax = Math.max(latMax, p.lat);
-                    lonMin = Math.min(lonMin, p.lon); lonMax = Math.max(lonMax, p.lon);
-                }
-            }
-            map.fitBounds([[latMin - 0.06, lonMin - 0.10], [latMax + 0.06, lonMax + 0.10]], { padding: [20, 20] });
-        }
-
-        let autoTimer = null;
-        async function loadObs(fromButton = false) {
-            try {
-                refreshBtn.disabled = true; setStatus(fromButton ? 'Refreshing…' : 'Loading…');
-                const url = `${OBS_URL}?ts=${Date.now()}`;
-                const res = await fetch(url, { cache: 'no-store' });
-                if (!res.ok) { setStatus(`Fetch ${res.status}`); throw new Error(`HTTP ${res.status}`); }
-
-                let data; try { data = await res.json(); }
-                catch (e) { const txt = await res.text(); console.error('JSON parse failed:', txt.slice(0, 200)); setStatus('Invalid JSON'); throw e; }
-
-                // normalise
-                let rows = Array.isArray(data?.obs) ? data.obs : Array.isArray(data) ? data : [];
-                let obs = rows.map(r => ({
-                    lat: r.lat ?? r.latitude,
-                    lon: r.lon ?? r.longitude,
-                    wspd_kn: r.wspd_kn ?? r.wind_speed_kt ?? r.wspd ?? r.wind_knots,
-                    wdir_degT: r.wdir_degT ?? r.wind_dir_deg ?? r.wdir ?? r.direction,
-                    station_name: r.station_name ?? r.name ?? r.Site ?? r.station_id ?? r.site_id ?? r.id,
-                    station_id: r.station_id ?? r.site_id ?? r.id               // <-- this is your CODE (e.g. WL_STONE_POINT)
-                }));
-
-                const ok = obs.filter(r => r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null);
-
-                clearStations();
-                for (const r of ok) addStationMarker(r);
-
-                if (ok.length) {
-                    if (!map._fitDone || fromButton) { fitToDataBounds(ok); map._fitDone = true; }
-                    const gen = data?.meta?.generated_at || new Date().toISOString();
-                    setStatus(`Stations: ${ok.length} • Updated: ${gen}`);
-                } else {
-                    setStatus('No stations in data');
-                }
-            } catch (err) {
-                console.error('loadObs error:', err);
-            } finally {
-                refreshBtn.disabled = false;
-                if (autoTimer) clearTimeout(autoTimer);
-                autoTimer = setTimeout(loadObs, AUTO_REFRESH_MS);
-            }
-        }
-
-        map.whenReady(() => loadObs());
-    </script>
-
-    <!-- Legend -->
-    <div class="legend" id="legend">
-        <h3>Wind speed (kt)</h3>
-        <div class="row"><span class="chip" style="background:#00008b"></span> 0–3</div>
-        <div class="row"><span class="chip" style="background:#4169e1"></span> 3–5</div>
-        <div class="row"><span class="chip" style="background:#00ffcc"></span> 5–10</div>
-        <div class="row"><span class="chip" style="background:#00ff00"></span> 10–20</div>
-        <div class="row"><span class="chip" style="background:#00cc00"></span> 20–22</div>
-        <div class="row"><span class="chip" style="background:#ff9900"></span> 22–30</div>
-        <div class="row"><span class="chip" style="background:#ff0000"></span> 30–33</div>
-        <div class="row"><span class="chip" style="background:#b22222"></span> 33–40</div>
-        <div class="row"><span class="chip" style="background:#8b008b"></span> 40–60</div>
-        <div class="row"><span class="chip" style="background:#800080"></span> 60+</div>
-    </div>
-
-    <!-- Supabase + Plotly + Timeseries -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";  // <-- replace
-        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co"
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";                     // <-- replace
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log("AuraWind index loaded");
 
-        async function fetchObsSeriesByCode(stationCode, refISO, hours) {
-            try {
-                const args = { p_station_code: stationCode, p_hours: hours };
-                if (refISO) args.p_ref_time = refISO; // omit to use server now()
-                const { data, error } = await supabase.rpc('api_get_obs_timeseries_by_code', args);
-                if (error) { console.error('[TS] RPC error:', error); return { rows: [], error }; }
-                console.log(`[TS] ${stationCode} ${hours}h → ${(data?.length ?? 0)} rows`);
-                return { rows: data || [], error: null };
-            } catch (err) {
-                console.error('[TS] fetch exception:', err);
-                return { rows: [], error: err };
-            }
+        // --- init map ---
+        const map = L.map('map').setView([50.8, -1.3], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // --- helpers ---
+        function windowISO(hours, ref = new Date()) {
+            const end = new Date(ref);
+            const start = new Date(end.getTime() - hours * 3600 * 1000);
+            return { startISO: start.toISOString(), endISO: end.toISOString() };
         }
 
         function unwrapDegrees(series) {
@@ -336,13 +55,48 @@
             for (const v of series) {
                 if (v == null || isNaN(v)) { out.push(null); continue; }
                 if (acc === undefined) { acc = v; out.push(acc); continue; }
-                let dv = v - (acc % 360); if (dv > 180) dv -= 360; if (dv < -180) dv += 360;
+                let dv = v - (acc % 360);
+                if (dv > 180) dv -= 360;
+                if (dv < -180) dv += 360;
                 acc += dv; out.push(acc);
             }
             return out;
         }
 
-        async function attachTimeseriesTo(containerEl, stationCode, refISO = undefined, defaultHours = 6) {
+        // --- supabase fetchers ---
+        async function getStationIdByCode(stationCode) {
+            const { data, error } = await supabase
+                .from('stations')
+                .select('id')
+                .eq('code', stationCode)
+                .limit(1)
+                .maybeSingle();
+            if (error) { console.error('[stations lookup]', error); return null; }
+            return data?.id || null;
+        }
+
+        async function fetchObsSeriesByCode(stationCode, hours) {
+            const stationId = await getStationIdByCode(stationCode);
+            if (!stationId) { console.warn('No station UUID for code', stationCode); return []; }
+            const { startISO, endISO } = windowISO(hours);
+            const { data, error } = await supabase
+                .from('observations')
+                .select('observed_at, wind_speed, wind_gust, wind_direction')
+                .eq('station_id', stationId)
+                .gte('observed_at', startISO)
+                .lte('observed_at', endISO)
+                .order('observed_at', { ascending: true });
+            if (error) { console.error('[observations select]', error); return []; }
+            return (data || []).map(r => ({
+                ts: r.observed_at,
+                wspd: r.wind_speed,
+                gust: r.wind_gust,
+                wdir: r.wind_direction
+            }));
+        }
+
+        // --- attach chart into popup ---
+        async function attachTimeseriesTo(containerEl, stationCode, defaultHours = 6) {
             containerEl.innerHTML = `
         <div style="width:360px;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -352,7 +106,7 @@
               <option value="6" selected>6h</option>
               <option value="24">24h</option>
             </select>
-            <span class="ts-ref" style="margin-left:auto;font-size:11px;opacity:.65;"></span>
+            <span class="ts-ref" style="margin-left:auto;font-size:11px;opacity:.65;">server now()</span>
           </div>
           <div class="ts-chart" style="width:100%;height:240px;"></div>
           <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
@@ -362,22 +116,19 @@
             const sel = containerEl.querySelector('.ts-window');
             const chartEl = containerEl.querySelector('.ts-chart');
             const statusEl = containerEl.querySelector('.ts-status');
-            const refLbl = containerEl.querySelector('.ts-ref');
-
-            function showStatus(msg) { statusEl.textContent = msg; }
 
             async function load(hours) {
-                showStatus('Loading…');
-                refLbl.textContent = refISO ? new Date(refISO).toLocaleString() : 'server now()';
-
-                const { rows, error } = await fetchObsSeriesByCode(stationCode, refISO, hours);
-                if (error) { showStatus('Error fetching series (see console)'); Plotly.purge(chartEl); return; }
-                if (!rows.length) { showStatus('No data for this window'); Plotly.purge(chartEl); return; }
-
+                statusEl.textContent = 'Loading…';
+                const rows = await fetchObsSeriesByCode(stationCode, hours);
+                if (!rows.length) {
+                    Plotly.purge(chartEl);
+                    statusEl.textContent = 'No data for this window';
+                    return;
+                }
                 const ts = rows.map(r => r.ts);
-                const wspd = rows.map(r => r.wind_speed);
-                const gust = rows.map(r => r.wind_gust);
-                const wdir = unwrapDegrees(rows.map(r => r.wind_direction));
+                const wspd = rows.map(r => r.wspd);
+                const gust = rows.map(r => r.gust);
+                const wdir = unwrapDegrees(rows.map(r => r.wdir));
 
                 Plotly.newPlot(chartEl, [
                     { x: ts, y: wspd, name: 'Wind', mode: 'lines' },
@@ -392,7 +143,7 @@
                     height: 240
                 }, { displayModeBar: false, responsive: true });
 
-                showStatus(`${rows.length} pts`);
+                statusEl.textContent = `${rows.length} pts`;
             }
 
             sel.addEventListener('change', () => load(parseInt(sel.value, 10)));
@@ -400,7 +151,33 @@
             load(defaultHours);
         }
 
-        console.log('[TS] Supabase URL:', SUPABASE_URL);
+        // --- markers demo (replace with your station loop) ---
+        const stations = [
+            { code: 'WL_STONE_POINT', lat: 50.8, lon: -1.3, wspd_kn: 27, wdir_degT: 229 }
+        ];
+
+        stations.forEach(st => {
+            const marker = L.marker([st.lat, st.lon]).addTo(map);
+            const popupHTML = `
+        <div style="width:260px;padding:6px;">
+          <b>${st.code}</b><br>
+          ${st.wspd_kn} kt<br>${st.wdir_degT}°
+          <div id="ts-pane-${st.code}" style="margin-top:8px;"></div>
+        </div>`;
+            marker.bindPopup(popupHTML);
+            marker.on('popupopen', () => {
+                setTimeout(() => {
+                    const node = document.getElementById(`ts-pane-${st.code}`);
+                    if (node) attachTimeseriesTo(node, st.code, 24);
+                }, 100);
+            });
+        });
+
+        // --- supabase init (use your real URL + key) ---
+        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log("[TS] Supabase URL:", SUPABASE_URL);
     </script>
 </body>
 
