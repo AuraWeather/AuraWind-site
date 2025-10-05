@@ -254,6 +254,16 @@
                     attachTimeseriesTo(mount, st.station_id, 24); // pass the code; helper will resolve UUID
                 }
             });
+            map.on('popupopen', (e) => {
+                // If a chart is inside this popup, give Plotly a resize after Leaflet anim
+                setTimeout(() => {
+                    const chart = e?.popup?.getElement()?.querySelector('.ts-chart');
+                    if (chart && window.Plotly?.Plots?.resize) {
+                        Plotly.Plots.resize(chart);
+                    }
+                }, 120);
+            });
+
         }
 
         function fitToDataBounds(points) {
@@ -417,22 +427,42 @@
             async function load(hours) {
                 statusEl.textContent = 'Loading…';
                 console.log('[load]', { stationCode, hours });
+
                 const rows = await fetchObsSeriesByCode(stationCode, hours);
                 if (!rows.length) { Plotly.purge(chartEl); statusEl.textContent = 'No data'; return; }
 
+                // Make sure the element has a concrete size
+                chartEl.style.width = '340px';
+                chartEl.style.height = '240px';
+
+                // Leaflet popups animate in; wait a frame so Plotly can measure
+                await new Promise(r => setTimeout(r, 60));
+
+                const ts = rows.map(r => r.ts);
+                const wspd = rows.map(r => r.wspd);
+                const gust = rows.map(r => r.gust);
+                const wdir = unwrapDegrees(rows.map(r => r.wdir));
+
+                console.log('[plot]', { points: ts.length, elSize: chartEl.getBoundingClientRect() });
+
                 Plotly.newPlot(chartEl, [
-                    { x: rows.map(r => r.ts), y: rows.map(r => r.wspd), name: 'Wind', mode: 'lines' },
-                    { x: rows.map(r => r.ts), y: rows.map(r => r.gust), name: 'Gust', mode: 'lines' },
-                    { x: rows.map(r => r.ts), y: unwrapDegrees(rows.map(r => r.wdir)), name: 'Dir', mode: 'lines', yaxis: 'y2' },
+                    { x: ts, y: wspd, name: 'Wind', mode: 'lines' },
+                    { x: ts, y: gust, name: 'Gust', mode: 'lines' },
+                    { x: ts, y: wdir, name: 'Dir', mode: 'lines', yaxis: 'y2' },
                 ], {
                     margin: { l: 48, r: 48, t: 8, b: 28 },
+                    xaxis: { title: '' },
                     yaxis: { title: 'Speed' },
                     yaxis2: { title: 'Deg', overlaying: 'y', side: 'right' },
-                    legend: { orientation: 'h' }, height: 240
-                }, { displayModeBar: false, responsive: true });
+                    legend: { orientation: 'h' },
+                    width: 340,           // ← explicit width (in addition to style)
+                    height: 240
+                }, { displayModeBar: false, responsive: true })
+                    .then(() => Plotly.Plots.resize(chartEl));   // force a resize pass
 
                 statusEl.textContent = `${rows.length} pts`;
             }
+
 
             sel.addEventListener('change', () => load(parseInt(sel.value, 10)));
             sel.value = String(defaultHours);
