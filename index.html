@@ -1,3 +1,4 @@
+<!-- /index.html -->
 <!doctype html>
 <html lang="en">
 
@@ -8,6 +9,8 @@
     <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Chart.js (lightweight) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --bg: #0b1120;
@@ -194,7 +197,6 @@
         const layerStations = L.layerGroup().addTo(map);
         const refreshBtn = document.getElementById('refreshBtn');
         refreshBtn.addEventListener('click', () => loadObs(true));
-        map.on('click', () => map.closePopup());
 
         function clearStations() { layerStations.clearLayers(); }
 
@@ -218,7 +220,8 @@
 
             m.bindPopup(popupHTML(st), { maxWidth: 480, autoClose: true, closeOnClick: true, closeButton: false });
 
-            m.on('click', () => {
+            m.on('click', (e) => {
+                L.DomEvent.stop(e); // why: avoid bubbling close
                 if (map._popup && map._popup._source !== m) map.closePopup();
                 m.openPopup();
             });
@@ -227,20 +230,10 @@
                 const mountId = `ts-pane-${st.station_id}`;
                 const mount = document.getElementById(mountId);
                 if (mount && window.attachTimeseriesTo) {
-                    attachTimeseriesTo(mount, st.station_id, 24, e.popup); // pass popup instance
+                    attachTimeseriesTo(mount, st.station_id, 24, e.popup);
                 }
             });
         }
-
-        // safe global resize after popup animation (only if a real plot exists)
-        map.on('popupopen', (e) => {
-            setTimeout(() => {
-                const root = e?.popup?.getElement?.();
-                if (!root) return;
-                const plotDiv = root.querySelector('.js-plotly-plot');
-                if (plotDiv && window.Plotly?.Plots?.resize) Plotly.Plots.resize(plotDiv);
-            }, 200);
-        });
 
         function fitToDataBounds(points) {
             if (!points.length) return;
@@ -313,17 +306,24 @@
         <div class="row"><span class="chip" style="background:#800080"></span> 60+</div>
     </div>
 
-    <!-- Supabase + Plotly -->
+    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 
-    <!-- Time-series helpers -->
+    <!-- Time-series helpers (Chart.js + caching + abort) -->
     <script>
-        // 🔧 REPLACE these with your project credentials
-        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";
-        const supabase = window.supabase.createClient(SUPABASE_URL.trim(), SUPABASE_ANON_KEY.trim());
+        // 🔧 REPLACE with your Supabase project credentials
+        $env: SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co"
+        $env: SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c"
+        const supabase = window.supabase.createClient(String(SUPABASE_URL).trim(), String(SUPABASE_ANON_KEY).trim());
         console.log('[TS] Supabase URL:', SUPABASE_URL);
+
+        // Caches
+        const stationIdCache = new Map(); // code -> {id, ts}
+        const seriesCache = new Map();    // key(code|hours) -> {data, ts}
+        const STATION_CACHE_MS = 24 * 3600 * 1000;
+        const SERIES_CACHE_MS = 2 * 60 * 1000;
+
+        const now = () => Date.now();
 
         function windowISO(hours, ref = new Date()) {
             const end = new Date(ref), start = new Date(end.getTime() - hours * 3600 * 1000);
@@ -342,86 +342,139 @@
         }
 
         async function getStationIdByCode(stationCode) {
+            const cached = stationIdCache.get(stationCode);
+            if (cached && (now() - cached.ts) < STATION_CACHE_MS) return cached.id;
+
             const { data, error } = await supabase
                 .from('stations')
                 .select('id')
                 .eq('code', stationCode)
                 .limit(1)
                 .maybeSingle();
+
             if (error) { console.error('[stations lookup]', error); return null; }
-            return data?.id || null;
+            const id = data?.id || null;
+            stationIdCache.set(stationCode, { id, ts: now() });
+            return id;
         }
 
-        async function fetchObsSeriesByCode(stationCode, hours) {
+        async function fetchObsSeriesByCode(stationCode, hours, signal) {
+            const cacheKey = `${stationCode}|${hours}`;
+            const cached = seriesCache.get(cacheKey);
+            if (cached && (now() - cached.ts) < SERIES_CACHE_MS) return cached.data;
+
             const stationId = await getStationIdByCode(stationCode);
             console.log('[fetch] resolve code->uuid', { stationCode, stationId, hours });
             if (!stationId) return [];
+
             const { startISO, endISO } = windowISO(hours);
-            const { data, error } = await supabase
+            // .abortSignal exists in postgrest-js; if not, call without it.
+            let query = supabase
                 .from('observations')
                 .select('observed_at, wind_speed, wind_gust, wind_direction')
                 .eq('station_id', stationId)
                 .gte('observed_at', startISO)
                 .lte('observed_at', endISO)
                 .order('observed_at', { ascending: true });
+
+            if (typeof query.abortSignal === 'function' && signal) query = query.abortSignal(signal);
+
+            const { data, error } = await query;
+            if (signal?.aborted) return []; // why: caller started a newer request
             if (error) { console.error('[observations select]', error); return []; }
-            console.log('[fetch] rows:', data?.length ?? 0);
-            return (data || []).map(r => ({ ts: r.observed_at, wspd: r.wind_speed, gust: r.wind_gust, wdir: r.wind_direction }));
+
+            const rows = (data || []).map(r => ({ ts: r.observed_at, wspd: r.wind_speed, gust: r.wind_gust, wdir: r.wind_direction }));
+            seriesCache.set(cacheKey, { data: rows, ts: now() });
+            console.log('[fetch] rows:', rows.length);
+            return rows;
         }
 
         async function attachTimeseriesTo(containerEl, stationCode, defaultHours = 6, leafletPopup = null) {
+            if (containerEl.dataset.bound === "1") return;
+            containerEl.dataset.bound = "1";
+            containerEl.__tsState = { req: 0, abort: null, chart: null };
+
             containerEl.innerHTML = `
         <div style="width:360px;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
             <span style="font-size:12px;opacity:.7;">Window:</span>
             <select class="ts-window" style="font-size:12px;padding:2px 4px;">
               <option value="3">3h</option>
-              <option value="6" selected>6h</option>
+              <option value="6">6h</option>
               <option value="12">12h</option>
               <option value="24">24h</option>
             </select>
           </div>
-          <div class="ts-chart" style="width:100%;height:240px;"></div>
+          <div style="width:100%;height:240px;position:relative;">
+            <canvas class="ts-canvas" style="width:340px;height:240px;"></canvas>
+          </div>
           <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
         </div>`;
+
             const sel = containerEl.querySelector('.ts-window');
-            const chartEl = containerEl.querySelector('.ts-chart');
+            const canvas = containerEl.querySelector('.ts-canvas');
             const statusEl = containerEl.querySelector('.ts-status');
+            const ctx = canvas.getContext('2d');
+
+            function upsertChart(ts, wspd, gust, wdir) {
+                const data = {
+                    labels: ts,
+                    datasets: [
+                        { label: 'Wind', data: wspd, borderWidth: 2, pointRadius: 0, tension: 0.25, yAxisID: 'y' },
+                        { label: 'Gust', data: gust, borderWidth: 1, borderDash: [4, 3], pointRadius: 0, tension: 0.25, yAxisID: 'y' },
+                        { label: 'Dir', data: wdir, borderWidth: 1, pointRadius: 0, tension: 0.25, yAxisID: 'y2' }
+                    ]
+                };
+                const options = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    parsing: false,
+                    scales: {
+                        x: { type: 'time', time: { tooltipFormat: 'HH:mm' }, ticks: { maxTicksLimit: 6 } },
+                        y: { title: { text: 'Speed', display: true } },
+                        y2: { position: 'right', title: { text: 'Deg', display: true }, grid: { drawOnChartArea: false } }
+                    },
+                    plugins: { legend: { position: 'bottom' } },
+                    animation: { duration: 120 }
+                };
+                if (!containerEl.__tsState.chart) {
+                    // why: create once
+                    containerEl.__tsState.chart = new Chart(ctx, { type: 'line', data, options });
+                } else {
+                    const c = containerEl.__tsState.chart;
+                    c.data = data;
+                    c.update();
+                }
+            }
 
             async function load(hours) {
-                statusEl.textContent = 'Loading…';
-                const rows = await fetchObsSeriesByCode(stationCode, hours);
-                if (!rows.length) { Plotly.purge(chartEl); statusEl.textContent = 'No data'; return; }
+                const state = containerEl.__tsState;
+                const seq = ++state.req;
 
-                chartEl.style.width = '340px';
-                chartEl.style.height = '240px';
-                await new Promise(r => setTimeout(r, 200)); // let popup animate/open
+                if (state.abort) { try { state.abort.abort(); } catch { } }
+                state.abort = new AbortController();
+
+                statusEl.textContent = 'Loading…';
+                const rows = await fetchObsSeriesByCode(stationCode, hours, state.abort.signal);
+                if (seq !== state.req) return;
+
+                if (!rows.length) { statusEl.textContent = 'No data'; if (state.chart) state.chart.destroy(); state.chart = null; return; }
 
                 const ts = rows.map(r => r.ts);
                 const wspd = rows.map(r => r.wspd);
                 const gust = rows.map(r => r.gust);
                 const wdir = unwrapDegrees(rows.map(r => r.wdir));
 
-                console.log('[plot]', { points: ts.length, elSize: chartEl.getBoundingClientRect() });
-
-                await Plotly.newPlot(chartEl, [
-                    { x: ts, y: wspd, name: 'Wind', mode: 'lines' },
-                    { x: ts, y: gust, name: 'Gust', mode: 'lines' },
-                    { x: ts, y: wdir, name: 'Dir', mode: 'lines', yaxis: 'y2' },
-                ], {
-                    margin: { l: 48, r: 48, t: 8, b: 28 },
-                    xaxis: { title: '' },
-                    yaxis: { title: 'Speed' },
-                    yaxis2: { title: 'Deg', overlaying: 'y', side: 'right' },
-                    legend: { orientation: 'h' },
-                    width: 340, height: 240
-                }, { displayModeBar: false, responsive: true });
-
-                chartEl.classList.add('js-plotly-plot');
+                // Ensure popup sized before measuring; then render and resize.
+                await new Promise(r => setTimeout(r, 120));
+                upsertChart(ts, wspd, gust, wdir);
 
                 if (leafletPopup && leafletPopup.update) {
                     leafletPopup.update();
-                    setTimeout(() => leafletPopup.update(), 140);
+                    setTimeout(() => {
+                        leafletPopup.update();
+                        containerEl.__tsState.chart?.resize();
+                    }, 120);
                 }
 
                 statusEl.textContent = `${rows.length} pts`;
