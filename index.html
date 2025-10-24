@@ -206,18 +206,13 @@
             const icon = L.divIcon({ html, iconSize: [ARROW_SIZE_PX, ARROW_SIZE_PX], iconAnchor: [ARROW_SIZE_PX / 2, ARROW_SIZE_PX / 2], className: '' });
             const m = L.marker([st.lat, st.lon], { icon }).addTo(layerStations);
 
-            // Hover tooltip (keep)
             const gustText = st.gust_kn == null ? '' : ` gust ${Math.round(st.gust_kn)}`;
             m.bindTooltip(`${st.station_name || st.station_id}<br>${Math.round(st.wspd_kn)} kt${gustText}`);
 
-            // Click → open ONLY the timeseries popup
             m.on('click', (e) => {
-                L.DomEvent.stop(e); // why: avoid bubbling close
-                const mountId = `ts-pane-${st.station_id}`;
+                L.DomEvent.stop(e);
                 const mount = document.createElement('div');
-                mount.id = mountId;
-                mount.style.width = '360px';
-                // Build a new popup with only the chart container
+                mount.style.width = '400px';
                 const popup = L.popup({ maxWidth: 480, autoClose: true, closeOnClick: true, closeButton: false, offset: [0, -12] })
                     .setLatLng([st.lat, st.lon])
                     .setContent(mount)
@@ -304,13 +299,13 @@
 
     <!-- Time-series helpers (Chart.js + caching + abort) -->
     <script>
-        // 🔧 REPLACE with your Supabase project credentials
-        const SUPABASE_URL = "";      // e.g. "https://xyzcompany.supabase.co"
-        const SUPABASE_ANON_KEY = ""; // e.g. "eyJhbGciOiJI..." (anon public)
+        // 🔧 Set your Supabase project credentials
+        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";      // e.g. "https://xyzcompany.supabase.co"
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c"; // e.g. "eyJhbGciOiJI..." (anon public)
         const supabase = window.supabase.createClient(String(SUPABASE_URL).trim(), String(SUPABASE_ANON_KEY).trim());
         console.log('[TS] Supabase URL:', SUPABASE_URL);
 
-        // Caches
+        // ---- Caches (define early: avoids TDZ errors) ---------------------------
         const stationIdCache = new Map(); // code -> {id, ts}
         const seriesCache = new Map();    // key(code|hours) -> {data, ts}
         const STATION_CACHE_MS = 24 * 3600 * 1000;
@@ -323,6 +318,7 @@
             const end = new Date(ref), start = new Date(end.getTime() - hours * 3600 * 1000);
             return { startISO: start.toISOString(), endISO: end.toISOString() };
         }
+        // unwrap if you want to plot heading continuity; not used for the bottom chart (we keep 0–360)
         function unwrapDegrees(series) {
             if (!series || !series.length) return series;
             const out = []; let acc;
@@ -337,10 +333,9 @@
 
         async function getStationIdByCode(stationCode) {
             if (!stationCode) return null;
-            if (UUID_RE.test(stationCode)) return stationCode; // already UUID
+            if (UUID_RE.test(stationCode)) return stationCode;
             const cached = stationIdCache.get(stationCode);
-            if (cached && (now() - cached.ts) < STATION_CACHE_MS) { console.debug('[cache] stationId hit', stationCode); return cached.id; }
-            console.debug('[cache] stationId miss', stationCode);
+            if (cached && (now() - cached.ts) < STATION_CACHE_MS) { return cached.id; }
 
             const { data, error } = await supabase
                 .from('stations')
@@ -358,11 +353,9 @@
         async function fetchObsSeriesByCode(stationCode, hours, signal) {
             const cacheKey = `${stationCode}|${hours}`;
             const cached = seriesCache.get(cacheKey);
-            if (cached && (now() - cached.ts) < SERIES_CACHE_MS) { console.debug('[cache] series hit', cacheKey); return cached.data; }
-            console.debug('[cache] series miss', cacheKey);
+            if (cached && (now() - cached.ts) < SERIES_CACHE_MS) { return cached.data; }
 
             const stationId = await getStationIdByCode(stationCode);
-            console.log('[fetch] resolve code->uuid', { stationCode, stationId, hours });
             if (!stationId) return [];
 
             const { startISO, endISO } = windowISO(hours);
@@ -382,17 +375,17 @@
 
             const rows = (data || []).map(r => ({ ts: r.observed_at, wspd: r.wind_speed, gust: r.wind_gust, wdir: r.wind_direction }));
             seriesCache.set(cacheKey, { data: rows, ts: now() });
-            console.log('[fetch] rows:', rows.length);
             return rows;
         }
 
+        // ------------- Popup: two stacked charts (Speed/Gust top, Direction bottom) -------------
         async function attachTimeseriesTo(containerEl, stationCode, defaultHours = 6, leafletPopup = null) {
             if (containerEl.dataset.bound === "1") return;
             containerEl.dataset.bound = "1";
-            containerEl.__tsState = { req: 0, abort: null, chart: null };
+            containerEl.__tsState = { req: 0, abort: null, speedChart: null, dirChart: null };
 
             containerEl.innerHTML = `
-        <div style="width:360px;">
+        <div style="width:380px;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
             <span style="font-size:12px;opacity:.7;">Window:</span>
             <select class="ts-window" style="font-size:12px;padding:2px 4px;">
@@ -402,45 +395,62 @@
               <option value="24">24h</option>
             </select>
           </div>
-          <div style="width:100%;height:240px;position:relative;">
-            <canvas class="ts-canvas" style="width:340px;height:240px;"></canvas>
+          <div style="width:100%;height:180px;position:relative;margin-bottom:10px;">
+            <canvas class="ts-canvas-speed" style="width:360px;height:180px;"></canvas>
+          </div>
+          <div style="width:100%;height:140px;position:relative;">
+            <canvas class="ts-canvas-dir" style="width:360px;height:140px;"></canvas>
           </div>
           <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
         </div>`;
 
             const sel = containerEl.querySelector('.ts-window');
-            const canvas = containerEl.querySelector('.ts-canvas');
+            const speedCtx = containerEl.querySelector('.ts-canvas-speed').getContext('2d');
+            const dirCtx = containerEl.querySelector('.ts-canvas-dir').getContext('2d');
             const statusEl = containerEl.querySelector('.ts-status');
-            const ctx = canvas.getContext('2d');
 
             function setDisabled(disabled) { sel.disabled = disabled; }
 
-            function upsertChart(ts, wspd, gust, wdir) {
-                const data = {
+            function upsertCharts(ts, wspd, gust, wdir) {
+                // Speed/Gust (kt)
+                const speedData = {
                     labels: ts,
                     datasets: [
-                        { label: 'Wind', data: wspd, borderWidth: 2, pointRadius: 0, tension: 0.25, yAxisID: 'y' },
-                        { label: 'Gust', data: gust, borderWidth: 1, borderDash: [4, 3], pointRadius: 0, tension: 0.25, yAxisID: 'y' },
-                        { label: 'Dir', data: wdir, borderWidth: 1, pointRadius: 0, tension: 0.25, yAxisID: 'y2' }
+                        { label: 'Wind (kt)', data: wspd, borderWidth: 2, pointRadius: 0, tension: 0.25 },
+                        { label: 'Gust (kt)', data: gust, borderWidth: 1, borderDash: [4, 3], pointRadius: 0, tension: 0.25 }
                     ]
                 };
-                const options = {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    parsing: false,
-                    scales: {
-                        x: { type: 'time', time: { tooltipFormat: 'HH:mm' }, ticks: { maxTicksLimit: 6 } },
-                        y: { title: { text: 'Speed', display: true } },
-                        y2: { position: 'right', title: { text: 'Deg', display: true }, grid: { drawOnChartArea: false } }
-                    },
-                    plugins: { legend: { position: 'bottom' } },
-                    animation: { duration: 120 }
+                const speedOpts = {
+                    responsive: true, maintainAspectRatio: false, parsing: false,
+                    scales: { x: { type: 'time', ticks: { maxTicksLimit: 6 } }, y: { title: { text: 'kt', display: true } } },
+                    plugins: { legend: { position: 'bottom' } }, animation: { duration: 120 }
                 };
-                if (!containerEl.__tsState.chart) {
-                    containerEl.__tsState.chart = new Chart(ctx, { type: 'line', data, options });
+
+                // Direction (0–360°)
+                const dirData = {
+                    labels: ts,
+                    datasets: [
+                        { label: 'Direction (°)', data: wdir, borderWidth: 1, pointRadius: 0, tension: 0.25 }
+                    ]
+                };
+                const dirOpts = {
+                    responsive: true, maintainAspectRatio: false, parsing: false,
+                    scales: {
+                        x: { type: 'time', ticks: { maxTicksLimit: 6 } },
+                        y: { min: 0, max: 360, ticks: { stepSize: 90 }, title: { text: '°', display: true } }
+                    },
+                    plugins: { legend: { display: false } }, animation: { duration: 120 }
+                };
+
+                if (!containerEl.__tsState.speedChart) {
+                    containerEl.__tsState.speedChart = new Chart(speedCtx, { type: 'line', data: speedData, options: speedOpts });
                 } else {
-                    const c = containerEl.__tsState.chart;
-                    c.data = data; c.update();
+                    const c = containerEl.__tsState.speedChart; c.data = speedData; c.update();
+                }
+                if (!containerEl.__tsState.dirChart) {
+                    containerEl.__tsState.dirChart = new Chart(dirCtx, { type: 'line', data: dirData, options: dirOpts });
+                } else {
+                    const c2 = containerEl.__tsState.dirChart; c2.data = dirData; c2.update();
                 }
             }
 
@@ -456,22 +466,28 @@
                 const rows = await fetchObsSeriesByCode(stationCode, hours, state.abort.signal);
                 if (seq !== state.req) return;
 
-                if (!rows.length) { statusEl.textContent = 'No data'; if (state.chart) state.chart.destroy(); state.chart = null; setDisabled(false); return; }
+                if (!rows.length) {
+                    statusEl.textContent = 'No data';
+                    state.speedChart?.destroy(); state.speedChart = null;
+                    state.dirChart?.destroy(); state.dirChart = null;
+                    setDisabled(false); return;
+                }
 
                 const ts = rows.map(r => r.ts);
                 const wspd = rows.map(r => r.wspd);
                 const gust = rows.map(r => r.gust);
-                const wdir = unwrapDegrees(rows.map(r => r.wdir));
+                const wdir = rows.map(r => r.wdir); // keep 0–360 for bottom chart
 
-                await new Promise(r => setTimeout(r, 100)); // let popup finish anim
-                upsertChart(ts, wspd, gust, wdir);
+                await new Promise(r => setTimeout(r, 60)); // let popup finish anim
+                upsertCharts(ts, wspd, gust, wdir);
 
-                if (leafletPopup && leafletPopup.update) {
+                if (leafletPopup?.update) {
                     leafletPopup.update();
                     setTimeout(() => {
                         leafletPopup.update();
-                        containerEl.__tsState.chart?.resize();
-                    }, 100);
+                        containerEl.__tsState.speedChart?.resize();
+                        containerEl.__tsState.dirChart?.resize();
+                    }, 80);
                 }
 
                 statusEl.textContent = `${rows.length} pts`;
@@ -482,6 +498,8 @@
             sel.value = String(defaultHours);
             load(defaultHours);
         }
+        // expose globally for the map code (already using it)
+        window.attachTimeseriesTo = attachTimeseriesTo;
     </script>
 </body>
 
