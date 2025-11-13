@@ -123,12 +123,20 @@
             border-radius: 3px;
             border: 1px solid #0006
         }
+
+        #logo {
+            height: 22px;
+            display: block;
+            object-fit: contain
+        }
     </style>
 </head>
 
 <body>
     <div id="app">
         <header>
+            <!-- PNG logo -->
+            <img id="logo" src="./aura-logo.png" alt="AuraWeather" />
             <h1>Solent Live Observations</h1>
             <div class="pill" id="status">Loading…</div>
             <div class="spacer"></div>
@@ -211,8 +219,8 @@
             m.on('click', (e) => {
                 L.DomEvent.stop(e);
                 const mount = document.createElement('div');
-                mount.style.width = '400px';
-                const popup = L.popup({ maxWidth: 520, autoClose: true, closeOnClick: true, closeButton: false, offset: [0, -12] })
+                mount.style.width = '420px';
+                const popup = L.popup({ maxWidth: 560, autoClose: true, closeOnClick: true, closeButton: false, offset: [0, -12] })
                     .setLatLng([st.lat, st.lon])
                     .setContent(mount)
                     .openOn(map);
@@ -244,11 +252,13 @@
 
                 const rows = Array.isArray(data?.obs) ? data.obs : Array.isArray(data) ? data : [];
                 const obs = rows.map(r => ({
-                    lat: r.lat ?? r.latitude,
-                    lon: r.lon ?? r.longitude,
+                    lat: r.lat ?? r.latitude ?? r.Latitude,
+                    lon: r.lon ?? r.longitude ?? r.Longitude,
                     wspd_kn: r.wspd_kn ?? r.wind_speed_kt ?? r.wspd ?? r.wind_knots ?? r.wind_speed,
                     gust_kn: r.gust_kn ?? r.wind_gust_kt ?? r.wind_gust ?? r.gust ?? null,
                     wdir_degT: r.wdir_degT ?? r.wind_dir_deg ?? r.wdir ?? r.direction ?? r.wind_direction,
+                    pressure_hpa: r.pressure ?? r.mslp ?? r.mslp_hpa ?? null,
+                    precip_mm: r.precip_mm ?? r.precipitation ?? null,
                     station_name: r.station_name ?? r.name ?? r.Site ?? r.station_id ?? r.site_id ?? r.id,
                     station_id: r.station_id ?? r.site_id ?? r.id
                 }));
@@ -275,7 +285,9 @@
             }
         }
 
-        map.whenReady(() => loadObs());
+        // Auto-load without clicking
+        document.addEventListener('DOMContentLoaded', () => loadObs(false));
+        map.whenReady(() => { if (!map._fitDone) loadObs(false); });
     </script>
 
     <!-- Legend -->
@@ -297,11 +309,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c"                /* paste */
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c"
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     </script>
 
-    <!-- Time-series helpers -->
+    <!-- Time-series + Forecast overlay + Source toggle -->
     <script>
         const stationIdCache = new Map();
         const seriesCache = new Map();
@@ -332,7 +344,9 @@
             const wspd = r.wind_speed ?? r.wind_speed_kt ?? r.wspd ?? r.wspd_kn ?? null;
             const gust = r.wind_gust ?? r.wind_gust_kt ?? r.gust ?? r.gust_kn ?? null;
             const wdir = r.wind_direction ?? r.wind_dir_deg ?? r.wdir ?? r.dir ?? null;
-            return { ts, wspd, gust, wdir };
+            const mslp = r.pressure ?? r.mslp_hpa ?? r.mslp ?? null;
+            const rain = r.precip_mm ?? r.precipitation ?? null;
+            return { ts, wspd, gust, wdir, mslp, rain };
         }
 
         async function fetchObsSeriesByCode(idOrCode, hours, signal) {
@@ -363,71 +377,151 @@
             return rows;
         }
 
+        // Forecast (latest per valid hour)
+        async function fetchForecastLatestSeries(idOrCode, hoursBack = 24, hoursFwd = 48, signal) {
+            const stationId = await getStationId(idOrCode);
+            if (!stationId) return [];
+            const nowMs = Date.now();
+            const startISO = new Date(nowMs - hoursBack * 3600 * 1000).toISOString();
+            const endISO = new Date(nowMs + hoursFwd * 3600 * 1000).toISOString();
+
+            let q = supabase.from('forecast_hourly_latest').select('*')
+                .eq('station_id', stationId)
+                .gte('valid_time', startISO)
+                .lte('valid_time', endISO)
+                .order('valid_time', { ascending: true });
+
+            if (typeof q.abortSignal === 'function' && signal) q = q.abortSignal(signal);
+            const { data, error } = await q;
+            if (signal?.aborted) return [];
+            if (error) { console.error('[forecast_latest select]', error); return []; }
+            return data || [];
+        }
+
+        function align(labels, xs, ys) {
+            const m = new Map(xs.map((x, i) => [x, ys[i]]));
+            return labels.map(t => (m.has(t) ? m.get(t) : null));
+        }
+
         async function attachTimeseriesTo(containerEl, stationCodeOrId, defaultHours = 6, leafletPopup = null) {
             if (containerEl.dataset.bound === "1") return;
             containerEl.dataset.bound = "1";
-            containerEl.__tsState = { req: 0, abort: null, speedChart: null, dirChart: null };
+            containerEl.__tsState = { req: 0, abort: null, speedChart: null, dirChart: null, mslpRainChart: null, mode: 'wind' };
 
             containerEl.innerHTML = `
-      <div style="width:380px;">
+      <div style="width:400px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
           <span style="font-size:12px;opacity:.7;">Window:</span>
           <select class="ts-window" style="font-size:12px;padding:2px 4px;">
             <option value="3">3h</option>
-            <option value="6">6h</option>
+            <option value="6" selected>6h</option>
             <option value="12">12h</option>
             <option value="24">24h</option>
           </select>
+          <span style="font-size:12px;opacity:.7;margin-left:10px;">Source:</span>
+          <select class="ts-source" style="font-size:12px;padding:2px 4px;">
+            <option value="wind" selected>Wind</option>
+            <option value="mslp">MSLP/Rain</option>
+          </select>
         </div>
-        <div style="width:100%;height:180px;position:relative;margin-bottom:10px;">
-          <canvas class="ts-canvas-speed" style="width:360px;height:180px;"></canvas>
+        <div class="panel-wind">
+          <div style="width:100%;height:180px;position:relative;margin-bottom:10px;">
+            <canvas class="ts-canvas-speed" style="width:380px;height:180px;"></canvas>
+          </div>
+          <div style="width:100%;height:140px;position:relative;">
+            <canvas class="ts-canvas-dir" style="width:380px;height:140px;"></canvas>
+          </div>
         </div>
-        <div style="width:100%;height:140px;position:relative;">
-          <canvas class="ts-canvas-dir" style="width:360px;height:140px;"></canvas>
+        <div class="panel-mslp" style="display:none;">
+          <div style="width:100%;height:200px;position:relative;">
+            <canvas class="ts-canvas-mslp" style="width:380px;height:200px;"></canvas>
+          </div>
         </div>
         <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
       </div>`;
 
-            const sel = containerEl.querySelector('.ts-window');
+            const selWindow = containerEl.querySelector('.ts-window');
+            const selSource = containerEl.querySelector('.ts-source');
+            const panelWind = containerEl.querySelector('.panel-wind');
+            const panelMSLP = containerEl.querySelector('.panel-mslp');
             const speedCtx = containerEl.querySelector('.ts-canvas-speed').getContext('2d');
             const dirCtx = containerEl.querySelector('.ts-canvas-dir').getContext('2d');
+            const mslpCtx = containerEl.querySelector('.ts-canvas-mslp').getContext('2d');
             const statusEl = containerEl.querySelector('.ts-status');
-            const setDisabled = (d) => { sel.disabled = d; };
+            const setDisabled = (d) => { selWindow.disabled = d; selSource.disabled = d; };
 
-            function upsertCharts(ts, wspd, gust, wdir) {
-                // Debug: verify data presence quickly
-                console.debug('ts len', ts.length, 'wspd len', wspd.length, 'gust len', gust.length, 'wdir len', wdir.length);
+            function showMode(mode) {
+                containerEl.__tsState.mode = mode;
+                panelWind.style.display = (mode === 'wind') ? '' : 'none';
+                panelMSLP.style.display = (mode === 'mslp') ? '' : 'none';
+            }
 
-                const nonNullSpeed = wspd.filter(v => v != null);
-                const maxSpeed = Math.max(10, ...(nonNullSpeed.length ? nonNullSpeed : [0]), ...(gust.filter(v => v != null)));
-
+            function upsertWindCharts(labels, ts_obs, wspd, gust, wdir, ts_fcst, wspd_fc, gust_fc, wdir_fc) {
                 const speedData = {
-                    labels: ts,
+                    labels,
                     datasets: [
-                        { label: 'Wind (kt)', data: wspd, borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true },
-                        { label: 'Gust (kt)', data: gust, borderWidth: 1, borderDash: [4, 3], pointRadius: 0, tension: 0.25, spanGaps: true }
+                        { label: 'Wind (kt)', data: align(labels, ts_obs, wspd), borderWidth: 2, pointRadius: 0, tension: .25, spanGaps: true },
+                        { label: 'Gust (kt)', data: align(labels, ts_obs, gust), borderWidth: 1, borderDash: [4, 3], pointRadius: 0, tension: .25, spanGaps: true },
+                        { label: 'Fcst Wind (kt)', data: align(labels, ts_fcst, wspd_fc), borderWidth: 2, pointRadius: 0, tension: .25, spanGaps: true, borderDash: [6, 4] },
+                        { label: 'Fcst Gust (kt)', data: align(labels, ts_fcst, gust_fc), borderWidth: 1, pointRadius: 0, tension: .25, spanGaps: true, borderDash: [2, 2] }
                     ]
                 };
+                const nonNullSpeed = speedData.datasets.flatMap(d => d.data || []).filter(v => v != null);
+                const maxSpeed = Math.max(10, ...(nonNullSpeed.length ? nonNullSpeed : [0]));
                 const speedOpts = {
                     responsive: true, maintainAspectRatio: false,
-                    scales: { x: { type: 'time', ticks: { maxTicksLimit: 6 } }, y: { suggestedMax: maxSpeed, title: { text: 'kt', display: true } } },
+                    scales: { x: { type: 'time' }, y: { suggestedMax: maxSpeed, title: { text: 'kt', display: true } } },
                     plugins: { legend: { position: 'bottom' } }, animation: { duration: 120 }
                 };
-
-                const dirData = { labels: ts, datasets: [{ label: 'Direction (°)', data: wdir, borderWidth: 1, pointRadius: 0, tension: 0.25, spanGaps: true }] };
+                const dirData = {
+                    labels,
+                    datasets: [
+                        { label: 'Direction (°)', data: align(labels, ts_obs, wdir), borderWidth: 1, pointRadius: 0, tension: .25, spanGaps: true },
+                        { label: 'Fcst Dir (°)', data: align(labels, ts_fcst, wdir_fc), borderWidth: 1, pointRadius: 0, tension: .25, spanGaps: true, borderDash: [6, 4] }
+                    ]
+                };
                 const dirOpts = {
                     responsive: true, maintainAspectRatio: false,
-                    scales: { x: { type: 'time', ticks: { maxTicksLimit: 6 } }, y: { min: 0, max: 360, ticks: { stepSize: 90 }, title: { text: '°', display: true } } },
+                    scales: { x: { type: 'time' }, y: { min: 0, max: 360, ticks: { stepSize: 90 }, title: { text: '°', display: true } } },
                     plugins: { legend: { display: false } }, animation: { duration: 120 }
                 };
-
-                if (!containerEl.__tsState.speedChart) {
+                if (!containerEl.__tsState.speedChart)
                     containerEl.__tsState.speedChart = new Chart(speedCtx, { type: 'line', data: speedData, options: speedOpts });
-                } else { const c = containerEl.__tsState.speedChart; c.data = speedData; c.update(); }
+                else { const c = containerEl.__tsState.speedChart; c.data = speedData; c.update(); }
 
-                if (!containerEl.__tsState.dirChart) {
+                if (!containerEl.__tsState.dirChart)
                     containerEl.__tsState.dirChart = new Chart(dirCtx, { type: 'line', data: dirData, options: dirOpts });
-                } else { const c2 = containerEl.__tsState.dirChart; c2.data = dirData; c2.update(); }
+                else { const c2 = containerEl.__tsState.dirChart; c2.data = dirData; c2.update(); }
+            }
+
+            function upsertMSLPChart(labels, ts_obs, mslp_obs, rain_obs, ts_fcst, mslp_fc, rain_fc) {
+                const data = {
+                    labels,
+                    datasets: [
+                        { label: 'MSLP (hPa)', data: align(labels, ts_obs, mslp_obs), type: 'line', borderWidth: 2, pointRadius: 0, tension: .25, spanGaps: true },
+                        { label: 'Fcst MSLP (hPa)', data: align(labels, ts_fcst, mslp_fc), type: 'line', borderWidth: 2, pointRadius: 0, tension: .25, spanGaps: true, borderDash: [6, 4] },
+                        { label: 'Rain (mm)', data: align(labels, ts_obs, rain_obs), type: 'bar' },
+                        { label: 'Fcst Rain (mm)', data: align(labels, ts_fcst, rain_fc), type: 'bar' }
+                    ]
+                };
+                const nonNullMSLP = data.datasets[0].data.concat(data.datasets[1].data).filter(v => v != null);
+                const yLeftMax = Math.max(1010, ...(nonNullMSLP.length ? nonNullMSLP : [1010]));
+                const opts = {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        x: { type: 'time' },
+                        y: { position: 'left', suggestedMin: yLeftMax - 20, suggestedMax: yLeftMax + 20, title: { text: 'hPa', display: true } },
+                        y1: { position: 'right', grid: { drawOnChartArea: false }, title: { text: 'mm', display: true } }
+                    },
+                    plugins: { legend: { position: 'bottom' } },
+                    animation: { duration: 120 }
+                };
+                data.datasets[2].yAxisID = 'y1';
+                data.datasets[3].yAxisID = 'y1';
+
+                if (!containerEl.__tsState.mslpRainChart)
+                    containerEl.__tsState.mslpRainChart = new Chart(mslpCtx, { data, options: opts });
+                else { const c = containerEl.__tsState.mslpRainChart; c.data = data; c.options = opts; c.update(); }
             }
 
             async function load(hours) {
@@ -439,45 +533,73 @@
 
                 setDisabled(true);
                 statusEl.textContent = 'Loading…';
-                const rows = await fetchObsSeriesByCode(stationCodeOrId, hours, state.abort.signal);
+
+                const obsRows = await fetchObsSeriesByCode(stationCodeOrId, hours, state.abort.signal);
                 if (seq !== state.req) return;
 
-                if (!rows.length) {
+                if (!obsRows.length) {
                     statusEl.textContent = 'No data';
                     state.speedChart?.destroy(); state.speedChart = null;
                     state.dirChart?.destroy(); state.dirChart = null;
+                    state.mslpRainChart?.destroy(); state.mslpRainChart = null;
                     setDisabled(false); return;
                 }
 
-                const ts = rows.map(r => r.ts);
-                const wspd = rows.map(r => r.wspd);
-                const gust = rows.map(r => r.gust);
-                const wdir = rows.map(r => r.wdir);
+                const ts = obsRows.map(r => r.ts);
+                const wspd = obsRows.map(r => r.wspd);
+                const gust = obsRows.map(r => r.gust);
+                const wdir = obsRows.map(r => r.wdir);
+                const mslp = obsRows.map(r => r.mslp);
+                const rain = obsRows.map(r => r.rain);
 
-                upsertCharts(ts, wspd, gust, wdir);
+                const stationUuid = await getStationId(stationCodeOrId);
+                const fcRows = stationUuid ? await fetchForecastLatestSeries(stationUuid, hours, 48, state.abort.signal) : [];
+                const f_ts = fcRows.map(r => r.valid_time);
+                const f_wspd = fcRows.map(r => r.wind_speed_kt);
+                const f_gust = fcRows.map(r => r.wind_gust_kt);
+                const f_wdir = fcRows.map(r => r.wind_dir_deg);
+                const f_mslp = fcRows.map(r => r.mslp_hpa);
+                const f_rain = fcRows.map(r => r.precip_mm);
+
+                const labels = Array.from(new Set([...ts, ...f_ts])).sort();
+
+                if (state.mode === 'wind') {
+                    upsertWindCharts(labels, ts, wspd, gust, wdir, f_ts, f_wspd, f_gust, f_wdir);
+                } else {
+                    upsertMSLPChart(labels, ts, mslp, rain, f_ts, f_mslp, f_rain);
+                }
 
                 if (leafletPopup?.update) {
                     leafletPopup.update();
                     setTimeout(() => {
                         leafletPopup.update();
-                        containerEl.__tsState.speedChart?.resize();
-                        containerEl.__tsState.dirChart?.resize();
+                        state.speedChart?.resize();
+                        state.dirChart?.resize();
+                        state.mslpRainChart?.resize();
                     }, 80);
                 }
 
-                const nonNull = Math.max(
+                const nonNullWind = Math.max(
                     wspd.filter(v => v != null).length,
                     gust.filter(v => v != null).length,
                     wdir.filter(v => v != null).length
                 );
-                statusEl.textContent = `${nonNull} pts`;
+                const nonNullMSLP = Math.max(
+                    mslp.filter(v => v != null).length,
+                    rain.filter(v => v != null).length
+                );
+                statusEl.textContent = `${state.mode === 'wind' ? nonNullWind : nonNullMSLP} pts`;
                 setDisabled(false);
             }
 
-            sel.addEventListener('change', () => load(parseInt(sel.value, 10)));
-            sel.value = String(defaultHours);
+            selWindow.addEventListener('change', () => load(parseInt(selWindow.value, 10)));
+            selSource.addEventListener('change', () => { showMode(selSource.value); load(parseInt(selWindow.value, 10)); });
+
+            showMode('wind');
+            selWindow.value = String(defaultHours);
             load(defaultHours);
         }
+
         window.attachTimeseriesTo = attachTimeseriesTo;
     </script>
 </body>
