@@ -143,7 +143,7 @@
         window.addEventListener('error', e => { console.error('Global error:', e.error || e.message); setStatus('Script error'); });
         window.addEventListener('unhandledrejection', e => { console.error('Unhandled promise:', e.reason); setStatus('Load failed'); });
 
-        /* ------------ Config ------------ */
+        /* ---------------- Config ---------------- */
         const OBS_URL = './solent_obs.json';
         const AUTO_REFRESH_MS = 10 * 60 * 1000;
         const ARROW_SIZE_PX = 96;
@@ -180,7 +180,7 @@
         </g></svg>`;
         }
 
-        /* ------------ Map ------------ */
+        // map + layers
         const map = L.map('map', { zoomControl: true });
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
             { attribution: '&copy; OpenStreetMap, &copy; CARTO' }).addTo(map);
@@ -189,17 +189,22 @@
         refreshBtn.addEventListener('click', () => loadObs(true));
 
         function clearStations() { layerStations.clearLayers(); }
+
         function addStationMarker(st) {
             if (st.lat == null || st.lon == null || st.wspd_kn == null || st.wdir_degT == null) return;
+
             const color = colorForSpeed(st.wspd_kn);
             const rotate = rotateFromDirDeg(st.wdir_degT);
             const arrow = svgStationArrow(color, ARROW_SIZE_PX);
+
             const html = `<div style="transform:rotate(${rotate}deg)">${arrow}</div>
         <div style="position:relative;top:-${ARROW_SIZE_PX / 2 - 2}px;width:${ARROW_SIZE_PX}px;text-align:center;
           font:600 ${ARROW_FONT_PX}px/1 system-ui;color:#111;
           text-shadow:0 0 2px #fff,0 0 8px rgba(255,255,255,.95);">${Math.round(st.wspd_kn)}</div>`;
+
             const icon = L.divIcon({ html, iconSize: [ARROW_SIZE_PX, ARROW_SIZE_PX], iconAnchor: [ARROW_SIZE_PX / 2, ARROW_SIZE_PX / 2], className: '' });
             const m = L.marker([st.lat, st.lon], { icon }).addTo(layerStations);
+
             const gustText = st.gust_kn == null ? '' : ` gust ${Math.round(st.gust_kn)}`;
             m.bindTooltip(`${st.station_name || st.station_id}<br>${Math.round(st.wspd_kn)} kt${gustText}`);
 
@@ -216,6 +221,7 @@
                 }
             });
         }
+
         function fitToDataBounds(points) {
             if (!points.length) return;
             let latMin = 90, latMax = -90, lonMin = 180, lonMax = -180;
@@ -268,6 +274,7 @@
                 autoTimer = setTimeout(loadObs, AUTO_REFRESH_MS);
             }
         }
+
         map.whenReady(() => loadObs());
     </script>
 
@@ -289,12 +296,12 @@
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";      /* paste yours */
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";                     /* paste yours */
+        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c"                /* paste */
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     </script>
 
-    <!-- Time-series (Chart.js + caching + abort) -->
+    <!-- Time-series helpers -->
     <script>
         const stationIdCache = new Map();
         const seriesCache = new Map();
@@ -308,16 +315,15 @@
             return { startISO: start.toISOString(), endISO: end.toISOString() };
         }
 
-        async function getStationId(stationIdOrCode) {
-            if (!stationIdOrCode) return null;
-            if (UUID_RE.test(stationIdOrCode)) return stationIdOrCode;  /* use UUID directly */
-            const cached = stationIdCache.get(stationIdOrCode);
+        async function getStationId(idOrCode) {
+            if (!idOrCode) return null;
+            if (UUID_RE.test(idOrCode)) return idOrCode;
+            const cached = stationIdCache.get(idOrCode);
             if (cached && (now() - cached.ts) < STATION_CACHE_MS) return cached.id;
-            const { data, error } = await supabase
-                .from('stations').select('id').eq('code', stationIdOrCode).limit(1).maybeSingle();
+            const { data, error } = await supabase.from('stations').select('id').eq('code', idOrCode).limit(1).maybeSingle();
             if (error) { console.error('[stations lookup]', error); return null; }
             const id = data?.id || null;
-            stationIdCache.set(stationIdOrCode, { id, ts: now() });
+            stationIdCache.set(idOrCode, { id, ts: now() });
             return id;
         }
 
@@ -329,22 +335,25 @@
             return { ts, wspd, gust, wdir };
         }
 
-        async function fetchObsSeriesByCode(stationIdOrCode, hours, signal) {
-            const cacheKey = `${stationIdOrCode}|${hours}`;
+        async function fetchObsSeriesByCode(idOrCode, hours, signal) {
+            const cacheKey = `${idOrCode}|${hours}`;
             const cached = seriesCache.get(cacheKey);
             if (cached && (now() - cached.ts) < SERIES_CACHE_MS) return cached.data;
 
-            const stationId = await getStationId(stationIdOrCode);
+            const stationId = await getStationId(idOrCode);
             if (!stationId) return [];
 
             const { startISO, endISO } = windowISO(hours);
-            let query = supabase.from('observations').select('*')
+            let query = supabase
+                .from('observations')
+                .select('*')
                 .eq('station_id', stationId)
                 .gte('observed_at', startISO)
                 .lte('observed_at', endISO)
                 .order('observed_at', { ascending: true });
 
             if (typeof query.abortSignal === 'function' && signal) query = query.abortSignal(signal);
+
             const { data, error } = await query;
             if (signal?.aborted) return [];
             if (error) { console.error('[observations select]', error); return []; }
@@ -386,36 +395,45 @@
             const setDisabled = (d) => { sel.disabled = d; };
 
             function upsertCharts(ts, wspd, gust, wdir) {
+                // Debug: verify data presence quickly
+                console.debug('ts len', ts.length, 'wspd len', wspd.length, 'gust len', gust.length, 'wdir len', wdir.length);
+
                 const nonNullSpeed = wspd.filter(v => v != null);
                 const maxSpeed = Math.max(10, ...(nonNullSpeed.length ? nonNullSpeed : [0]), ...(gust.filter(v => v != null)));
+
                 const speedData = {
-                    labels: ts, datasets: [
-                        { label: 'Wind (kt)', data: wspd, borderWidth: 2, pointRadius: 0, tension: 0.25 },
-                        { label: 'Gust (kt)', data: gust, borderWidth: 1, borderDash: [4, 3], pointRadius: 0, tension: 0.25 }
+                    labels: ts,
+                    datasets: [
+                        { label: 'Wind (kt)', data: wspd, borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true },
+                        { label: 'Gust (kt)', data: gust, borderWidth: 1, borderDash: [4, 3], pointRadius: 0, tension: 0.25, spanGaps: true }
                     ]
                 };
                 const speedOpts = {
-                    responsive: true, maintainAspectRatio: false, parsing: false,
+                    responsive: true, maintainAspectRatio: false,
                     scales: { x: { type: 'time', ticks: { maxTicksLimit: 6 } }, y: { suggestedMax: maxSpeed, title: { text: 'kt', display: true } } },
                     plugins: { legend: { position: 'bottom' } }, animation: { duration: 120 }
                 };
-                const dirData = { labels: ts, datasets: [{ label: 'Direction (°)', data: wdir, borderWidth: 1, pointRadius: 0, tension: 0.25 }] };
+
+                const dirData = { labels: ts, datasets: [{ label: 'Direction (°)', data: wdir, borderWidth: 1, pointRadius: 0, tension: 0.25, spanGaps: true }] };
                 const dirOpts = {
-                    responsive: true, maintainAspectRatio: false, parsing: false,
+                    responsive: true, maintainAspectRatio: false,
                     scales: { x: { type: 'time', ticks: { maxTicksLimit: 6 } }, y: { min: 0, max: 360, ticks: { stepSize: 90 }, title: { text: '°', display: true } } },
                     plugins: { legend: { display: false } }, animation: { duration: 120 }
                 };
 
-                if (!containerEl.__tsState.speedChart) containerEl.__tsState.speedChart = new Chart(speedCtx, { type: 'line', data: speedData, options: speedOpts });
-                else { const c = containerEl.__tsState.speedChart; c.data = speedData; c.update(); }
+                if (!containerEl.__tsState.speedChart) {
+                    containerEl.__tsState.speedChart = new Chart(speedCtx, { type: 'line', data: speedData, options: speedOpts });
+                } else { const c = containerEl.__tsState.speedChart; c.data = speedData; c.update(); }
 
-                if (!containerEl.__tsState.dirChart) containerEl.__tsState.dirChart = new Chart(dirCtx, { type: 'line', data: dirData, options: dirOpts });
-                else { const c2 = containerEl.__tsState.dirChart; c2.data = dirData; c2.update(); }
+                if (!containerEl.__tsState.dirChart) {
+                    containerEl.__tsState.dirChart = new Chart(dirCtx, { type: 'line', data: dirData, options: dirOpts });
+                } else { const c2 = containerEl.__tsState.dirChart; c2.data = dirData; c2.update(); }
             }
 
             async function load(hours) {
                 const state = containerEl.__tsState;
                 const seq = ++state.req;
+
                 if (state.abort) { try { state.abort.abort(); } catch { } }
                 state.abort = new AbortController();
 
@@ -440,7 +458,11 @@
 
                 if (leafletPopup?.update) {
                     leafletPopup.update();
-                    setTimeout(() => { leafletPopup.update(); state.speedChart?.resize(); state.dirChart?.resize(); }, 80);
+                    setTimeout(() => {
+                        leafletPopup.update();
+                        containerEl.__tsState.speedChart?.resize();
+                        containerEl.__tsState.dirChart?.resize();
+                    }, 80);
                 }
 
                 const nonNull = Math.max(
