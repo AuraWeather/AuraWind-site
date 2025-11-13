@@ -24,14 +24,14 @@
             height: 100%;
             margin: 0;
             background: var(--bg);
-            color: var(--text);
+            color: var(--text)
         }
 
         #app {
             position: fixed;
             inset: 0;
             display: grid;
-            grid-template-rows: auto 1fr;
+            grid-template-rows: auto 1fr
         }
 
         header {
@@ -99,7 +99,6 @@
             border: 1px solid #1f2937;
             border-radius: 12px;
             padding: 10px 12px;
-            color: var(--text);
             box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
             font: 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial
         }
@@ -144,7 +143,7 @@
         window.addEventListener('error', e => { console.error('Global error:', e.error || e.message); setStatus('Script error'); });
         window.addEventListener('unhandledrejection', e => { console.error('Unhandled promise:', e.reason); setStatus('Load failed'); });
 
-        /* ---------------- Config ---------------- */
+        /* ------------ Config ------------ */
         const OBS_URL = './solent_obs.json';
         const AUTO_REFRESH_MS = 10 * 60 * 1000;
         const ARROW_SIZE_PX = 96;
@@ -161,7 +160,7 @@
             return `#${(r << 16 | g << 8 | b2).toString(16).padStart(6, '0')}`;
         }
         function colorForSpeed(spd) {
-            if (spd == null || Number.isNaN(spd)) return "#999999";
+            if (spd == null || Number.isNaN(spd)) return "#999";
             for (let i = 0; i < BREAKS.length - 1; i++) {
                 const lo = BREAKS[i], hi = BREAKS[i + 1];
                 if (spd <= hi) {
@@ -181,7 +180,7 @@
         </g></svg>`;
         }
 
-        // map + layers
+        /* ------------ Map ------------ */
         const map = L.map('map', { zoomControl: true });
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
             { attribution: '&copy; OpenStreetMap, &copy; CARTO' }).addTo(map);
@@ -190,22 +189,17 @@
         refreshBtn.addEventListener('click', () => loadObs(true));
 
         function clearStations() { layerStations.clearLayers(); }
-
         function addStationMarker(st) {
             if (st.lat == null || st.lon == null || st.wspd_kn == null || st.wdir_degT == null) return;
-
             const color = colorForSpeed(st.wspd_kn);
             const rotate = rotateFromDirDeg(st.wdir_degT);
             const arrow = svgStationArrow(color, ARROW_SIZE_PX);
-
             const html = `<div style="transform:rotate(${rotate}deg)">${arrow}</div>
         <div style="position:relative;top:-${ARROW_SIZE_PX / 2 - 2}px;width:${ARROW_SIZE_PX}px;text-align:center;
           font:600 ${ARROW_FONT_PX}px/1 system-ui;color:#111;
           text-shadow:0 0 2px #fff,0 0 8px rgba(255,255,255,.95);">${Math.round(st.wspd_kn)}</div>`;
-
             const icon = L.divIcon({ html, iconSize: [ARROW_SIZE_PX, ARROW_SIZE_PX], iconAnchor: [ARROW_SIZE_PX / 2, ARROW_SIZE_PX / 2], className: '' });
             const m = L.marker([st.lat, st.lon], { icon }).addTo(layerStations);
-
             const gustText = st.gust_kn == null ? '' : ` gust ${Math.round(st.gust_kn)}`;
             m.bindTooltip(`${st.station_name || st.station_id}<br>${Math.round(st.wspd_kn)} kt${gustText}`);
 
@@ -222,7 +216,6 @@
                 }
             });
         }
-
         function fitToDataBounds(points) {
             if (!points.length) return;
             let latMin = 90, latMax = -90, lonMin = 180, lonMax = -180;
@@ -247,9 +240,9 @@
                 const obs = rows.map(r => ({
                     lat: r.lat ?? r.latitude,
                     lon: r.lon ?? r.longitude,
-                    wspd_kn: r.wspd_kn ?? r.wind_speed_kt ?? r.wspd ?? r.wind_knots,
+                    wspd_kn: r.wspd_kn ?? r.wind_speed_kt ?? r.wspd ?? r.wind_knots ?? r.wind_speed,
                     gust_kn: r.gust_kn ?? r.wind_gust_kt ?? r.wind_gust ?? r.gust ?? null,
-                    wdir_degT: r.wdir_degT ?? r.wind_dir_deg ?? r.wdir ?? r.direction,
+                    wdir_degT: r.wdir_degT ?? r.wind_dir_deg ?? r.wdir ?? r.direction ?? r.wind_direction,
                     station_name: r.station_name ?? r.name ?? r.Site ?? r.station_id ?? r.site_id ?? r.id,
                     station_id: r.station_id ?? r.site_id ?? r.id
                 }));
@@ -275,7 +268,6 @@
                 autoTimer = setTimeout(loadObs, AUTO_REFRESH_MS);
             }
         }
-
         map.whenReady(() => loadObs());
     </script>
 
@@ -297,15 +289,13 @@
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Paste your anon creds temporarily (we’ll move later)
-        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c"
+        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";      /* paste yours */
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";                     /* paste yours */
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     </script>
 
-    <!-- Time-series helpers (Chart.js + caching + abort) -->
+    <!-- Time-series (Chart.js + caching + abort) -->
     <script>
-        // Caches (defined early to avoid TDZ)
         const stationIdCache = new Map();
         const seriesCache = new Map();
         const STATION_CACHE_MS = 24 * 3600 * 1000;
@@ -318,53 +308,43 @@
             return { startISO: start.toISOString(), endISO: end.toISOString() };
         }
 
-        async function getStationIdByCode(stationCode) {
-            if (!stationCode) return null;
-            if (UUID_RE.test(stationCode)) return stationCode;
-            const cached = stationIdCache.get(stationCode);
+        async function getStationId(stationIdOrCode) {
+            if (!stationIdOrCode) return null;
+            if (UUID_RE.test(stationIdOrCode)) return stationIdOrCode;  /* use UUID directly */
+            const cached = stationIdCache.get(stationIdOrCode);
             if (cached && (now() - cached.ts) < STATION_CACHE_MS) return cached.id;
-
             const { data, error } = await supabase
-                .from('stations')
-                .select('id')
-                .eq('code', stationCode)
-                .limit(1)
-                .maybeSingle();
-
+                .from('stations').select('id').eq('code', stationIdOrCode).limit(1).maybeSingle();
             if (error) { console.error('[stations lookup]', error); return null; }
             const id = data?.id || null;
-            stationIdCache.set(stationCode, { id, ts: now() });
+            stationIdCache.set(stationIdOrCode, { id, ts: now() });
             return id;
         }
 
-        // Map any likely column names → wspd/gust/wdir
         function normalizeRow(r) {
             const ts = r.observed_at || r.ts || r.time || r.datetime;
-            const wspd = r.wind_speed ?? r.wind_speed_kt ?? r.wspd ?? r.wspd_kn ?? r.knots ?? null;
+            const wspd = r.wind_speed ?? r.wind_speed_kt ?? r.wspd ?? r.wspd_kn ?? null;
             const gust = r.wind_gust ?? r.wind_gust_kt ?? r.gust ?? r.gust_kn ?? null;
             const wdir = r.wind_direction ?? r.wind_dir_deg ?? r.wdir ?? r.dir ?? null;
             return { ts, wspd, gust, wdir };
         }
 
-        async function fetchObsSeriesByCode(stationCode, hours, signal) {
-            const cacheKey = `${stationCode}|${hours}`;
+        async function fetchObsSeriesByCode(stationIdOrCode, hours, signal) {
+            const cacheKey = `${stationIdOrCode}|${hours}`;
             const cached = seriesCache.get(cacheKey);
             if (cached && (now() - cached.ts) < SERIES_CACHE_MS) return cached.data;
 
-            const stationId = await getStationIdByCode(stationCode);
+            const stationId = await getStationId(stationIdOrCode);
             if (!stationId) return [];
 
             const { startISO, endISO } = windowISO(hours);
-            let query = supabase
-                .from('observations')
-                .select('*') // select everything; we normalize below
+            let query = supabase.from('observations').select('*')
                 .eq('station_id', stationId)
                 .gte('observed_at', startISO)
                 .lte('observed_at', endISO)
                 .order('observed_at', { ascending: true });
 
             if (typeof query.abortSignal === 'function' && signal) query = query.abortSignal(signal);
-
             const { data, error } = await query;
             if (signal?.aborted) return [];
             if (error) { console.error('[observations select]', error); return []; }
@@ -374,30 +354,30 @@
             return rows;
         }
 
-        async function attachTimeseriesTo(containerEl, stationCode, defaultHours = 6, leafletPopup = null) {
+        async function attachTimeseriesTo(containerEl, stationCodeOrId, defaultHours = 6, leafletPopup = null) {
             if (containerEl.dataset.bound === "1") return;
             containerEl.dataset.bound = "1";
             containerEl.__tsState = { req: 0, abort: null, speedChart: null, dirChart: null };
 
             containerEl.innerHTML = `
-        <div style="width:380px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <span style="font-size:12px;opacity:.7;">Window:</span>
-            <select class="ts-window" style="font-size:12px;padding:2px 4px;">
-              <option value="3">3h</option>
-              <option value="6">6h</option>
-              <option value="12">12h</option>
-              <option value="24">24h</option>
-            </select>
-          </div>
-          <div style="width:100%;height:180px;position:relative;margin-bottom:10px;">
-            <canvas class="ts-canvas-speed" style="width:360px;height:180px;"></canvas>
-          </div>
-          <div style="width:100%;height:140px;position:relative;">
-            <canvas class="ts-canvas-dir" style="width:360px;height:140px;"></canvas>
-          </div>
-          <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
-        </div>`;
+      <div style="width:380px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-size:12px;opacity:.7;">Window:</span>
+          <select class="ts-window" style="font-size:12px;padding:2px 4px;">
+            <option value="3">3h</option>
+            <option value="6">6h</option>
+            <option value="12">12h</option>
+            <option value="24">24h</option>
+          </select>
+        </div>
+        <div style="width:100%;height:180px;position:relative;margin-bottom:10px;">
+          <canvas class="ts-canvas-speed" style="width:360px;height:180px;"></canvas>
+        </div>
+        <div style="width:100%;height:140px;position:relative;">
+          <canvas class="ts-canvas-dir" style="width:360px;height:140px;"></canvas>
+        </div>
+        <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
+      </div>`;
 
             const sel = containerEl.querySelector('.ts-window');
             const speedCtx = containerEl.querySelector('.ts-canvas-speed').getContext('2d');
@@ -409,8 +389,7 @@
                 const nonNullSpeed = wspd.filter(v => v != null);
                 const maxSpeed = Math.max(10, ...(nonNullSpeed.length ? nonNullSpeed : [0]), ...(gust.filter(v => v != null)));
                 const speedData = {
-                    labels: ts,
-                    datasets: [
+                    labels: ts, datasets: [
                         { label: 'Wind (kt)', data: wspd, borderWidth: 2, pointRadius: 0, tension: 0.25 },
                         { label: 'Gust (kt)', data: gust, borderWidth: 1, borderDash: [4, 3], pointRadius: 0, tension: 0.25 }
                     ]
@@ -420,7 +399,6 @@
                     scales: { x: { type: 'time', ticks: { maxTicksLimit: 6 } }, y: { suggestedMax: maxSpeed, title: { text: 'kt', display: true } } },
                     plugins: { legend: { position: 'bottom' } }, animation: { duration: 120 }
                 };
-
                 const dirData = { labels: ts, datasets: [{ label: 'Direction (°)', data: wdir, borderWidth: 1, pointRadius: 0, tension: 0.25 }] };
                 const dirOpts = {
                     responsive: true, maintainAspectRatio: false, parsing: false,
@@ -428,25 +406,22 @@
                     plugins: { legend: { display: false } }, animation: { duration: 120 }
                 };
 
-                if (!containerEl.__tsState.speedChart) {
-                    containerEl.__tsState.speedChart = new Chart(speedCtx, { type: 'line', data: speedData, options: speedOpts });
-                } else { const c = containerEl.__tsState.speedChart; c.data = speedData; c.update(); }
+                if (!containerEl.__tsState.speedChart) containerEl.__tsState.speedChart = new Chart(speedCtx, { type: 'line', data: speedData, options: speedOpts });
+                else { const c = containerEl.__tsState.speedChart; c.data = speedData; c.update(); }
 
-                if (!containerEl.__tsState.dirChart) {
-                    containerEl.__tsState.dirChart = new Chart(dirCtx, { type: 'line', data: dirData, options: dirOpts });
-                } else { const c2 = containerEl.__tsState.dirChart; c2.data = dirData; c2.update(); }
+                if (!containerEl.__tsState.dirChart) containerEl.__tsState.dirChart = new Chart(dirCtx, { type: 'line', data: dirData, options: dirOpts });
+                else { const c2 = containerEl.__tsState.dirChart; c2.data = dirData; c2.update(); }
             }
 
             async function load(hours) {
                 const state = containerEl.__tsState;
                 const seq = ++state.req;
-
                 if (state.abort) { try { state.abort.abort(); } catch { } }
                 state.abort = new AbortController();
 
                 setDisabled(true);
                 statusEl.textContent = 'Loading…';
-                const rows = await fetchObsSeriesByCode(stationCode, hours, state.abort.signal);
+                const rows = await fetchObsSeriesByCode(stationCodeOrId, hours, state.abort.signal);
                 if (seq !== state.req) return;
 
                 if (!rows.length) {
@@ -465,11 +440,7 @@
 
                 if (leafletPopup?.update) {
                     leafletPopup.update();
-                    setTimeout(() => {
-                        leafletPopup.update();
-                        containerEl.__tsState.speedChart?.resize();
-                        containerEl.__tsState.dirChart?.resize();
-                    }, 80);
+                    setTimeout(() => { leafletPopup.update(); state.speedChart?.resize(); state.dirChart?.resize(); }, 80);
                 }
 
                 const nonNull = Math.max(
@@ -485,8 +456,6 @@
             sel.value = String(defaultHours);
             load(defaultHours);
         }
-
-        // expose for marker click
         window.attachTimeseriesTo = attachTimeseriesTo;
     </script>
 </body>
