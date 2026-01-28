@@ -18,12 +18,13 @@
     <style>
         :root {
             --bg: #0b1120;
-            --hud-bg: rgba(255, 255, 255, 0.88);
-            --hud-border: rgba(0, 0, 0, 0.12);
-            --hud-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
             --text: #0b0f1a;
-            --muted: rgba(0, 0, 0, 0.65);
+            --muted: rgba(0, 0, 0, 0.62);
             --accent: #14b8a6;
+
+            --hud-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
+            --hud-border: rgba(0, 0, 0, 0.12);
+            --hud-bg: rgba(255, 255, 255, 0.88);
         }
 
         html,
@@ -52,23 +53,22 @@
             position: fixed;
             inset: 0;
             pointer-events: none;
-            /* only inner controls clickable */
             z-index: 1000;
         }
 
         .hud-left {
             position: absolute;
             left: 12px;
-            top: 10px;
+            top: 8px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
             pointer-events: none;
         }
 
-        /* BIG logo */
+        /* ~2x bigger than the previous 72px logo (responsive) */
         #logo {
-            height: 72px;
+            height: clamp(120px, 10vw, 160px);
             width: auto;
             display: block;
             object-fit: contain;
@@ -78,44 +78,36 @@
         .hud-title {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 4px;
             color: var(--text);
-            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
         }
 
         .hud-title .h1 {
-            font-size: 18px;
-            font-weight: 900;
+            font-size: clamp(22px, 2.1vw, 32px);
+            font-weight: 950;
             letter-spacing: 0.2px;
             line-height: 1.05;
         }
 
         .hud-title .sub {
-            font-size: 13px;
-            font-weight: 650;
+            font-size: clamp(14px, 1.25vw, 18px);
+            font-weight: 750;
             color: var(--muted);
             line-height: 1.05;
         }
 
-        /* Status pill floats near title, black text on white-ish pill */
-        .pill {
-            margin-left: 14px;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.45rem;
-            padding: 0.42rem 0.7rem;
-            border: 1px solid var(--hud-border);
-            background: var(--hud-bg);
+        /* Status as plain black text (no pill) */
+        .status-text {
+            margin-left: 16px;
+            font-size: clamp(16px, 1.4vw, 22px);
+            font-weight: 900;
             color: var(--text);
-            border-radius: 999px;
-            font-size: 0.9rem;
-            font-weight: 750;
-            box-shadow: var(--hud-shadow);
+            text-shadow: 0 2px 0 rgba(255, 255, 255, 0.75);
             white-space: nowrap;
-            pointer-events: none;
         }
 
-        /* Refresh in top-right, still clickable */
+        /* Refresh in top-right (clickable) */
         #refreshBtn {
             position: absolute;
             top: 12px;
@@ -143,19 +135,19 @@
             transform: none;
         }
 
-        /* Legend stays bottom-right; keep dark style */
+        /* Legend to match: white card + black text */
         .legend {
             position: absolute;
             right: 12px;
             bottom: 12px;
             z-index: 999;
-            background: rgba(17, 24, 39, 0.92);
-            border: 1px solid rgba(31, 41, 55, 0.9);
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid var(--hud-border);
             border-radius: 14px;
             padding: 10px 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+            box-shadow: var(--hud-shadow);
             font: 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial;
-            color: rgba(229, 231, 235, 0.92);
+            color: var(--text);
             backdrop-filter: blur(10px);
             pointer-events: none;
         }
@@ -163,8 +155,8 @@
         .legend h3 {
             margin: 0 0 6px 0;
             font-size: 12px;
-            font-weight: 800;
-            color: #e5e7eb;
+            font-weight: 950;
+            color: var(--text);
         }
 
         .legend .row {
@@ -172,13 +164,14 @@
             align-items: center;
             gap: 8px;
             margin: 4px 0;
+            color: rgba(0, 0, 0, 0.75);
         }
 
         .chip {
             width: 18px;
             height: 10px;
             border-radius: 3px;
-            border: 1px solid rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(0, 0, 0, 0.25);
         }
     </style>
 </head>
@@ -194,7 +187,7 @@
                 <div class="h1">Solent Live Observations</div>
                 <div class="sub">Wind • Gust • Direction • MSLP • Rain</div>
             </div>
-            <div class="pill" id="status">Loading…</div>
+            <div id="status" class="status-text">Loading…</div>
         </div>
 
         <button id="refreshBtn" title="Refresh now">Refresh</button>
@@ -578,7 +571,7 @@
                 .lte("valid_time", endISO)
                 .order("valid_time", { ascending: true });
 
-            if (typeof q.abortSignal === "function" && signal) q = q.abortSignal(signal;
+            if (typeof q.abortSignal === "function" && signal) q = q.abortSignal(signal);
 
             const { data, error } = await q;
 
@@ -698,10 +691,7 @@
                 const dirOpts = {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        x: { type: "time" },
-                        y: { min: 0, max: 360, ticks: { stepSize: 90 }, title: { text: "°", display: true } },
-                    },
+                    scales: { x: { type: "time" }, y: { min: 0, max: 360, ticks: { stepSize: 90 }, title: { text: "°", display: true } } },
                     plugins: { legend: { display: false } },
                     animation: { duration: 120 },
                 };
