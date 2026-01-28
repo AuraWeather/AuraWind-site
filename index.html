@@ -60,16 +60,13 @@
             position: absolute;
             left: 12px;
             top: 2px;
-            /* was 8px */
             display: flex;
             align-items: flex-start;
-            /* was center */
             gap: 14px;
             pointer-events: none;
         }
 
-
-        /* ~2x bigger than the previous 72px logo (responsive) */
+        /* ~2x bigger logo */
         #logo {
             height: clamp(120px, 10vw, 160px);
             width: auto;
@@ -90,17 +87,17 @@
             font-size: clamp(22px, 2.1vw, 32px);
             font-weight: 950;
             letter-spacing: 0.2px;
-            line-height: 1.0;
+            line-height: 1.05;
         }
 
         .hud-title .sub {
             font-size: clamp(14px, 1.25vw, 18px);
             font-weight: 750;
             color: var(--muted);
-            line-height: 1.0;
+            line-height: 1.05;
         }
 
-        /* Status as plain black text (no pill) */
+        /* Status as plain text */
         .status-text {
             margin-left: 16px;
             font-size: clamp(16px, 1.4vw, 22px);
@@ -471,7 +468,8 @@
     <script>
         const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c"
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // IMPORTANT: name this `sb` to avoid colliding with window.supabase
+        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     </script>
 
     <!-- Time-series + Forecast overlay + Source toggle -->
@@ -498,7 +496,7 @@
             const cached = stationIdCache.get(idOrCode);
             if (cached && now() - cached.ts < STATION_CACHE_MS) return cached.id;
 
-            const { data, error } = await supabase
+            const { data, error } = await sb
                 .from("stations")
                 .select("id")
                 .eq("code", idOrCode)
@@ -535,7 +533,7 @@
 
             const { startISO, endISO } = windowISO(hours);
 
-            let query = supabase
+            let query = sb
                 .from("observations")
                 .select("*")
                 .eq("station_id", stationId)
@@ -566,7 +564,7 @@
             const startISO = new Date(nowMs - hoursBack * 3600 * 1000).toISOString();
             const endISO = new Date(nowMs + hoursFwd * 3600 * 1000).toISOString();
 
-            let q = supabase
+            let q = sb
                 .from("forecast_hourly_latest")
                 .select("*")
                 .eq("station_id", stationId)
@@ -665,10 +663,41 @@
                 const speedData = {
                     labels,
                     datasets: [
-                        { label: "Wind (kt)", data: align(labels, ts_obs, wspd), borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true },
-                        { label: "Gust (kt)", data: align(labels, ts_obs, gust), borderWidth: 1, borderDash: [4, 3], pointRadius: 0, tension: 0.25, spanGaps: true },
-                        { label: "Fcst Wind (kt)", data: align(labels, ts_fcst, wspd_fc), borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [6, 4] },
-                        { label: "Fcst Gust (kt)", data: align(labels, ts_fcst, gust_fc), borderWidth: 1, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [2, 2] },
+                        {
+                            label: "Wind (kt)",
+                            data: align(labels, ts_obs, wspd),
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true,
+                        },
+                        {
+                            label: "Gust (kt)",
+                            data: align(labels, ts_obs, gust),
+                            borderWidth: 1,
+                            borderDash: [4, 3],
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true,
+                        },
+                        {
+                            label: "Fcst Wind (kt)",
+                            data: align(labels, ts_fcst, wspd_fc),
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true,
+                            borderDash: [6, 4],
+                        },
+                        {
+                            label: "Fcst Gust (kt)",
+                            data: align(labels, ts_fcst, gust_fc),
+                            borderWidth: 1,
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true,
+                            borderDash: [2, 2],
+                        },
                     ],
                 };
 
@@ -686,8 +715,23 @@
                 const dirData = {
                     labels,
                     datasets: [
-                        { label: "Direction (°)", data: align(labels, ts_obs, wdir), borderWidth: 1, pointRadius: 0, tension: 0.25, spanGaps: true },
-                        { label: "Fcst Dir (°)", data: align(labels, ts_fcst, wdir_fc), borderWidth: 1, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [6, 4] },
+                        {
+                            label: "Direction (°)",
+                            data: align(labels, ts_obs, wdir),
+                            borderWidth: 1,
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true,
+                        },
+                        {
+                            label: "Fcst Dir (°)",
+                            data: align(labels, ts_fcst, wdir_fc),
+                            borderWidth: 1,
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true,
+                            borderDash: [6, 4],
+                        },
                     ],
                 };
 
