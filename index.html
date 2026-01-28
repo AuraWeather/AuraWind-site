@@ -59,12 +59,15 @@
         .hud-left {
             position: absolute;
             left: 12px;
-            top: 8px;
+            top: 2px;
+            /* was 8px */
             display: flex;
-            align-items: center;
+            align-items: flex-start;
+            /* was center */
             gap: 14px;
             pointer-events: none;
         }
+
 
         /* ~2x bigger than the previous 72px logo (responsive) */
         #logo {
@@ -78,7 +81,7 @@
         .hud-title {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 2px;
             color: var(--text);
             text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
         }
@@ -87,14 +90,14 @@
             font-size: clamp(22px, 2.1vw, 32px);
             font-weight: 950;
             letter-spacing: 0.2px;
-            line-height: 1.05;
+            line-height: 1.0;
         }
 
         .hud-title .sub {
             font-size: clamp(14px, 1.25vw, 18px);
             font-weight: 750;
             color: var(--muted);
-            line-height: 1.05;
+            line-height: 1.0;
         }
 
         /* Status as plain black text (no pill) */
