@@ -18,14 +18,12 @@
     <style>
         :root {
             --bg: #0b1120;
-            --card: rgba(17, 24, 39, 0.78);
-            --card2: rgba(17, 24, 39, 0.92);
-            --text: #e5e7eb;
-            --muted: rgba(229, 231, 235, 0.72);
+            --hud-bg: rgba(255, 255, 255, 0.88);
+            --hud-border: rgba(0, 0, 0, 0.12);
+            --hud-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
+            --text: #0b0f1a;
+            --muted: rgba(0, 0, 0, 0.65);
             --accent: #14b8a6;
-            --border: rgba(31, 41, 55, 0.9);
-            --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-            --radius: 14px;
         }
 
         html,
@@ -33,131 +31,140 @@
             height: 100%;
             margin: 0;
             background: var(--bg);
-            color: var(--text);
             font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
         }
 
-        #app {
+        /* Fullscreen map */
+        #map {
             position: fixed;
             inset: 0;
-            display: grid;
-            grid-template-rows: auto 1fr;
-        }
-
-        header {
-            display: flex;
-            align-items: center;
-            gap: 0.9rem;
-            padding: 0.7rem 0.9rem;
-            background: linear-gradient(180deg, rgba(11, 17, 32, 0.98), rgba(11, 17, 32, 0.75));
-            border-bottom: 1px solid rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(10px);
-            z-index: 1000;
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 0.9rem;
-            min-width: 280px;
-        }
-
-        /* BIG logo, top-left */
-        #logo {
-            height: 44px;
-            width: auto;
-            display: block;
-            object-fit: contain;
-        }
-
-        /* keep only the observation title (not "AuraWeather") */
-        .title {
-            display: flex;
-            flex-direction: column;
-            line-height: 1.1;
-        }
-
-        .title .h1 {
-            font-size: 0.98rem;
-            margin: 0;
-            font-weight: 700;
-            letter-spacing: 0.2px;
-        }
-
-        .title .sub {
-            font-size: 0.78rem;
-            color: var(--muted);
-            margin-top: 0.15rem;
-        }
-
-        .spacer {
-            flex: 1;
-        }
-
-        .pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.45rem;
-            padding: 0.42rem 0.7rem;
-            border: 1px solid var(--border);
-            background: var(--card);
-            border-radius: 999px;
-            font-size: 0.82rem;
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
-            white-space: nowrap;
-        }
-
-        button {
-            background: var(--accent);
-            color: #062b2a;
-            border: 0;
-            border-radius: 12px;
-            padding: 0.52rem 0.85rem;
-            font-weight: 800;
-            cursor: pointer;
-            box-shadow: 0 8px 18px rgba(20, 184, 166, 0.18);
-            transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
-        }
-
-        button:hover {
-            transform: translateY(-1px);
-            filter: brightness(1.02);
-        }
-
-        button:disabled {
-            opacity: 0.6;
-            cursor: default;
-            transform: none;
-        }
-
-        #map {
             width: 100%;
             height: 100%;
+            z-index: 0;
         }
 
         .leaflet-container {
             background: var(--bg);
         }
 
+        /* Overlay HUD (no header bar) */
+        .hud {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            /* only inner controls clickable */
+            z-index: 1000;
+        }
+
+        .hud-left {
+            position: absolute;
+            left: 12px;
+            top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            pointer-events: none;
+        }
+
+        /* BIG logo */
+        #logo {
+            height: 72px;
+            width: auto;
+            display: block;
+            object-fit: contain;
+            filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.18));
+        }
+
+        .hud-title {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            color: var(--text);
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+        }
+
+        .hud-title .h1 {
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: 0.2px;
+            line-height: 1.05;
+        }
+
+        .hud-title .sub {
+            font-size: 13px;
+            font-weight: 650;
+            color: var(--muted);
+            line-height: 1.05;
+        }
+
+        /* Status pill floats near title, black text on white-ish pill */
+        .pill {
+            margin-left: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.42rem 0.7rem;
+            border: 1px solid var(--hud-border);
+            background: var(--hud-bg);
+            color: var(--text);
+            border-radius: 999px;
+            font-size: 0.9rem;
+            font-weight: 750;
+            box-shadow: var(--hud-shadow);
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        /* Refresh in top-right, still clickable */
+        #refreshBtn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            pointer-events: auto;
+            background: var(--accent);
+            color: #062b2a;
+            border: 0;
+            border-radius: 12px;
+            padding: 0.58rem 0.95rem;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 10px 22px rgba(20, 184, 166, 0.18);
+            transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
+        }
+
+        #refreshBtn:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.02);
+        }
+
+        #refreshBtn:disabled {
+            opacity: 0.6;
+            cursor: default;
+            transform: none;
+        }
+
+        /* Legend stays bottom-right; keep dark style */
         .legend {
             position: absolute;
             right: 12px;
             bottom: 12px;
             z-index: 999;
-            background: var(--card2);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
+            background: rgba(17, 24, 39, 0.92);
+            border: 1px solid rgba(31, 41, 55, 0.9);
+            border-radius: 14px;
             padding: 10px 12px;
-            box-shadow: var(--shadow);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
             font: 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            color: rgba(229, 231, 235, 0.92);
             backdrop-filter: blur(10px);
+            pointer-events: none;
         }
 
         .legend h3 {
             margin: 0 0 6px 0;
             font-size: 12px;
             font-weight: 800;
-            color: #d1d5db;
+            color: #e5e7eb;
         }
 
         .legend .row {
@@ -165,7 +172,6 @@
             align-items: center;
             gap: 8px;
             margin: 4px 0;
-            color: rgba(229, 231, 235, 0.9);
         }
 
         .chip {
@@ -178,25 +184,35 @@
 </head>
 
 <body>
-    <div id="app">
-        <header>
-            <div class="brand">
-                <!-- PNG logo -->
-                <img id="logo" src="./aura-logo.png" alt="AuraWeather" />
-                <div class="title">
-                    <div class="h1">Solent Live Observations</div>
-                    <div class="sub">Wind • Gust • Direction • MSLP • Rain</div>
-                </div>
+    <div id="map"></div>
+
+    <!-- Overlay HUD -->
+    <div class="hud">
+        <div class="hud-left">
+            <img id="logo" src="aura-logo.png" alt="Aura" />
+            <div class="hud-title">
+                <div class="h1">Solent Live Observations</div>
+                <div class="sub">Wind • Gust • Direction • MSLP • Rain</div>
             </div>
-
             <div class="pill" id="status">Loading…</div>
+        </div>
 
-            <div class="spacer"></div>
+        <button id="refreshBtn" title="Refresh now">Refresh</button>
 
-            <button id="refreshBtn" title="Refresh now">Refresh</button>
-        </header>
-
-        <div id="map"></div>
+        <!-- Legend -->
+        <div class="legend" id="legend">
+            <h3>Wind speed (kt)</h3>
+            <div class="row"><span class="chip" style="background:#00008b"></span> 0–3</div>
+            <div class="row"><span class="chip" style="background:#4169e1"></span> 3–5</div>
+            <div class="row"><span class="chip" style="background:#00ffcc"></span> 5–10</div>
+            <div class="row"><span class="chip" style="background:#00ff00"></span> 10–20</div>
+            <div class="row"><span class="chip" style="background:#00cc00"></span> 20–22</div>
+            <div class="row"><span class="chip" style="background:#ff9900"></span> 22–30</div>
+            <div class="row"><span class="chip" style="background:#ff0000"></span> 30–33</div>
+            <div class="row"><span class="chip" style="background:#b22222"></span> 33–40</div>
+            <div class="row"><span class="chip" style="background:#8b008b"></span> 40–60</div>
+            <div class="row"><span class="chip" style="background:#800080"></span> 60+</div>
+        </div>
     </div>
 
     <script>
@@ -454,21 +470,6 @@
         });
     </script>
 
-    <!-- Legend -->
-    <div class="legend" id="legend">
-        <h3>Wind speed (kt)</h3>
-        <div class="row"><span class="chip" style="background:#00008b"></span> 0–3</div>
-        <div class="row"><span class="chip" style="background:#4169e1"></span> 3–5</div>
-        <div class="row"><span class="chip" style="background:#00ffcc"></span> 5–10</div>
-        <div class="row"><span class="chip" style="background:#00ff00"></span> 10–20</div>
-        <div class="row"><span class="chip" style="background:#00cc00"></span> 20–22</div>
-        <div class="row"><span class="chip" style="background:#ff9900"></span> 22–30</div>
-        <div class="row"><span class="chip" style="background:#ff0000"></span> 30–33</div>
-        <div class="row"><span class="chip" style="background:#b22222"></span> 33–40</div>
-        <div class="row"><span class="chip" style="background:#8b008b"></span> 40–60</div>
-        <div class="row"><span class="chip" style="background:#800080"></span> 60+</div>
-    </div>
-
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -556,15 +557,11 @@
                 return [];
             }
 
-            const rows = (data || [])
-                .map(normalizeRow)
-                .filter((r) => r.ts);
-
+            const rows = (data || []).map(normalizeRow).filter((r) => r.ts);
             seriesCache.set(cacheKey, { data: rows, ts: now() });
             return rows;
         }
 
-        // Forecast (latest per valid hour)
         async function fetchForecastLatestSeries(idOrCodeOrId, hoursBack = 24, hoursFwd = 48, signal) {
             const stationId = await getStationId(idOrCodeOrId);
             if (!stationId) return [];
@@ -581,7 +578,7 @@
                 .lte("valid_time", endISO)
                 .order("valid_time", { ascending: true });
 
-            if (typeof q.abortSignal === "function" && signal) q = q.abortSignal(signal);
+            if (typeof q.abortSignal === "function" && signal) q = q.abortSignal(signal;
 
             const { data, error } = await q;
 
@@ -747,17 +744,8 @@
                     maintainAspectRatio: false,
                     scales: {
                         x: { type: "time" },
-                        y: {
-                            position: "left",
-                            suggestedMin: yLeftMax - 20,
-                            suggestedMax: yLeftMax + 20,
-                            title: { text: "hPa", display: true },
-                        },
-                        y1: {
-                            position: "right",
-                            grid: { drawOnChartArea: false },
-                            title: { text: "mm", display: true },
-                        },
+                        y: { position: "left", suggestedMin: yLeftMax - 20, suggestedMax: yLeftMax + 20, title: { text: "hPa", display: true } },
+                        y1: { position: "right", grid: { drawOnChartArea: false }, title: { text: "mm", display: true } },
                     },
                     plugins: { legend: { position: "bottom" } },
                     animation: { duration: 120 },
@@ -810,9 +798,7 @@
                 const rain = obsRows.map((r) => r.rain);
 
                 const stationUuid = await getStationId(stationCodeOrId);
-                const fcRows = stationUuid
-                    ? await fetchForecastLatestSeries(stationUuid, hours, 48, state.abort.signal)
-                    : [];
+                const fcRows = stationUuid ? await fetchForecastLatestSeries(stationUuid, hours, 48, state.abort.signal) : [];
 
                 const f_ts = fcRows.map((r) => r.valid_time);
                 const f_wspd = fcRows.map((r) => r.wind_speed_kt);
@@ -844,10 +830,7 @@
                     gust.filter((v) => v != null).length,
                     wdir.filter((v) => v != null).length
                 );
-                const nonNullMSLP = Math.max(
-                    mslp.filter((v) => v != null).length,
-                    rain.filter((v) => v != null).length
-                );
+                const nonNullMSLP = Math.max(mslp.filter((v) => v != null).length, rain.filter((v) => v != null).length);
 
                 statusEl.textContent = `${state.mode === "wind" ? nonNullWind : nonNullMSLP} pts`;
                 setDisabled(false);
