@@ -72,106 +72,158 @@
             width: auto;
             display: block;
             object-fit: contain;
-            filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.18));
         }
 
         .hud-title {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            color: var(--text);
-            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+            margin-top: 18px;
+            line-height: 1.1;
+            pointer-events: none;
+            color: #0b0f1a;
         }
 
-        .hud-title .h1 {
-            font-size: clamp(22px, 2.1vw, 32px);
-            font-weight: 950;
-            letter-spacing: 0.2px;
-            line-height: 1.05;
+        .hud-title h1 {
+            margin: 0;
+            font-size: clamp(28px, 2.6vw, 44px);
+            font-weight: 800;
+            letter-spacing: -0.02em;
         }
 
         .hud-title .sub {
-            font-size: clamp(14px, 1.25vw, 18px);
-            font-weight: 750;
-            color: var(--muted);
-            line-height: 1.05;
+            margin-top: 6px;
+            font-size: clamp(13px, 1.2vw, 16px);
+            color: rgba(11, 15, 26, 0.72);
+            font-weight: 600;
         }
 
-        /* Status as plain text */
-        .status-text {
-            margin-left: 16px;
-            font-size: clamp(16px, 1.4vw, 22px);
-            font-weight: 900;
-            color: var(--text);
-            text-shadow: 0 2px 0 rgba(255, 255, 255, 0.75);
-            white-space: nowrap;
+        .hud-title .meta {
+            margin-top: 8px;
+            font-size: clamp(12px, 1.05vw, 14px);
+            color: rgba(11, 15, 26, 0.62);
+            font-weight: 600;
         }
 
-        /* Refresh in top-right (clickable) */
-        #refreshBtn {
+        .hud-right {
             position: absolute;
+            right: 16px;
             top: 12px;
-            right: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
             pointer-events: auto;
-            background: var(--accent);
-            color: #062b2a;
-            border: 0;
-            border-radius: 12px;
-            padding: 0.58rem 0.95rem;
-            font-weight: 900;
-            cursor: pointer;
-            box-shadow: 0 10px 22px rgba(20, 184, 166, 0.18);
-            transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
+            align-items: flex-end;
         }
 
-        #refreshBtn:hover {
-            transform: translateY(-1px);
-            filter: brightness(1.02);
-        }
-
-        #refreshBtn:disabled {
-            opacity: 0.6;
-            cursor: default;
-            transform: none;
-        }
-
-        /* Legend to match: white card + black text */
-        .legend {
-            position: absolute;
-            right: 12px;
-            bottom: 12px;
-            z-index: 999;
-            background: rgba(255, 255, 255, 0.9);
+        .btn {
+            pointer-events: auto;
+            appearance: none;
             border: 1px solid var(--hud-border);
-            border-radius: 14px;
-            padding: 10px 12px;
+            background: rgba(20, 184, 166, 0.9);
+            color: #05201d;
+            padding: 10px 14px;
+            font-size: 14px;
+            font-weight: 800;
+            border-radius: 10px;
             box-shadow: var(--hud-shadow);
-            font: 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial;
-            color: var(--text);
-            backdrop-filter: blur(10px);
-            pointer-events: none;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        /* Legend box */
+        .legend {
+            pointer-events: auto;
+            background: var(--hud-bg);
+            border: 1px solid var(--hud-border);
+            border-radius: 12px;
+            box-shadow: var(--hud-shadow);
+            padding: 10px 12px;
+            min-width: 180px;
         }
 
         .legend h3 {
-            margin: 0 0 6px 0;
-            font-size: 12px;
-            font-weight: 950;
-            color: var(--text);
+            margin: 0 0 8px 0;
+            font-size: 13px;
+            font-weight: 900;
+            color: rgba(11, 15, 26, 0.82);
         }
 
-        .legend .row {
+        .legend-row {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin: 4px 0;
-            color: rgba(0, 0, 0, 0.75);
+            gap: 10px;
+            margin: 6px 0;
+            font-size: 12px;
+            font-weight: 700;
+            color: rgba(11, 15, 26, 0.72);
         }
 
-        .chip {
+        .swatch {
             width: 18px;
             height: 10px;
-            border-radius: 3px;
-            border: 1px solid rgba(0, 0, 0, 0.25);
+            border-radius: 4px;
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            flex: 0 0 auto;
+        }
+
+        /* Popup canvas container */
+        .popup-wrap {
+            width: 360px;
+            max-width: 92vw;
+        }
+
+        .popup-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+            margin: 0 0 8px 0;
+        }
+
+        .popup-controls label {
+            font-size: 12px;
+            font-weight: 800;
+            color: rgba(11, 15, 26, 0.65);
+        }
+
+        select {
+            border: 1px solid rgba(0, 0, 0, 0.18);
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-weight: 800;
+            background: white;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 180px !important;
+        }
+
+        .leaflet-popup-content {
+            margin: 12px 14px;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            box-shadow: var(--hud-shadow);
+            font-size: 12px;
+            font-weight: 800;
+            color: rgba(11, 15, 26, 0.72);
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #14b8a6;
         }
     </style>
 </head>
@@ -179,332 +231,123 @@
 <body>
     <div id="map"></div>
 
-    <!-- Overlay HUD -->
     <div class="hud">
         <div class="hud-left">
-            <img id="logo" src="aura-logo.png" alt="Aura" />
+            <img id="logo" src="aura-logo.png" alt="Aura Weather logo" />
             <div class="hud-title">
-                <div class="h1">Solent Live Observations</div>
+                <h1>Solent Live Observations</h1>
                 <div class="sub">Wind • Gust • Direction • MSLP • Rain</div>
+                <div class="meta" id="metaLine">Stations: — • Updated: —</div>
             </div>
-            <div id="status" class="status-text">Loading…</div>
         </div>
 
-        <button id="refreshBtn" title="Refresh now">Refresh</button>
+        <div class="hud-right">
+            <button class="btn" id="refreshBtn">Refresh</button>
 
-        <!-- Legend -->
-        <div class="legend" id="legend">
-            <h3>Wind speed (kt)</h3>
-            <div class="row"><span class="chip" style="background:#00008b"></span> 0–3</div>
-            <div class="row"><span class="chip" style="background:#4169e1"></span> 3–5</div>
-            <div class="row"><span class="chip" style="background:#00ffcc"></span> 5–10</div>
-            <div class="row"><span class="chip" style="background:#00ff00"></span> 10–20</div>
-            <div class="row"><span class="chip" style="background:#00cc00"></span> 20–22</div>
-            <div class="row"><span class="chip" style="background:#ff9900"></span> 22–30</div>
-            <div class="row"><span class="chip" style="background:#ff0000"></span> 30–33</div>
-            <div class="row"><span class="chip" style="background:#b22222"></span> 33–40</div>
-            <div class="row"><span class="chip" style="background:#8b008b"></span> 40–60</div>
-            <div class="row"><span class="chip" style="background:#800080"></span> 60+</div>
+            <div class="legend" id="legendBox">
+                <h3>Wind speed (kt)</h3>
+                <div class="legend-row"><span class="swatch" style="background:#2b2d42"></span> 0–3</div>
+                <div class="legend-row"><span class="swatch" style="background:#1d3557"></span> 3–5</div>
+                <div class="legend-row"><span class="swatch" style="background:#457b9d"></span> 5–10</div>
+                <div class="legend-row"><span class="swatch" style="background:#2a9d8f"></span> 10–20</div>
+                <div class="legend-row"><span class="swatch" style="background:#2a9d19"></span> 20–22</div>
+                <div class="legend-row"><span class="swatch" style="background:#f4a261"></span> 22–30</div>
+                <div class="legend-row"><span class="swatch" style="background:#e63946"></span> 30–33</div>
+                <div class="legend-row"><span class="swatch" style="background:#c1121f"></span> 33–40</div>
+                <div class="legend-row"><span class="swatch" style="background:#780000"></span> 40–60</div>
+                <div class="legend-row"><span class="swatch" style="background:#4b0082"></span> 60+</div>
+            </div>
         </div>
     </div>
 
-    <script>
-        const statusEl = document.getElementById("status");
-        const setStatus = (s) => {
-            if (statusEl) statusEl.textContent = s;
-        };
-
-        window.addEventListener("error", (e) => {
-            console.error("Global error:", e.error || e.message);
-            setStatus("Script error");
-        });
-
-        window.addEventListener("unhandledrejection", (e) => {
-            console.error("Unhandled promise:", e.reason);
-            setStatus("Load failed");
-        });
-
-        /* ---------------- Config ---------------- */
-        const OBS_URL = "./solent_obs.json";
-        const AUTO_REFRESH_MS = 10 * 60 * 1000;
-
-        const ARROW_SIZE_PX = 96;
-        const ARROW_FONT_PX = 20;
-
-        const BREAKS = [0, 3, 5, 10, 20, 22, 30, 33, 40, 60];
-        const COLORS = [
-            "#00008b",
-            "#4169e1",
-            "#00ffcc",
-            "#00ff00",
-            "#00cc00",
-            "#ff9900",
-            "#ff0000",
-            "#b22222",
-            "#8b008b",
-            "#800080",
-        ];
-
-        const lerp = (a, b, t) => a + (b - a) * t;
-
-        function mixHex(a, b, t) {
-            const pa = parseInt(a.slice(1), 16);
-            const pb = parseInt(b.slice(1), 16);
-
-            const ar = (pa >> 16) & 255,
-                ag = (pa >> 8) & 255,
-                ab = pa & 255;
-            const br = (pb >> 16) & 255,
-                bg = (pb >> 8) & 255,
-                bb = pb & 255;
-
-            const r = Math.round(lerp(ar, br, t));
-            const g = Math.round(lerp(ag, bg, t));
-            const b2 = Math.round(lerp(ab, bb, t));
-            return `#${((r << 16) | (g << 8) | b2).toString(16).padStart(6, "0")}`;
-        }
-
-        function colorForSpeed(spd) {
-            if (spd == null || Number.isNaN(spd)) return "#999";
-            for (let i = 0; i < BREAKS.length - 1; i++) {
-                const lo = BREAKS[i],
-                    hi = BREAKS[i + 1];
-                if (spd <= hi) {
-                    const t = Math.max(0, Math.min(1, (spd - lo) / Math.max(1e-9, hi - lo)));
-                    return mixHex(COLORS[i], COLORS[i + 1], t);
-                }
-            }
-            return COLORS.at(-1);
-        }
-
-        // Meteorological: direction is FROM; arrow points TO -> add 180
-        const rotateFromDirDeg = (d) => (Number(d) + 180) % 360;
-
-        function svgStationArrow(color, size = ARROW_SIZE_PX) {
-            const stroke = Math.max(4, size / 12).toFixed(1);
-            return `
-          <svg width="${size}" height="${size}" viewBox="0 0 64 64"
-            xmlns="http://www.w3.org/2000/svg"
-            style="filter:drop-shadow(0 0 3px rgba(0,0,0,.35));">
-            <g transform="translate(32,32)">
-              <line x1="0" y1="20" x2="0" y2="-16"
-                stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"/>
-              <polygon points="0,-26 -10,-8 10,-8" fill="${color}"/>
-            </g>
-          </svg>
-        `;
-        }
-
-        // map + layers
-        const map = L.map("map", { zoomControl: true });
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-            attribution: "&copy; OpenStreetMap, &copy; CARTO",
-        }).addTo(map);
-
-        const layerStations = L.layerGroup().addTo(map);
-
-        const refreshBtn = document.getElementById("refreshBtn");
-        refreshBtn.addEventListener("click", () => loadObs(true));
-
-        function clearStations() {
-            layerStations.clearLayers();
-        }
-
-        function addStationMarker(st) {
-            if (st.lat == null || st.lon == null || st.wspd_kn == null || st.wdir_degT == null) return;
-
-            const color = colorForSpeed(st.wspd_kn);
-            const rotate = rotateFromDirDeg(st.wdir_degT);
-            const arrow = svgStationArrow(color, ARROW_SIZE_PX);
-
-            const html = `
-          <div style="transform:rotate(${rotate}deg)">${arrow}</div>
-          <div style="
-            position:relative;
-            top:-${ARROW_SIZE_PX / 2 - 2}px;
-            width:${ARROW_SIZE_PX}px;
-            text-align:center;
-            font:800 ${ARROW_FONT_PX}px/1 system-ui;
-            color:#111;
-            text-shadow:0 0 2px #fff,0 0 8px rgba(255,255,255,.95);
-          ">${Math.round(st.wspd_kn)}</div>
-        `;
-
-            const icon = L.divIcon({
-                html,
-                iconSize: [ARROW_SIZE_PX, ARROW_SIZE_PX],
-                iconAnchor: [ARROW_SIZE_PX / 2, ARROW_SIZE_PX / 2],
-                className: "",
-            });
-
-            const m = L.marker([st.lat, st.lon], { icon }).addTo(layerStations);
-
-            const gustText = st.gust_kn == null ? "" : ` gust ${Math.round(st.gust_kn)}`;
-            const label = `${st.station_name || st.station_id}<br>${Math.round(st.wspd_kn)} kt${gustText}`;
-            m.bindTooltip(label);
-
-            m.on("click", (e) => {
-                L.DomEvent.stop(e);
-
-                const mount = document.createElement("div");
-                mount.style.width = "420px";
-
-                const popup = L.popup({
-                    maxWidth: 560,
-                    autoClose: true,
-                    closeOnClick: true,
-                    closeButton: false,
-                    offset: [0, -12],
-                })
-                    .setLatLng([st.lat, st.lon])
-                    .setContent(mount)
-                    .openOn(map);
-
-                if (window.attachTimeseriesTo) {
-                    window.attachTimeseriesTo(mount, st.station_id, 24, popup);
-                }
-            });
-        }
-
-        function fitToDataBounds(points) {
-            if (!points.length) return;
-
-            let latMin = 90,
-                latMax = -90,
-                lonMin = 180,
-                lonMax = -180;
-
-            for (const p of points) {
-                if (p.lat != null && p.lon != null) {
-                    latMin = Math.min(latMin, p.lat);
-                    latMax = Math.max(latMax, p.lat);
-                    lonMin = Math.min(lonMin, p.lon);
-                    lonMax = Math.max(lonMax, p.lon);
-                }
-            }
-
-            map.fitBounds(
-                [
-                    [latMin - 0.06, lonMin - 0.1],
-                    [latMax + 0.06, lonMax + 0.1],
-                ],
-                { padding: [20, 20] }
-            );
-        }
-
-        let autoTimer = null;
-
-        async function loadObs(fromButton = false) {
-            try {
-                refreshBtn.disabled = true;
-                setStatus(fromButton ? "Refreshing…" : "Loading…");
-
-                const res = await fetch(`${OBS_URL}?ts=${Date.now()}`, { cache: "no-store" });
-                if (!res.ok) {
-                    setStatus(`Fetch ${res.status}`);
-                    throw new Error(`HTTP ${res.status}`);
-                }
-
-                let data;
-                try {
-                    data = await res.json();
-                } catch (e) {
-                    const txt = await res.text();
-                    console.error("JSON parse failed:", txt.slice(0, 200));
-                    setStatus("Invalid JSON");
-                    throw e;
-                }
-
-                const rows = Array.isArray(data?.obs) ? data.obs : Array.isArray(data) ? data : [];
-                const obs = rows.map((r) => ({
-                    lat: r.lat ?? r.latitude ?? r.Latitude,
-                    lon: r.lon ?? r.longitude ?? r.Longitude,
-                    wspd_kn: r.wspd_kn ?? r.wind_speed_kt ?? r.wspd ?? r.wind_knots ?? r.wind_speed,
-                    gust_kn: r.gust_kn ?? r.wind_gust_kt ?? r.wind_gust ?? r.gust ?? null,
-                    wdir_degT: r.wdir_degT ?? r.wind_dir_deg ?? r.wdir ?? r.direction ?? r.wind_direction,
-                    pressure_hpa: r.pressure ?? r.mslp ?? r.mslp_hpa ?? null,
-                    precip_mm: r.precip_mm ?? r.precipitation ?? null,
-                    station_name: r.station_name ?? r.name ?? r.Site ?? r.station_id ?? r.site_id ?? r.id,
-                    station_id: r.station_id ?? r.site_id ?? r.id,
-                }));
-
-                const ok = obs.filter(
-                    (r) => r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null
-                );
-
-                clearStations();
-                for (const r of ok) addStationMarker(r);
-
-                if (ok.length) {
-                    if (!map._fitDone || fromButton) {
-                        fitToDataBounds(ok);
-                        map._fitDone = true;
-                    }
-                    const gen = data?.meta?.generated_at || new Date().toISOString();
-                    setStatus(`Stations: ${ok.length} • Updated: ${gen}`);
-                } else {
-                    setStatus("No stations in data");
-                    console.warn("Sample rows:", rows.slice(0, 3));
-                }
-            } catch (e) {
-                console.error(e);
-                setStatus("Load failed");
-            } finally {
-                refreshBtn.disabled = false;
-
-                if (autoTimer) clearTimeout(autoTimer);
-                autoTimer = setTimeout(loadObs, AUTO_REFRESH_MS);
-            }
-        }
-
-        document.addEventListener("DOMContentLoaded", () => loadObs(false));
-        map.whenReady(() => {
-            if (!map._fitDone) loadObs(false);
-        });
-    </script>
-
-    <!-- Supabase -->
+    <!-- Supabase client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <script>
-        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c"
-        // IMPORTANT: name this `sb` to avoid colliding with window.supabase
-        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    </script>
+        // ---------------------------
+        // Config
+        // ---------------------------
+        // NOTE: These are public anon keys. If you rotate keys, update them here.
+        const SUPABASE_URL = "https://kphwhiwyvqhxvbruxybh.supabase.co";
+        const SUPABASE_ANON_KEY =
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1pby1qd3QiLCJyZWYiOiJrcGh3aGl3eXd2cWh4dmJydXh5YmgiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcyNzkwMDA1NiwiZXhwIjoyMDQzNDc2MDU2fQ.PY1uWSwOUu4HfKZQfP6b2k4HkqO4x9kRpsgCtvv2Qyw";
 
-    <!-- Time-series + Forecast overlay + Source toggle -->
-    <script>
-        const stationIdCache = new Map();
-        const seriesCache = new Map();
-        const STATION_CACHE_MS = 24 * 3600 * 1000;
-        const SERIES_CACHE_MS = 2 * 60 * 1000;
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const now = () => Date.now();
-        const UUID_RE =
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        // ---------------------------
+        // Helpers
+        // ---------------------------
+        function now() { return Date.now(); }
 
-        function windowISO(hours, ref = new Date()) {
-            const end = new Date(ref);
-            const start = new Date(end.getTime() - hours * 3600 * 1000);
-            return { startISO: start.toISOString(), endISO: end.toISOString() };
+        function windColor(kt) {
+            if (kt == null || isNaN(kt)) return "#999";
+            if (kt < 3) return "#2b2d42";
+            if (kt < 5) return "#1d3557";
+            if (kt < 10) return "#457b9d";
+            if (kt < 20) return "#2a9d8f";
+            if (kt < 22) return "#2a9d19";
+            if (kt < 30) return "#f4a261";
+            if (kt < 33) return "#e63946";
+            if (kt < 40) return "#c1121f";
+            if (kt < 60) return "#780000";
+            return "#4b0082";
         }
+
+        function degToRad(d) { return (d * Math.PI) / 180; }
+        function radToDeg(r) { return (r * 180) / Math.PI; }
+
+        function averageDirDeg(dirs) {
+            // circular mean
+            const valid = dirs.filter((d) => d != null && !isNaN(d));
+            if (!valid.length) return null;
+            let x = 0, y = 0;
+            for (const d of valid) {
+                const r = degToRad(d);
+                x += Math.cos(r);
+                y += Math.sin(r);
+            }
+            const mean = radToDeg(Math.atan2(y, x));
+            return (mean + 360) % 360;
+        }
+
+        function formatUpdated(tsIso) {
+            try {
+                const d = new Date(tsIso);
+                // Format: YYYY-MM-DDTHH:mm:ssZ
+                const pad = (n) => String(n).padStart(2, "0");
+                return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}Z`;
+            } catch {
+                return tsIso;
+            }
+        }
+
+        // ---------------------------
+        // Fetch observations JSON (map markers)
+        // ---------------------------
+        async function fetchObsJson() {
+            const r = await fetch("solent_obs.json", { cache: "no-store" });
+            if (!r.ok) throw new Error(`Failed to fetch solent_obs.json: ${r.status}`);
+            return r.json();
+        }
+
+        // ---------------------------
+        // Supabase queries for popup timeseries
+        // ---------------------------
+        // Cache station code->uuid to avoid repeated lookups
+        const stationIdCache = new Map(); // key -> {id, ts}
 
         async function getStationId(idOrCode) {
-            if (!idOrCode) return null;
-            if (UUID_RE.test(idOrCode)) return idOrCode;
-
             const cached = stationIdCache.get(idOrCode);
-            if (cached && now() - cached.ts < STATION_CACHE_MS) return cached.id;
+            if (cached && now() - cached.ts < 5 * 60 * 1000) return cached.id;
 
             const { data, error } = await sb
                 .from("stations")
                 .select("id")
                 .eq("code", idOrCode)
-                .limit(1)
                 .maybeSingle();
 
             if (error) {
-                console.error("[stations lookup]", error);
+                console.warn("getStationId error", error);
                 return null;
             }
 
@@ -513,8 +356,17 @@
             return id;
         }
 
+        // ✅ NEW: normalize timestamps so obs & forecast align in charts
+        function toISO(ts) {
+            if (!ts) return null;
+            const d = new Date(ts);
+            if (Number.isNaN(d.getTime())) return null;
+            return d.toISOString();
+        }
+
         function normalizeRow(r) {
-            const ts = r.observed_at || r.ts || r.time || r.datetime;
+            const rawTs = r.observed_at || r.ts || r.time || r.datetime;
+            const ts = toISO(rawTs);
             const wspd = r.wind_speed ?? r.wind_speed_kt ?? r.wspd ?? r.wspd_kn ?? null;
             const gust = r.wind_gust ?? r.wind_gust_kt ?? r.gust ?? r.gust_kn ?? null;
             const wdir = r.wind_direction ?? r.wind_dir_deg ?? r.wdir ?? r.dir ?? null;
@@ -523,193 +375,201 @@
             return { ts, wspd, gust, wdir, mslp, rain };
         }
 
-        async function fetchObsSeriesByCode(idOrCode, hours, signal) {
-            const cacheKey = `${idOrCode}|${hours}`;
-            const cached = seriesCache.get(cacheKey);
-            if (cached && now() - cached.ts < SERIES_CACHE_MS) return cached.data;
-
-            const stationId = await getStationId(idOrCode);
-            if (!stationId) return [];
-
-            const { startISO, endISO } = windowISO(hours);
-
-            let query = sb
+        async function fetchObsSeries(stationUuid, hours, signal) {
+            const since = new Date(Date.now() - hours * 3600 * 1000).toISOString();
+            const { data, error } = await sb
                 .from("observations")
-                .select("*")
-                .eq("station_id", stationId)
-                .gte("observed_at", startISO)
-                .lte("observed_at", endISO)
-                .order("observed_at", { ascending: true });
+                .select("observed_at, wind_speed_kt, wind_gust_kt, wind_dir_deg, mslp_hpa, precip_mm")
+                .eq("station_id", stationUuid)
+                .gte("observed_at", since)
+                .order("observed_at", { ascending: true })
+                .abortSignal(signal);
 
-            if (typeof query.abortSignal === "function" && signal) query = query.abortSignal(signal);
-
-            const { data, error } = await query;
-
-            if (signal?.aborted) return [];
-            if (error) {
-                console.error("[observations select]", error);
-                return [];
-            }
-
-            const rows = (data || []).map(normalizeRow).filter((r) => r.ts);
-            seriesCache.set(cacheKey, { data: rows, ts: now() });
-            return rows;
+            if (error) throw error;
+            return (data || []).map(normalizeRow);
         }
 
-        async function fetchForecastLatestSeries(idOrCodeOrId, hoursBack = 24, hoursFwd = 48, signal) {
-            const stationId = await getStationId(idOrCodeOrId);
-            if (!stationId) return [];
+        async function fetchForecastLatestSeries(stationUuid, hours, maxHours, signal) {
+            // Fetch a window of forecast from latest run
+            // Table: forecast_hourly_latest with valid_time, wind_speed_kt, wind_gust_kt, wind_dir_deg, mslp_hpa, precip_mm
+            const since = new Date(Date.now() - hours * 3600 * 1000).toISOString();
+            const until = new Date(Date.now() + maxHours * 3600 * 1000).toISOString();
 
-            const nowMs = Date.now();
-            const startISO = new Date(nowMs - hoursBack * 3600 * 1000).toISOString();
-            const endISO = new Date(nowMs + hoursFwd * 3600 * 1000).toISOString();
-
-            let q = sb
+            const { data, error } = await sb
                 .from("forecast_hourly_latest")
-                .select("*")
-                .eq("station_id", stationId)
-                .gte("valid_time", startISO)
-                .lte("valid_time", endISO)
-                .order("valid_time", { ascending: true });
+                .select("valid_time, wind_speed_kt, wind_gust_kt, wind_dir_deg, mslp_hpa, precip_mm")
+                .eq("station_id", stationUuid)
+                .gte("valid_time", since)
+                .lte("valid_time", until)
+                .order("valid_time", { ascending: true })
+                .abortSignal(signal);
 
-            if (typeof q.abortSignal === "function" && signal) q = q.abortSignal(signal);
-
-            const { data, error } = await q;
-
-            if (signal?.aborted) return [];
-            if (error) {
-                console.error("[forecast_latest select]", error);
-                return [];
-            }
+            if (error) throw error;
             return data || [];
         }
 
-        function align(labels, xs, ys) {
-            const m = new Map(xs.map((x, i) => [x, ys[i]]));
-            return labels.map((t) => (m.has(t) ? m.get(t) : null));
+        // ---------------------------
+        // Chart utils
+        // ---------------------------
+        function align(labels, x, y) {
+            const map = new Map();
+            for (let i = 0; i < x.length; i++) map.set(x[i], y[i]);
+            return labels.map((t) => (map.has(t) ? map.get(t) : null));
         }
 
-        async function attachTimeseriesTo(containerEl, stationCodeOrId, defaultHours = 6, leafletPopup = null) {
-            if (containerEl.dataset.bound === "1") return;
-            containerEl.dataset.bound = "1";
+        function makeCommonOptions() {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: {
+                    legend: { position: "bottom", labels: { boxWidth: 20, usePointStyle: false } },
+                    tooltip: { mode: "index", intersect: false },
+                },
+                interaction: { mode: "index", intersect: false },
+                scales: {
+                    x: {
+                        type: "time",
+                        time: { unit: "hour", displayFormats: { hour: "ha" } },
+                        ticks: { maxRotation: 45, minRotation: 45 },
+                    },
+                    y: { beginAtZero: false },
+                },
+            };
+        }
 
-            containerEl.__tsState = {
-                req: 0,
-                abort: null,
-                speedChart: null,
+        function makeDirOptions() {
+            const o = makeCommonOptions();
+            o.scales.y = {
+                min: 0,
+                max: 360,
+                ticks: {
+                    callback: (v) => v,
+                },
+            };
+            return o;
+        }
+
+        // ---------------------------
+        // Popup timeseries renderer
+        // ---------------------------
+        function attachTimeseriesTo(mount, stationCodeOrId, defaultHours, popup) {
+            const state = {
+                abort: new AbortController(),
+                mode: "wind",
+                hours: defaultHours,
+                windChart: null,
                 dirChart: null,
                 mslpRainChart: null,
-                mode: "wind",
             };
 
-            containerEl.innerHTML = `
-          <div style="width:400px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-              <span style="font-size:12px;opacity:.7;">Window:</span>
-              <select class="ts-window" style="font-size:12px;padding:2px 6px;border-radius:10px;">
-                <option value="3">3h</option>
-                <option value="6" selected>6h</option>
-                <option value="12">12h</option>
-                <option value="24">24h</option>
+            mount.innerHTML = `
+        <div class="popup-wrap">
+          <div class="popup-controls">
+            <div>
+              <label>Window:</label>
+              <select class="js-hours">
+                <option value="6">6h</option>
+                <option value="24" selected>24h</option>
+                <option value="72">72h</option>
               </select>
-              <span style="font-size:12px;opacity:.7;margin-left:10px;">Source:</span>
-              <select class="ts-source" style="font-size:12px;padding:2px 6px;border-radius:10px;">
+            </div>
+
+            <div>
+              <label>Source:</label>
+              <select class="js-mode">
                 <option value="wind" selected>Wind</option>
-                <option value="mslp">MSLP/Rain</option>
+                <option value="mslp">MSLP</option>
+                <option value="rain">Rain</option>
               </select>
             </div>
-
-            <div class="panel-wind">
-              <div style="width:100%;height:180px;position:relative;margin-bottom:10px;">
-                <canvas class="ts-canvas-speed" style="width:380px;height:180px;"></canvas>
-              </div>
-              <div style="width:100%;height:140px;position:relative;">
-                <canvas class="ts-canvas-dir" style="width:380px;height:140px;"></canvas>
-              </div>
-            </div>
-
-            <div class="panel-mslp" style="display:none;">
-              <div style="width:100%;height:200px;position:relative;">
-                <canvas class="ts-canvas-mslp" style="width:380px;height:200px;"></canvas>
-              </div>
-            </div>
-
-            <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
           </div>
-        `;
 
-            const selWindow = containerEl.querySelector(".ts-window");
-            const selSource = containerEl.querySelector(".ts-source");
-            const panelWind = containerEl.querySelector(".panel-wind");
-            const panelMSLP = containerEl.querySelector(".panel-mslp");
+          <div class="js-status status-pill" style="display:none">
+            <span class="dot"></span><span class="js-status-text">Loading…</span>
+          </div>
 
-            const speedCtx = containerEl.querySelector(".ts-canvas-speed").getContext("2d");
-            const dirCtx = containerEl.querySelector(".ts-canvas-dir").getContext("2d");
-            const mslpCtx = containerEl.querySelector(".ts-canvas-mslp").getContext("2d");
+          <div class="js-charts">
+            <canvas class="js-wind"></canvas>
+            <canvas class="js-dir" style="margin-top:8px"></canvas>
+            <canvas class="js-mslpRain" style="margin-top:8px; display:none"></canvas>
+          </div>
 
-            const statusEl = containerEl.querySelector(".ts-status");
-            const setDisabled = (d) => {
-                selWindow.disabled = d;
-                selSource.disabled = d;
-            };
+          <div class="js-empty" style="display:none; color: rgba(0,0,0,.55); font-weight:800; font-size:12px; margin-top:8px;">
+            No data
+          </div>
+        </div>
+      `;
 
-            function showMode(mode) {
-                containerEl.__tsState.mode = mode;
-                panelWind.style.display = mode === "wind" ? "" : "none";
-                panelMSLP.style.display = mode === "mslp" ? "" : "none";
+            const selHours = mount.querySelector(".js-hours");
+            const selMode = mount.querySelector(".js-mode");
+            const elEmpty = mount.querySelector(".js-empty");
+            const elStatus = mount.querySelector(".js-status");
+            const elStatusText = mount.querySelector(".js-status-text");
+            const cWind = mount.querySelector(".js-wind");
+            const cDir = mount.querySelector(".js-dir");
+            const cMslpRain = mount.querySelector(".js-mslpRain");
+
+            function setStatus(txt) {
+                elStatus.style.display = "inline-flex";
+                elStatusText.textContent = txt;
             }
 
-            function upsertWindCharts(labels, ts_obs, wspd, gust, wdir, ts_fcst, wspd_fc, gust_fc, wdir_fc) {
-                const speedData = {
+            function clearStatus() {
+                elStatus.style.display = "none";
+            }
+
+            function setEmpty(isEmpty) {
+                elEmpty.style.display = isEmpty ? "block" : "none";
+            }
+
+            function setDisabled(disabled) {
+                selHours.disabled = disabled;
+                selMode.disabled = disabled;
+            }
+
+            function destroyCharts() {
+                state.windChart?.destroy(); state.windChart = null;
+                state.dirChart?.destroy(); state.dirChart = null;
+                state.mslpRainChart?.destroy(); state.mslpRainChart = null;
+            }
+
+            function upsertWindCharts(labels, ts, wspd, gust, wdir, f_ts, f_wspd, f_gust, f_wdir) {
+                cWind.style.display = "";
+                cDir.style.display = "";
+                cMslpRain.style.display = "none";
+
+                const windData = {
                     labels,
                     datasets: [
                         {
                             label: "Wind (kt)",
-                            data: align(labels, ts_obs, wspd),
+                            data: align(labels, ts, wspd),
                             borderWidth: 2,
-                            pointRadius: 0,
-                            tension: 0.25,
-                            spanGaps: true,
+                            fill: false,
                         },
                         {
                             label: "Gust (kt)",
-                            data: align(labels, ts_obs, gust),
-                            borderWidth: 1,
-                            borderDash: [4, 3],
-                            pointRadius: 0,
-                            tension: 0.25,
-                            spanGaps: true,
+                            data: align(labels, ts, gust),
+                            borderWidth: 2,
+                            borderDash: [6, 4],
+                            fill: false,
                         },
                         {
                             label: "Fcst Wind (kt)",
-                            data: align(labels, ts_fcst, wspd_fc),
+                            data: align(labels, f_ts, f_wspd),
                             borderWidth: 2,
-                            pointRadius: 0,
-                            tension: 0.25,
-                            spanGaps: true,
-                            borderDash: [6, 4],
+                            borderDash: [3, 3],
+                            fill: false,
                         },
                         {
                             label: "Fcst Gust (kt)",
-                            data: align(labels, ts_fcst, gust_fc),
-                            borderWidth: 1,
-                            pointRadius: 0,
-                            tension: 0.25,
-                            spanGaps: true,
-                            borderDash: [2, 2],
+                            data: align(labels, f_ts, f_gust),
+                            borderWidth: 2,
+                            borderDash: [1, 3],
+                            fill: false,
                         },
                     ],
-                };
-
-                const nonNullSpeed = speedData.datasets.flatMap((d) => d.data || []).filter((v) => v != null);
-                const maxSpeed = Math.max(10, ...(nonNullSpeed.length ? nonNullSpeed : [0]));
-
-                const speedOpts = {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: { x: { type: "time" }, y: { suggestedMax: maxSpeed, title: { text: "kt", display: true } } },
-                    plugins: { legend: { position: "bottom" } },
-                    animation: { duration: 120 },
                 };
 
                 const dirData = {
@@ -717,112 +577,127 @@
                     datasets: [
                         {
                             label: "Direction (°)",
-                            data: align(labels, ts_obs, wdir),
-                            borderWidth: 1,
-                            pointRadius: 0,
-                            tension: 0.25,
-                            spanGaps: true,
+                            data: align(labels, ts, wdir),
+                            borderWidth: 2,
+                            fill: false,
                         },
                         {
                             label: "Fcst Dir (°)",
-                            data: align(labels, ts_fcst, wdir_fc),
-                            borderWidth: 1,
-                            pointRadius: 0,
-                            tension: 0.25,
-                            spanGaps: true,
-                            borderDash: [6, 4],
+                            data: align(labels, f_ts, f_wdir),
+                            borderWidth: 2,
+                            borderDash: [3, 3],
+                            fill: false,
                         },
                     ],
                 };
 
-                const dirOpts = {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: { x: { type: "time" }, y: { min: 0, max: 360, ticks: { stepSize: 90 }, title: { text: "°", display: true } } },
-                    plugins: { legend: { display: false } },
-                    animation: { duration: 120 },
-                };
-
-                if (!containerEl.__tsState.speedChart) {
-                    containerEl.__tsState.speedChart = new Chart(speedCtx, { type: "line", data: speedData, options: speedOpts });
+                if (!state.windChart) {
+                    state.windChart = new Chart(cWind.getContext("2d"), {
+                        type: "line",
+                        data: windData,
+                        options: makeCommonOptions(),
+                    });
                 } else {
-                    const c = containerEl.__tsState.speedChart;
-                    c.data = speedData;
-                    c.options = speedOpts;
-                    c.update();
+                    state.windChart.data = windData;
+                    state.windChart.update();
                 }
 
-                if (!containerEl.__tsState.dirChart) {
-                    containerEl.__tsState.dirChart = new Chart(dirCtx, { type: "line", data: dirData, options: dirOpts });
+                if (!state.dirChart) {
+                    state.dirChart = new Chart(cDir.getContext("2d"), {
+                        type: "line",
+                        data: dirData,
+                        options: makeDirOptions(),
+                    });
                 } else {
-                    const c2 = containerEl.__tsState.dirChart;
-                    c2.data = dirData;
-                    c2.options = dirOpts;
-                    c2.update();
+                    state.dirChart.data = dirData;
+                    state.dirChart.update();
                 }
             }
 
-            function upsertMSLPChart(labels, ts_obs, mslp_obs, rain_obs, ts_fcst, mslp_fc, rain_fc) {
+            function upsertMslpRain(labels, ts, mslp, rain, f_ts, f_mslp, f_rain) {
+                cWind.style.display = "none";
+                cDir.style.display = "none";
+                cMslpRain.style.display = "";
+
+                const isRain = state.mode === "rain";
+                const title = isRain ? "Rain (mm)" : "MSLP (hPa)";
+                const obs = isRain ? rain : mslp;
+                const fcst = isRain ? f_rain : f_mslp;
+
                 const data = {
                     labels,
                     datasets: [
-                        { label: "MSLP (hPa)", data: align(labels, ts_obs, mslp_obs), type: "line", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true },
-                        { label: "Fcst MSLP (hPa)", data: align(labels, ts_fcst, mslp_fc), type: "line", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [6, 4] },
-                        { label: "Rain (mm)", data: align(labels, ts_obs, rain_obs), type: "bar", yAxisID: "y1" },
-                        { label: "Fcst Rain (mm)", data: align(labels, ts_fcst, rain_fc), type: "bar", yAxisID: "y1" },
+                        {
+                            label: title,
+                            data: align(labels, ts, obs),
+                            borderWidth: 2,
+                            fill: false,
+                        },
+                        {
+                            label: `Fcst ${title}`,
+                            data: align(labels, f_ts, fcst),
+                            borderWidth: 2,
+                            borderDash: [3, 3],
+                            fill: false,
+                        },
                     ],
                 };
 
-                const nonNullMSLP = data.datasets[0].data.concat(data.datasets[1].data).filter((v) => v != null);
-                const yLeftMax = Math.max(1010, ...(nonNullMSLP.length ? nonNullMSLP : [1010]));
+                const opts = makeCommonOptions();
+                if (isRain) opts.scales.y.beginAtZero = true;
 
-                const opts = {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { type: "time" },
-                        y: { position: "left", suggestedMin: yLeftMax - 20, suggestedMax: yLeftMax + 20, title: { text: "hPa", display: true } },
-                        y1: { position: "right", grid: { drawOnChartArea: false }, title: { text: "mm", display: true } },
-                    },
-                    plugins: { legend: { position: "bottom" } },
-                    animation: { duration: 120 },
-                };
-
-                if (!containerEl.__tsState.mslpRainChart) {
-                    containerEl.__tsState.mslpRainChart = new Chart(mslpCtx, { data, options: opts });
+                if (!state.mslpRainChart) {
+                    state.mslpRainChart = new Chart(cMslpRain.getContext("2d"), {
+                        type: "line",
+                        data,
+                        options: opts,
+                    });
                 } else {
-                    const c = containerEl.__tsState.mslpRainChart;
-                    c.data = data;
-                    c.options = opts;
-                    c.update();
+                    state.mslpRainChart.data = data;
+                    state.mslpRainChart.options = opts;
+                    state.mslpRainChart.update();
                 }
             }
 
-            async function load(hours) {
-                const state = containerEl.__tsState;
-                const seq = ++state.req;
+            async function loadAndRender() {
+                setDisabled(true);
+                setEmpty(false);
+                setStatus("Loading…");
 
-                if (state.abort) {
-                    try {
-                        state.abort.abort();
-                    } catch { }
-                }
+                // Abort previous in-flight
+                try { state.abort.abort(); } catch { }
                 state.abort = new AbortController();
 
-                setDisabled(true);
-                statusEl.textContent = "Loading…";
+                const hours = Number(selHours.value);
+                const mode = selMode.value;
+                state.hours = hours;
+                state.mode = mode;
 
-                const obsRows = await fetchObsSeriesByCode(stationCodeOrId, hours, state.abort.signal);
-                if (seq !== state.req) return;
+                let obsRows = [];
+                try {
+                    const stationUuid = await getStationId(stationCodeOrId);
+                    if (!stationUuid) {
+                        destroyCharts();
+                        setEmpty(true);
+                        clearStatus();
+                        setDisabled(false);
+                        return;
+                    }
+
+                    obsRows = await fetchObsSeries(stationUuid, hours, state.abort.signal);
+                } catch (e) {
+                    console.warn("obs fetch error", e);
+                    destroyCharts();
+                    setEmpty(true);
+                    clearStatus();
+                    setDisabled(false);
+                    return;
+                }
 
                 if (!obsRows.length) {
-                    statusEl.textContent = "No data";
-                    state.speedChart?.destroy();
-                    state.speedChart = null;
-                    state.dirChart?.destroy();
-                    state.dirChart = null;
-                    state.mslpRainChart?.destroy();
-                    state.mslpRainChart = null;
+                    destroyCharts();
+                    setEmpty(true);
+                    clearStatus();
                     setDisabled(false);
                     return;
                 }
@@ -837,54 +712,167 @@
                 const stationUuid = await getStationId(stationCodeOrId);
                 const fcRows = stationUuid ? await fetchForecastLatestSeries(stationUuid, hours, 48, state.abort.signal) : [];
 
-                const f_ts = fcRows.map((r) => r.valid_time);
+                // ✅ NEW: normalize forecast timestamps to ISO so they match obs ts
+                const f_ts = fcRows.map((r) => toISO(r.valid_time)).filter(Boolean);
                 const f_wspd = fcRows.map((r) => r.wind_speed_kt);
                 const f_gust = fcRows.map((r) => r.wind_gust_kt);
                 const f_wdir = fcRows.map((r) => r.wind_dir_deg);
                 const f_mslp = fcRows.map((r) => r.mslp_hpa);
                 const f_rain = fcRows.map((r) => r.precip_mm);
 
-                const labels = Array.from(new Set([...ts, ...f_ts])).sort();
+                // ✅ NEW: ignore null timestamps when building label set
+                const labels = Array.from(new Set([...(ts || []).filter(Boolean), ...(f_ts || []).filter(Boolean)])).sort();
 
                 if (state.mode === "wind") {
                     upsertWindCharts(labels, ts, wspd, gust, wdir, f_ts, f_wspd, f_gust, f_wdir);
+                } else if (state.mode === "mslp") {
+                    upsertMslpRain(labels, ts, mslp, rain, f_ts, f_mslp, f_rain);
                 } else {
-                    upsertMSLPChart(labels, ts, mslp, rain, f_ts, f_mslp, f_rain);
+                    upsertMslpRain(labels, ts, mslp, rain, f_ts, f_mslp, f_rain);
                 }
 
-                if (leafletPopup?.update) {
-                    leafletPopup.update();
-                    setTimeout(() => {
-                        leafletPopup.update();
-                        state.speedChart?.resize();
-                        state.dirChart?.resize();
-                        state.mslpRainChart?.resize();
-                    }, 80);
-                }
-
-                const nonNullWind = Math.max(
-                    wspd.filter((v) => v != null).length,
-                    gust.filter((v) => v != null).length,
-                    wdir.filter((v) => v != null).length
-                );
-                const nonNullMSLP = Math.max(mslp.filter((v) => v != null).length, rain.filter((v) => v != null).length);
-
-                statusEl.textContent = `${state.mode === "wind" ? nonNullWind : nonNullMSLP} pts`;
+                clearStatus();
                 setDisabled(false);
             }
 
-            selWindow.addEventListener("change", () => load(parseInt(selWindow.value, 10)));
-            selSource.addEventListener("change", () => {
-                showMode(selSource.value);
-                load(parseInt(selWindow.value, 10));
+            selHours.addEventListener("change", loadAndRender);
+            selMode.addEventListener("change", loadAndRender);
+
+            // Ensure charts resize correctly inside Leaflet popup
+            popup.on("add", () => setTimeout(loadAndRender, 50));
+            popup.on("remove", () => {
+                try { state.abort.abort(); } catch { }
+                destroyCharts();
             });
 
-            showMode("wind");
-            selWindow.value = String(defaultHours);
-            load(defaultHours);
+            // initial
+            loadAndRender();
         }
 
-        window.attachTimeseriesTo = attachTimeseriesTo;
+        // ---------------------------
+        // Map + markers
+        // ---------------------------
+        const map = L.map("map", {
+            zoomControl: true,
+            preferCanvas: true
+        }).setView([50.79, -1.26], 10.25);
+
+        // Basemap
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Custom arrow marker (simple)
+        function makeArrowIcon(kt, dirDeg) {
+            const color = windColor(kt);
+            const size = 28;
+            const rot = (dirDeg ?? 0) - 90; // point arrow to direction
+            const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 64 64">
+        <g transform="translate(32,32) rotate(${rot}) translate(-32,-32)">
+          <path d="M8 32 L52 20 L52 28 L56 28 L56 36 L52 36 L52 44 Z" fill="${color}" stroke="rgba(0,0,0,.25)" stroke-width="2" />
+        </g>
+      </svg>`;
+            return L.divIcon({
+                className: "",
+                html: svg,
+                iconSize: [size, size],
+                iconAnchor: [size / 2, size / 2],
+            });
+        }
+
+        // Marker layer
+        const markersLayer = L.layerGroup().addTo(map);
+
+        function stationPopupHtml(st) {
+            const name = st.name || st.station_id || st.id || "Station";
+            const wspd = st.wind_speed_kt ?? st.wind_speed ?? null;
+            const gust = st.wind_gust_kt ?? st.gust ?? null;
+            const wdir = st.wind_dir_deg ?? st.wind_dir ?? null;
+
+            const wrap = document.createElement("div");
+            wrap.className = "popup-wrap";
+
+            const title = document.createElement("div");
+            title.style.fontWeight = "900";
+            title.style.marginBottom = "8px";
+            title.textContent = name;
+
+            const mount = document.createElement("div");
+            wrap.appendChild(title);
+            wrap.appendChild(mount);
+
+            // Attach charts on popup open
+            return { wrap, mount };
+        }
+
+        async function refreshMap() {
+            const metaLine = document.getElementById("metaLine");
+            markersLayer.clearLayers();
+
+            let json;
+            try {
+                json = await fetchObsJson();
+            } catch (e) {
+                console.error(e);
+                metaLine.textContent = "Stations: — • Updated: —";
+                return;
+            }
+
+            const stations = (json.stations || json || []).map((r) => ({
+                ...r,
+                station_id: r.station_id ?? r.site_id ?? r.id ?? r.name,
+            }));
+
+            const updated = json.updated_at || json.updated || new Date().toISOString();
+            metaLine.textContent = `Stations: ${stations.length} • Updated: ${formatUpdated(updated)}`;
+
+            for (const st of stations) {
+                const lat = st.lat ?? st.latitude;
+                const lon = st.lon ?? st.longitude;
+                if (lat == null || lon == null) continue;
+
+                const wspd = st.wind_speed_kt ?? st.wind_speed ?? null;
+                const wdir = st.wind_dir_deg ?? st.wind_dir ?? null;
+
+                const icon = makeArrowIcon(wspd, wdir);
+
+                const m = L.marker([lat, lon], { icon }).addTo(markersLayer);
+
+                // Add numeric label
+                const label = (wspd == null || isNaN(wspd)) ? "" : `${Math.round(wspd)}`;
+                if (label) {
+                    const labelIcon = L.divIcon({
+                        className: "",
+                        html: `<div style="
+              font-weight: 900;
+              font-size: 14px;
+              color: #000;
+              text-shadow: 0 1px 2px rgba(255,255,255,.8);
+              transform: translate(12px, 6px);
+            ">${label}</div>`,
+                        iconSize: [1, 1],
+                        iconAnchor: [0, 0],
+                    });
+                    L.marker([lat, lon], { icon: labelIcon, interactive: false }).addTo(markersLayer);
+                }
+
+                const { wrap, mount } = stationPopupHtml(st);
+                const popup = L.popup({ maxWidth: 420 }).setContent(wrap);
+                m.bindPopup(popup);
+
+                // When popup opens, attach chart
+                m.on("popupopen", () => {
+                    attachTimeseriesTo(mount, st.station_id, 24, popup);
+                });
+            }
+        }
+
+        document.getElementById("refreshBtn").addEventListener("click", refreshMap);
+
+        // initial load
+        refreshMap();
     </script>
 </body>
 
