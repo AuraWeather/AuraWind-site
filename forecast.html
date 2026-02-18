@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Aura — Free Forecast (Solent)</title>
+  <title>Aura — Forecast (Solent)</title>
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -324,7 +324,7 @@
     <div class="top">
       <div class="brand">
         <div>
-          <h1>Free Forecast</h1>
+          <h1>Forecast</h1>
           <div class="sub">Today + Tomorrow only • Solent stations • Aura style</div>
         </div>
       </div>
@@ -454,17 +454,11 @@
   </div>
 
   <script>
-    /* ========= CONFIG =========
-       Set these to match your working live map page.
-    */
+    /* ========= CONFIG ========= */
     const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";
+    const FORECAST_TABLE = "forecast_hourly_latest"; // adjust if needed
 
-    // Table name you already use for station forecasts.
-    // Adjust if yours differs.
-    const FORECAST_TABLE = "forecast_hourly_latest"; // station_id, valid_time, wind_speed_kt, wind_gust_kt, wind_dir_deg, air_temp_c, cloud_pct, rain_risk_pct
-
-    // Solent = UK; using browser timezone is OK. (If you later add global stations, store timezone per station.)
     const TZ_LABEL = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
 
     /* ========= State ========= */
@@ -519,7 +513,6 @@
       return dirs[i];
     }
 
-    // Circular mean for directions in degrees
     function circularMean(degs) {
       const vals = degs.filter(v => v != null && !isNaN(v));
       if (!vals.length) return null;
@@ -546,14 +539,8 @@
       if (!v.length) return null;
       return Math.max(...v);
     }
-    function range(arr) {
-      const v = arr.filter(x => x != null && !isNaN(x));
-      if (!v.length) return [null, null];
-      return [Math.min(...v), Math.max(...v)];
-    }
 
     function steadinessMetric(windDirArr) {
-      // crude: 1 sigma of direction changes (degrees)
       const v = windDirArr.filter(x => x != null && !isNaN(x));
       if (v.length < 2) return null;
       const mu = circularMean(v);
@@ -581,7 +568,6 @@
     }
 
     async function loadStations() {
-      // Prefer real names if you have them; fallback to code
       const rows = await sbGet(`stations?select=id,code,name,latitude,longitude&order=code.asc`);
       stations = rows || [];
       const sel = document.getElementById("stationSelect");
@@ -592,88 +578,82 @@
         opt.textContent = (s.name && s.name.trim()) ? s.name : (s.code || s.id);
         sel.appendChild(opt);
       });
-      // default: first station
       if (stations.length) sel.value = stations[0].id;
     }
 
     async function loadForecastDay(stationId, which) {
       const { start, end } = dayBoundsLocal(which);
-      // Only today/tomorrow (hard limit)
       const startISO = iso(start);
       const endISO = iso(end);
 
-      const q = `${FORECAST_TABLE}?select=valid_time,wind_speed_kt,wind_gust_kt,wind_dir_deg,air_temp_c,cloud_pct,rain_risk_pct&station_id=eq.${stationId}` +
-        `&valid_time=gte.${encodeURIComponent(startISO)}&valid_time=lte.${encodeURIComponent(endISO)}` +
+      const q =
+        `${FORECAST_TABLE}?select=valid_time,wind_speed_kt,wind_gust_kt,wind_dir_deg,air_temp_c,cloud_pct,rain_risk_pct` +
+        `&station_id=eq.${stationId}` +
+        `&valid_time=gte.${encodeURIComponent(startISO)}` +
+        `&valid_time=lte.${encodeURIComponent(endISO)}` +
         `&order=valid_time.asc`;
 
       const rows = await sbGet(q);
-      // Normalize times to Date objects + keep original
-      return rows.map(r => ({
-        ...r,
-        t: new Date(r.valid_time) // assume valid_time is ISO UTC in DB
-      }));
+      return rows.map(r => ({ ...r, t: new Date(r.valid_time) }));
     }
 
-    /* ========= Open-Meteo upper-air at 12:00 ========= */
+    /* ========= Open-Meteo upper-air at 12:00 =========
+       Uses pressure-level variables like temperature_850hPa etc.
+    */
     async function loadTephigramAtNoon(lat, lon, which) {
       const { start } = dayBoundsLocal(which);
-      const noonLocal = new Date(start);
-      noonLocal.setHours(12, 0, 0, 0);
+      const dateLocal = new Date(start);
+      dateLocal.setHours(12, 0, 0, 0);
 
-      // Open-Meteo expects ISO date/time; we use UTC ISO and request timezone=auto for output alignment
-      const timeISO = noonLocal.toISOString();
-
-      // Pressure levels list (hPa)
+      const dateStr = dateLocal.toISOString().slice(0, 10);
       const levels = [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200];
-      const plevelStr = levels.join(",");
 
-      // Use ECMWF IFS (via Open-Meteo). If model naming differs, Open-Meteo will ignore; still returns if available.
-      const url = `https://api.open-meteo.com/v1/forecast` +
+      const vars = [];
+      for (const p of levels) {
+        vars.push(`temperature_${p}hPa`);
+        vars.push(`dew_point_${p}hPa`);
+        vars.push(`wind_speed_${p}hPa`);
+        vars.push(`wind_direction_${p}hPa`);
+      }
+
+      const url =
+        `https://api.open-meteo.com/v1/forecast` +
         `?latitude=${encodeURIComponent(lat)}` +
         `&longitude=${encodeURIComponent(lon)}` +
         `&timezone=${encodeURIComponent(TZ_LABEL)}` +
-        `&hourly=temperature_2m` +
-        `&pressure_levels=${encodeURIComponent(plevelStr)}` +
-        `&temperature_unit=celsius&wind_speed_unit=kn&precipitation_unit=mm` +
-        `&start_date=${noonLocal.toISOString().slice(0, 10)}` +
-        `&end_date=${noonLocal.toISOString().slice(0, 10)}` +
+        `&start_date=${encodeURIComponent(dateStr)}` +
+        `&end_date=${encodeURIComponent(dateStr)}` +
         `&models=ecmwf_ifs` +
-        `&forecast_days=1` +
-        `&hourly=temperature_2m` +
-        `&pressure_level_temperature=temperature_${plevelStr}`; `;
+        `&hourly=${encodeURIComponent(vars.join(","))}` +
+        `&temperature_unit=celsius&wind_speed_unit=kn&precipitation_unit=mm`;
 
-  // The above "pressure_level_temperature" parameter is not a real Open-Meteo parameter.
-  // So instead, we use their "pressure_level" API endpoint format:
-  // We'll call the documented endpoint: https://open-meteo.com/en/docs (pressure-level variables)
-  // Construct properly:
-  const url2 = `https://api.open-meteo.com/v1/forecast` +
-      `?latitude=${encodeURIComponent(lat)}` +
-        `&longitude=${encodeURIComponent(lon)}` +
-        `&timezone=${encodeURIComponent(TZ_LABEL)}` +
-        `&start_date=${noonLocal.toISOString().slice(0, 10)}` +
-        `&end_date=${noonLocal.toISOString().slice(0, 10)}` +
-        `&models=ecmwf_ifs` +
-        `&hourly=temperature_${plevelStr},dew_point_${plevelStr},wind_speed_${plevelStr},wind_direction_${plevelStr}`;
-
-      const res = await fetch(url2);
+      const res = await fetch(url);
       if (!res.ok) {
         const txt = await res.text();
         throw new Error(`Open-Meteo ${res.status}: ${txt}`);
       }
       const j = await res.json();
 
-      // Find the index for 12:00 local in returned time array
       const times = j?.hourly?.time || [];
-      const idx = times.findIndex(t => t.includes("12:00"));
-      if (idx === -1) throw new Error("No 12:00 sounding in response");
+      const idx = times.findIndex(t => t.endsWith("T12:00"));
+      if (idx === -1) throw new Error("No 12:00 sounding in Open-Meteo response");
 
-      // Extract arrays for each level in the same order
-      const T = levels.map(p => j.hourly[`temperature_${p}`]?.[idx]).map(v => (v == null ? null : Number(v)));
-      const Td = levels.map(p => j.hourly[`dew_point_${p}`]?.[idx]).map(v => (v == null ? null : Number(v)));
-      const wspd = levels.map(p => j.hourly[`wind_speed_${p}`]?.[idx]).map(v => (v == null ? null : Number(v)));
-      const wdir = levels.map(p => j.hourly[`wind_direction_${p}`]?.[idx]).map(v => (v == null ? null : Number(v)));
+      const T = levels.map(p => Number(j.hourly[`temperature_${p}hPa`]?.[idx]));
+      const Td = levels.map(p => Number(j.hourly[`dew_point_${p}hPa`]?.[idx]));
+      const wspd = levels.map(p => Number(j.hourly[`wind_speed_${p}hPa`]?.[idx]));
+      const wdir = levels.map(p => Number(j.hourly[`wind_direction_${p}hPa`]?.[idx]));
 
-      return { levels, T, Td, wspd, wdir, timeLabel: times[idx] };
+      // Replace NaN with nulls for plotting safety
+      const clean = (arr) => arr.map(v => (Number.isFinite(v) ? v : null));
+
+      return {
+        levels,
+        T: clean(T),
+        Td: clean(Td),
+        wspd: clean(wspd),
+        wdir: clean(wdir),
+        timeLabel: times[idx]
+      };
     }
 
     /* ========= Rendering ========= */
@@ -729,12 +709,7 @@
       destroyChart(charts.dir);
       charts.dir = new Chart(ctx, {
         type: "line",
-        data: {
-          labels,
-          datasets: [
-            { label: "Direction (°)", data: dir, tension: 0.2, pointRadius: 2 }
-          ]
-        },
+        data: { labels, datasets: [{ label: "Direction (°)", data: dir, tension: 0.2, pointRadius: 2 }] },
         options: {
           responsive: true,
           maintainAspectRatio: false,
@@ -746,16 +721,11 @@
               ticks: { color: "#9fb2c2" },
               grid: { color: "rgba(255,255,255,.08)" }
             },
-            y: {
-              min: 0, max: 360,
-              ticks: { color: "#9fb2c2", stepSize: 90 },
-              grid: { color: "rgba(255,255,255,.08)" }
-            }
+            y: { min: 0, max: 360, ticks: { color: "#9fb2c2", stepSize: 90 }, grid: { color: "rgba(255,255,255,.08)" } }
           }
         }
       });
 
-      // Direction row text for the selected window (hourly)
       const windowRows = rows.filter(r => r.t >= highlightStart && r.t <= highlightEnd);
       const rowText = windowRows.slice(0, 6).map(r => `${timeStr(r.t)} ${Math.round(r.wind_dir_deg ?? 0)}° ${degToCardinal(r.wind_dir_deg)}`).join(" • ");
       document.getElementById("dirMeta").textContent = rowText || `${timeStr(highlightStart)}–${timeStr(highlightEnd)}`;
@@ -801,10 +771,7 @@
       const rainMax = max(w.map(r => r.rain_risk_pct));
       const cloudMean = mean(w.map(r => r.cloud_pct));
 
-      // Best window heuristic within the day: 2-hour block with max mean wind but low dir SD
       const best = bestTwoHourWindow(rows);
-
-      // Steadiness
       const sd = steadinessMetric(w.map(r => r.wind_dir_deg));
 
       document.getElementById("summaryMeta").textContent = `${stationLabel} • ${selectedDay.toUpperCase()} • ${timeStr(highlightStart)}–${timeStr(highlightEnd)} (${TZ_LABEL})`;
@@ -825,7 +792,6 @@
 
     function bestTwoHourWindow(rows) {
       if (!rows || rows.length < 3) return null;
-      // Ensure hourly-ish and sorted
       const r = rows.slice().sort((a, b) => a.t - b.t);
       let best = null;
 
@@ -837,7 +803,6 @@
 
         const wm = mean(w.map(x => x.wind_speed_kt)) ?? 0;
         const sd = steadinessMetric(w.map(x => x.wind_dir_deg)) ?? 999;
-        // score: strong wind rewarded, steadiness rewarded
         const score = wm - 0.05 * sd;
 
         if (!best || score > best.score) {
@@ -867,17 +832,8 @@
           maintainAspectRatio: false,
           plugins: { legend: { labels: { color: "#cfe0ef" } } },
           scales: {
-            x: {
-              title: { display: true, text: "Temperature (°C)", color: "#9fb2c2", font: { weight: "600" } },
-              ticks: { color: "#9fb2c2" },
-              grid: { color: "rgba(255,255,255,.08)" }
-            },
-            y: {
-              reverse: true,
-              title: { display: true, text: "Pressure (hPa)", color: "#9fb2c2", font: { weight: "600" } },
-              ticks: { color: "#9fb2c2" },
-              grid: { color: "rgba(255,255,255,.08)" }
-            }
+            x: { title: { display: true, text: "Temperature (°C)", color: "#9fb2c2", font: { weight: "600" } }, ticks: { color: "#9fb2c2" }, grid: { color: "rgba(255,255,255,.08)" } },
+            y: { reverse: true, title: { display: true, text: "Pressure (hPa)", color: "#9fb2c2", font: { weight: "600" } }, ticks: { color: "#9fb2c2" }, grid: { color: "rgba(255,255,255,.08)" } }
           }
         }
       });
@@ -895,7 +851,6 @@
 
     function setDefaultWindow() {
       const { start, end } = dayBoundsLocal(selectedDay);
-
       const now = new Date();
       let s = selectedDay === "today" ? roundUpToNextHour(now) : new Date(start);
       s = clampToDay(s, start, end);
@@ -940,7 +895,6 @@
         renderDir(rows, a, b);
         renderConditions(rows, a, b);
 
-        // Tephigram always at 12:00 local
         const teph = await loadTephigramAtNoon(st.latitude, st.longitude, selectedDay);
         renderTephigram(teph);
 

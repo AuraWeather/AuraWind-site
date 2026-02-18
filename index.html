@@ -124,6 +124,30 @@
             transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
         }
 
+        /* Forecast button (left of Refresh) */
+        #forecastBtn {
+            position: absolute;
+            top: 12px;
+            right: 118px;
+            /* sits just left of refresh */
+            pointer-events: auto;
+            background: rgba(6, 27, 40, 0.75);
+            color: var(--text);
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            border-radius: 12px;
+            padding: 0.58rem 0.95rem;
+            font-weight: 800;
+            letter-spacing: 0.2px;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.15);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        #forecastBtn:hover {
+            background: rgba(6, 27, 40, 0.90);
+        }
+
+
         #refreshBtn:hover {
             transform: translateY(-1px);
             filter: brightness(1.02);
@@ -180,7 +204,7 @@
     <div id="map"></div>
 
     <!-- Overlay HUD -->
-    <!-- <div class="hud">
+    <div class="hud">
         <div class="hud-left">
             <img id="logo" src="aura-logo.png" alt="Aura" />
             <div class="hud-title">
@@ -188,35 +212,9 @@
                 <div class="sub">Wind • Gust • Direction • MSLP • Rain</div>
             </div>
             <div id="status" class="status-text">Loading…</div>
-        </div> -->
-    <!-- Overlay HUD -->
-    <div class="hud">
-        <div class="hud-left" style="display:flex; align-items:center; gap:18px;">
-
-            <img id="logo" src="aura-logo.png" alt="Aura" />
-
-            <div class="hud-title">
-                <div class="h1">Solent Live Observations</div>
-                <div class="sub">Wind • Gust • Direction • MSLP • Rain</div>
-            </div>
-
-            <div id="status" class="status-text">Loading…</div>
-
-            <a href="forecast.html" style="
-                margin-left:20px;
-                background:#0b3d4a;
-                color:white;
-                padding:8px 14px;
-                border-radius:8px;
-                font-weight:600;
-                text-decoration:none;
-                font-size:14px;
-                box-shadow:0 4px 12px rgba(0,0,0,0.2);
-           ">
-                Free Forecast
-            </a>
-
         </div>
+
+        <a id="forecastBtn" href="./forecast.html" title="Free forecast dashboard">Forecast</a>
 
         <button id="refreshBtn" title="Refresh now">Refresh</button>
 
@@ -496,7 +494,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c"
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";
 
         // IMPORTANT: name this `sb` to avoid colliding with window.supabase
         const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
