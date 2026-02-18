@@ -180,7 +180,7 @@
     <div id="map"></div>
 
     <!-- Overlay HUD -->
-    <div class="hud">
+    <!-- <div class="hud">
         <div class="hud-left">
             <img id="logo" src="aura-logo.png" alt="Aura" />
             <div class="hud-title">
@@ -188,6 +188,34 @@
                 <div class="sub">Wind • Gust • Direction • MSLP • Rain</div>
             </div>
             <div id="status" class="status-text">Loading…</div>
+        </div> -->
+    <!-- Overlay HUD -->
+    <div class="hud">
+        <div class="hud-left" style="display:flex; align-items:center; gap:18px;">
+
+            <img id="logo" src="aura-logo.png" alt="Aura" />
+
+            <div class="hud-title">
+                <div class="h1">Solent Live Observations</div>
+                <div class="sub">Wind • Gust • Direction • MSLP • Rain</div>
+            </div>
+
+            <div id="status" class="status-text">Loading…</div>
+
+            <a href="forecast.html" style="
+                margin-left:20px;
+                background:#0b3d4a;
+                color:white;
+                padding:8px 14px;
+                border-radius:8px;
+                font-weight:600;
+                text-decoration:none;
+                font-size:14px;
+                box-shadow:0 4px 12px rgba(0,0,0,0.2);
+           ">
+                Free Forecast
+            </a>
+
         </div>
 
         <button id="refreshBtn" title="Refresh now">Refresh</button>
