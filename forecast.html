@@ -349,6 +349,7 @@
           <input id="endTime" type="time" step="3600" />
         </div>
 
+        <button class="btn ghost" type="button" onclick="location.href='index.html'">Live Map</button>
         <button id="btnApply" class="btn" type="button">Apply</button>
         <button class="btn ghost" type="button" title="Premium coming soon"
           onclick="alert('Premium (7–10 days, model compare, tides, full soundings) — coming soon 🙂')">Unlock Premium
@@ -569,21 +570,76 @@
       return res.json();
     }
 
+    function titleCaseSmart(s) {
+      return String(s)
+        .split(" ")
+        .filter(Boolean)
+        .map(w => {
+          // keep short acronyms as-is
+          if (/^(YC|SC|NCI|RMYC|RYA|HR|HMS)$/i.test(w)) return w.toUpperCase();
+          if (w.length <= 3 && w.toUpperCase() === w) return w; // already acronym
+          return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+        })
+        .join(" ");
+    }
+
+    function prettifyLabel(raw) {
+      if (!raw) return "—";
+      let s = String(raw).trim();
+      s = s.replace(/^(WF_|WL_)/, "");   // drop prefixes
+      s = s.replace(/_/g, " ");
+      s = s.replace(/\s+/g, " ").trim();
+      return titleCaseSmart(s);
+    }
+
+    async function loadAvailableStationIds() {
+      // Get station_ids that have ANY rows for today+tomorrow (keeps the dropdown clean).
+      const a = dayBoundsLocal("today").start;
+      const b = dayBoundsLocal("tomorrow").end;
+      const q =
+        `${FORECAST_TABLE}?select=station_id,valid_time` +
+        `&valid_time=gte.${encodeURIComponent(iso(a))}` +
+        `&valid_time=lte.${encodeURIComponent(iso(b))}` +
+        `&limit=5000`;
+      const rows = await sbGet(q);
+      const set = new Set();
+      (rows || []).forEach(r => { if (r.station_id) set.add(r.station_id); });
+      return set;
+    }
+
     async function loadStations() {
       const rows = await sbGet(`stations?select=id,code,name,latitude,longitude&order=code.asc`);
-      stations = rows || [];
+      const all = rows || [];
+
+      let available = null;
+      try {
+        available = await loadAvailableStationIds();
+      } catch (e) {
+        console.warn("Availability check failed; showing all stations.", e);
+      }
+
+      stations = available ? all.filter(s => available.has(s.id)) : all;
+
       const sel = document.getElementById("stationSelect");
       sel.innerHTML = "";
+
       stations.forEach(s => {
         const opt = document.createElement("option");
         opt.value = s.id;
-        opt.textContent = (s.name && s.name.trim()) ? s.name : (s.code || s.id);
+        // prefer name, else code; then prettify
+        const raw = (s.name && s.name.trim()) ? s.name : (s.code || s.id);
+        opt.textContent = prettifyLabel(raw);
         sel.appendChild(opt);
       });
-      if (stations.length) sel.value = stations[0].id;
+
+      if (!stations.length) {
+        throw new Error("No stations with forecast data found (check FORECAST_TABLE + valid_time range).");
+      }
+
+      sel.value = stations[0].id;
     }
 
-    async function loadForecastDay(stationId, which) {
+    async function loadForecastDayasync function loadForecastDay(stationId, which) {
       const { start, end } = dayBoundsLocal(which);
       const startISO = iso(start);
       const endISO = iso(end);
@@ -910,7 +966,8 @@
         const st = stations.find(s => s.id === stationId);
         if (!st) throw new Error("No station selected");
 
-        const stationLabel = (st.name && st.name.trim()) ? st.name : (st.code || st.id);
+        const stationLabelRaw = (st.name && st.name.trim()) ? st.name : (st.code || st.id);
+        const stationLabel = prettifyLabel(stationLabelRaw);
 
         const rows = await loadForecastDay(stationId, selectedDay);
         if (!rows.length) throw new Error("No forecast rows returned for this station/day");
