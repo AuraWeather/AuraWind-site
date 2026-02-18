@@ -820,12 +820,15 @@
                 return;
             }
 
-            const stations = (json.stations || json || []).map((r) => ({
+            const rows = Array.isArray(json) ? json : (json.stations ?? json.obs ?? []);
+            const stations = (Array.isArray(rows) ? rows : Object.values(rows)).map((r) => ({
                 ...r,
                 station_id: r.station_id ?? r.site_id ?? r.id ?? r.name,
             }));
 
-            const updated = json.updated_at || json.updated || new Date().toISOString();
+
+
+            const updated = json?.meta?.generated_at || json.updated_at || json.updated || new Date().toISOString();
             metaLine.textContent = `Stations: ${stations.length} • Updated: ${formatUpdated(updated)}`;
 
             for (const st of stations) {
