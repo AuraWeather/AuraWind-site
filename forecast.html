@@ -323,9 +323,11 @@
 
     <div class="top">
       <div class="brand">
+        <img id="logo" src="aura-logo.png" alt="Aura Weather"
+          style="width:56px;height:auto;filter:drop-shadow(0 8px 18px rgba(0,0,0,.35));border-radius:10px;" />
         <div>
           <h1>Forecast</h1>
-          <div class="sub">Today + Tomorrow only • Solent stations • Aura style</div>
+          <div class="sub">Today + Tomorrow only • Solent stations</div>
         </div>
       </div>
 
@@ -381,7 +383,7 @@
           </div>
 
           <div class="kpi">
-            <div class="label">☔ RAIN • ☁ CLOUD</div>
+            <div class="label">☔ PRECIP • ☁ CLOUD</div>
             <div class="value small" id="kpiRainCloud">—</div>
           </div>
         </div>
@@ -394,7 +396,7 @@
 
         <div class="footer">
           <div><strong>NISKUS • AURA</strong> — Independent analysis.</div>
-          <div>Data: Supabase (hourly) • Open-Meteo (upper-air)</div>
+          <div> </div>
         </div>
       </div>
 
@@ -586,16 +588,40 @@
       const startISO = iso(start);
       const endISO = iso(end);
 
+      // Use select=* so we don't hard-fail if a column name differs (e.g. temp column).
       const q =
-        `${FORECAST_TABLE}?select=valid_time,wind_speed_kt,wind_gust_kt,wind_dir_deg,air_temp_c,cloud_pct,rain_risk_pct` +
+        `${FORECAST_TABLE}?select=*` +
         `&station_id=eq.${stationId}` +
         `&valid_time=gte.${encodeURIComponent(startISO)}` +
         `&valid_time=lte.${encodeURIComponent(endISO)}` +
         `&order=valid_time.asc`;
 
       const rows = await sbGet(q);
-      return rows.map(r => ({ ...r, t: new Date(r.valid_time) }));
+
+      // Robust column mapping (supports slight schema differences)
+      const pick = (obj, keys) => {
+        for (const k of keys) {
+          if (obj && obj[k] != null) return obj[k];
+        }
+        return null;
+      };
+
+      return (rows || []).map(r => {
+        const tRaw = pick(r, ["valid_time", "time", "datetime", "timestamp", "validTime"]);
+        return {
+          raw: r,
+          valid_time: tRaw,
+          t: new Date(tRaw),
+          wind_speed_kt: Number(pick(r, ["wind_speed_kt", "wind_kt", "wind_speed_kn", "wind_speed"])),
+          wind_gust_kt: Number(pick(r, ["wind_gust_kt", "gust_kt", "wind_gusts_kt", "wind_gust"])),
+          wind_dir_deg: Number(pick(r, ["wind_dir_deg", "wind_direction_deg", "wind_dir", "wind_direction"])),
+          temperature_c: Number(pick(r, ["temperature_c", "temp_c", "temperature_c", "temperature_2m", "temperature_2m_c", "air_temperature_c"])),
+          cloud_cover_pct: Number(pick(r, ["cloud_cover_pct", "cloud_cover_pct", "cloudcover_pct", "cloud_cover", "cloudcover"])),
+          precip_mm: Number(pick(r, ["precip_mm", "precip_probability_pct", "precipitation_probability", "precip_probability"]))
+        };
+      }).filter(r => r.t.toString() !== "Invalid Date");
     }
+
 
     /* ========= Open-Meteo upper-air at 12:00 =========
        Uses pressure-level variables like temperature_850hPa etc.
@@ -734,9 +760,9 @@
     function renderConditions(rows, highlightStart, highlightEnd) {
       const ctx = document.getElementById("condCanvas");
       const labels = rows.map(r => r.t);
-      const temp = rows.map(r => r.air_temp_c);
-      const cloud = rows.map(r => r.cloud_pct);
-      const rain = rows.map(r => r.rain_risk_pct);
+      const temp = rows.map(r => r.temperature_c);
+      const cloud = rows.map(r => r.cloud_cover_pct);
+      const rain = rows.map(r => r.precip_mm);
 
       destroyChart(charts.cond);
       charts.cond = new Chart(ctx, {
@@ -745,7 +771,7 @@
           datasets: [
             { type: "line", label: "Temp (°C)", data: temp, tension: 0.25, pointRadius: 2 },
             { type: "line", label: "Cloud (%)", data: cloud, tension: 0.2, pointRadius: 2 },
-            { type: "line", label: "Rain risk (%)", data: rain, tension: 0.2, pointRadius: 2 }
+            { type: "line", label: "Precip (mm)", data: rain, tension: 0.2, pointRadius: 2 }
           ]
         },
         options: {
@@ -767,9 +793,9 @@
       const windMean = mean(w.map(r => r.wind_speed_kt));
       const gustMax = max(w.map(r => r.wind_gust_kt));
       const dirMean = circularMean(w.map(r => r.wind_dir_deg));
-      const tempMean = mean(w.map(r => r.air_temp_c));
-      const rainMax = max(w.map(r => r.rain_risk_pct));
-      const cloudMean = mean(w.map(r => r.cloud_pct));
+      const tempMean = mean(w.map(r => r.temperature_c));
+      const precipMax = max(w.map(r => r.precip_mm));
+      const cloudMean = mean(w.map(r => r.cloud_cover_pct));
 
       const best = bestTwoHourWindow(rows);
       const sd = steadinessMetric(w.map(r => r.wind_dir_deg));
@@ -782,9 +808,10 @@
       document.getElementById("kpiGust").innerHTML = `${fmt(gustMax, 0)}<span class="unit">kt</span>`;
       document.getElementById("kpiTemp").innerHTML = `${fmt(tempMean, 0)}<span class="unit">°C</span>`;
 
-      const rainStr = rainMax == null ? "—" : `${fmt(rainMax, 0)}%`;
+      const precipStr = precipMax == null ? "—" : `${fmt(precipMax, 1)} mm`;
       const cloudStr = cloudMean == null ? "—" : `${fmt(cloudMean, 0)}%`;
-      document.getElementById("kpiRainCloud").innerHTML = `<span class="accent">${rainStr}</span><span class="unit">rain</span> &nbsp; <span>${cloudStr}</span><span class="unit">cloud</span>`;
+      document.getElementById("kpiRainCloud").innerHTML =
+        `<span class="accent">${precipStr}</span><span class="unit">precip</span> &nbsp; <span>${cloudStr}</span><span class="unit">cloud</span>`;
 
       document.getElementById("badgeBest").textContent = best ? `Best window: ${best.label}` : "Best window: —";
       document.getElementById("badgeSteady").textContent = sd == null ? "Steadiness: —" : `Steadiness: ±${fmt(sd, 0)}°`;
