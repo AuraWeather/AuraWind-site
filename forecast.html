@@ -54,12 +54,12 @@
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       min-width: 280px;
     }
 
     .brand h1 {
-      font-size: 26px;
+      font-size: 30px;
       margin: 0;
       letter-spacing: .2px;
     }
@@ -315,6 +315,44 @@
       border-radius: 12px;
       font-weight: 650;
     }
+
+    /* Tephigram layout: chart + comment */
+    .teph-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    @media (min-width: 900px) {
+      .teph-row {
+        grid-template-columns: 2fr 1fr;
+      }
+    }
+
+    .teph-note {
+      border: 1px solid rgba(255, 255, 255, .10);
+      background: rgba(0, 0, 0, .14);
+      border-radius: 14px;
+      padding: 12px 12px;
+      color: rgba(234, 243, 251, .86);
+      line-height: 1.35;
+      font-weight: 650;
+      min-height: 120px;
+    }
+
+    .teph-note .title {
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing: .2px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .teph-note .muted {
+      font-weight: 650;
+    }
   </style>
 </head>
 
@@ -324,7 +362,7 @@
     <div class="top">
       <div class="brand">
         <img id="logo" src="aura-logo.png" alt="Aura Weather"
-          style="width:56px;height:auto;filter:drop-shadow(0 8px 18px rgba(0,0,0,.35));border-radius:10px;" />
+          style="width:82px;height:auto;filter:drop-shadow(0 10px 22px rgba(0,0,0,.40));border-radius:14px;" />
         <div>
           <h1>Forecast</h1>
           <div class="sub">Today + Tomorrow only • Solent stations</div>
@@ -397,7 +435,7 @@
 
         <div class="footer">
           <div><strong>NISKUS • AURA</strong> — Independent analysis.</div>
-          <div> </div>
+          <div></div>
         </div>
       </div>
 
@@ -430,7 +468,15 @@
           <span>Upper Air • Tephigram</span>
           <small id="tephMeta">Fixed at 12:00 local</small>
         </h2>
-        <canvas id="tephCanvas"></canvas>
+
+        <div class="teph-row">
+          <canvas id="tephCanvas"></canvas>
+          <div class="teph-note">
+            <div class="title">Quick read</div>
+            <div id="tephComment" class="muted">Loading upper-air…</div>
+          </div>
+        </div>
+
         <div class="footer" style="margin-top:10px;">
           <div class="muted">Free version: always 12:00. Premium: selectable time + diagnostics.</div>
           <div class="muted">Upper-air model: Open-Meteo (ECMWF pressure-levels)</div>
@@ -460,7 +506,9 @@
     /* ========= CONFIG ========= */
     const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";
-    const FORECAST_TABLE = "forecast_hourly_latest"; // adjust if needed
+
+    // If you're not using a view, point this at forecast_hourly
+    const FORECAST_TABLE = "forecast_hourly_latest"; // or "forecast_hourly"
 
     const TZ_LABEL = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
 
@@ -575,9 +623,8 @@
         .split(" ")
         .filter(Boolean)
         .map(w => {
-          // keep short acronyms as-is
           if (/^(YC|SC|NCI|RMYC|RYA|HR|HMS)$/i.test(w)) return w.toUpperCase();
-          if (w.length <= 3 && w.toUpperCase() === w) return w; // already acronym
+          if (w.length <= 3 && w.toUpperCase() === w) return w;
           return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
         })
         .join(" ");
@@ -586,14 +633,13 @@
     function prettifyLabel(raw) {
       if (!raw) return "—";
       let s = String(raw).trim();
-      s = s.replace(/^(WF_|WL_)/, "");   // drop prefixes
+      s = s.replace(/^(WF_|WL_)/, "");
       s = s.replace(/_/g, " ");
       s = s.replace(/\s+/g, " ").trim();
       return titleCaseSmart(s);
     }
 
     async function loadAvailableStationIds() {
-      // Get station_ids that have ANY rows for today+tomorrow (keeps the dropdown clean).
       const a = dayBoundsLocal("today").start;
       const b = dayBoundsLocal("tomorrow").end;
       const q =
@@ -626,7 +672,6 @@
       stations.forEach(s => {
         const opt = document.createElement("option");
         opt.value = s.id;
-        // prefer name, else code; then prettify
         const raw = (s.name && s.name.trim()) ? s.name : (s.code || s.id);
         opt.textContent = prettifyLabel(raw);
         sel.appendChild(opt);
@@ -644,7 +689,6 @@
       const startISO = iso(start);
       const endISO = iso(end);
 
-      // Use select=* so we don't hard-fail if a column name differs (e.g. temp column).
       const q =
         `${FORECAST_TABLE}?select=*` +
         `&station_id=eq.${stationId}` +
@@ -654,12 +698,16 @@
 
       const rows = await sbGet(q);
 
-      // Robust column mapping (supports slight schema differences)
       const pick = (obj, keys) => {
         for (const k of keys) {
           if (obj && obj[k] != null) return obj[k];
         }
         return null;
+      };
+
+      const toNum = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
       };
 
       return (rows || []).map(r => {
@@ -668,20 +716,106 @@
           raw: r,
           valid_time: tRaw,
           t: new Date(tRaw),
-          wind_speed_kt: Number(pick(r, ["wind_speed_kt", "wind_kt", "wind_speed_kn", "wind_speed"])),
-          wind_gust_kt: Number(pick(r, ["wind_gust_kt", "gust_kt", "wind_gusts_kt", "wind_gust"])),
-          wind_dir_deg: Number(pick(r, ["wind_dir_deg", "wind_direction_deg", "wind_dir", "wind_direction"])),
-          temperature_c: Number(pick(r, ["temperature_c", "temp_c", "temperature_c", "temperature_2m", "temperature_2m_c", "air_temperature_c"])),
-          cloud_cover_pct: Number(pick(r, ["cloud_cover_pct", "cloud_cover_pct", "cloudcover_pct", "cloud_cover", "cloudcover"])),
-          precip_mm: Number(pick(r, ["precip_mm", "precip_probability_pct", "precipitation_probability", "precip_probability"]))
+          wind_speed_kt: toNum(pick(r, ["wind_speed_kt"])),
+          wind_gust_kt: toNum(pick(r, ["wind_gust_kt"])),
+          wind_dir_deg: toNum(pick(r, ["wind_dir_deg"])),
+          temperature_c: toNum(pick(r, ["temperature_c"])),
+          cloud_cover_pct: toNum(pick(r, ["cloud_cover_pct"])),
+          precip_mm: toNum(pick(r, ["precip_mm"]))
         };
       }).filter(r => r.t.toString() !== "Invalid Date");
     }
 
+    /* ========= Upper-air: request T + RH and compute Td ========= */
+    function dewPointC(Tc, RH) {
+      // Magnus formula (good enough for this “quick read”)
+      if (!Number.isFinite(Tc) || !Number.isFinite(RH)) return null;
+      const rh = Math.min(100, Math.max(1, RH));
+      const a = 17.27;
+      const b = 237.7;
+      const alpha = ((a * Tc) / (b + Tc)) + Math.log(rh / 100);
+      const Td = (b * alpha) / (a - alpha);
+      return Number.isFinite(Td) ? Td : null;
+    }
 
-    /* ========= Open-Meteo upper-air at 12:00 =========
-       Uses pressure-level variables like temperature_850hPa etc.
-    */
+    function windUV(speedKt, dirDegFrom) {
+      if (!Number.isFinite(speedKt) || !Number.isFinite(dirDegFrom)) return null;
+      const rad = (dirDegFrom * Math.PI) / 180;
+      const u = -speedKt * Math.sin(rad);
+      const v = -speedKt * Math.cos(rad);
+      return { u, v };
+    }
+
+    function mag(u, v) { return Math.sqrt(u * u + v * v); }
+
+    function signedAngleDiff(a, b) {
+      // difference b-a in [-180, 180]
+      const d = ((b - a + 540) % 360) - 180;
+      return d;
+    }
+
+    function makeTephComment(teph) {
+      const get = (p, arr) => {
+        const i = teph.levels.indexOf(p);
+        if (i === -1) return null;
+        return arr[i];
+      };
+
+      const T1000 = get(1000, teph.T);
+      const T850 = get(850, teph.T);
+      const T700 = get(700, teph.T);
+      const RH850 = get(850, teph.RH);
+
+      // Stability proxy: cooling with height
+      let stab = "Stability: —";
+      if (Number.isFinite(T1000) && Number.isFinite(T700)) {
+        const dT = T700 - T1000; // negative = colder aloft
+        if (dT <= -12) stab = `Stability: more unstable (ΔT700-1000 ≈ ${dT.toFixed(0)}°C)`;
+        else if (dT <= -7) stab = `Stability: mildly unstable (ΔT700-1000 ≈ ${dT.toFixed(0)}°C)`;
+        else if (dT <= -3) stab = `Stability: near-neutral (ΔT700-1000 ≈ ${dT.toFixed(0)}°C)`;
+        else stab = `Stability: stable (ΔT700-1000 ≈ ${dT.toFixed(0)}°C)`;
+      }
+
+      // Shear proxy: 1000–700 vector shear
+      let shear = "Wind shear: —";
+      const uv1000 = windUV(get(1000, teph.wspd), get(1000, teph.wdir));
+      const uv700 = windUV(get(700, teph.wspd), get(700, teph.wdir));
+      if (uv1000 && uv700) {
+        const du = uv700.u - uv1000.u;
+        const dv = uv700.v - uv1000.v;
+        const sh = mag(du, dv);
+        if (sh < 10) shear = `Wind shear (1000–700): weak (~${sh.toFixed(0)} kt)`;
+        else if (sh < 20) shear = `Wind shear (1000–700): moderate (~${sh.toFixed(0)} kt)`;
+        else shear = `Wind shear (1000–700): strong (~${sh.toFixed(0)} kt)`;
+      }
+
+      // Veer/back between 1000 and 700
+      let veer = "";
+      const d1000 = get(1000, teph.wdir);
+      const d700 = get(700, teph.wdir);
+      if (Number.isFinite(d1000) && Number.isFinite(d700)) {
+        const dd = signedAngleDiff(d1000, d700);
+        if (dd > 15) veer = `Veering with height (~${dd.toFixed(0)}°) → typically warm advection.`;
+        else if (dd < -15) veer = `Backing with height (~${dd.toFixed(0)}°) → typically cold advection.`;
+        else veer = `Little veer/back between 1000–700 (~${dd.toFixed(0)}°).`;
+      }
+
+      // Moisture note
+      let moist = "";
+      if (Number.isFinite(RH850)) {
+        if (RH850 >= 85) moist = `Moisture: very moist at 850 hPa (RH ~${RH850.toFixed(0)}%).`;
+        else if (RH850 >= 65) moist = `Moisture: fairly moist at 850 hPa (RH ~${RH850.toFixed(0)}%).`;
+        else moist = `Moisture: drier aloft at 850 hPa (RH ~${RH850.toFixed(0)}%).`;
+      }
+
+      return [
+        shear,
+        stab,
+        veer,
+        moist
+      ].filter(Boolean).join("<br/>");
+    }
+
     async function loadTephigramAtNoon(lat, lon, which) {
       const { start } = dayBoundsLocal(which);
       const dateLocal = new Date(start);
@@ -693,7 +827,7 @@
       const vars = [];
       for (const p of levels) {
         vars.push(`temperature_${p}hPa`);
-        vars.push(`dew_point_${p}hPa`);
+        vars.push(`relative_humidity_${p}hPa`);
         vars.push(`wind_speed_${p}hPa`);
         vars.push(`wind_direction_${p}hPa`);
       }
@@ -720,22 +854,19 @@
       const idx = times.findIndex(t => t.endsWith("T12:00"));
       if (idx === -1) throw new Error("No 12:00 sounding in Open-Meteo response");
 
-      const T = levels.map(p => Number(j.hourly[`temperature_${p}hPa`]?.[idx]));
-      const Td = levels.map(p => Number(j.hourly[`dew_point_${p}hPa`]?.[idx]));
-      const wspd = levels.map(p => Number(j.hourly[`wind_speed_${p}hPa`]?.[idx]));
-      const wdir = levels.map(p => Number(j.hourly[`wind_direction_${p}hPa`]?.[idx]));
-
-      // Replace NaN with nulls for plotting safety
-      const clean = (arr) => arr.map(v => (Number.isFinite(v) ? v : null));
-
-      return {
-        levels,
-        T: clean(T),
-        Td: clean(Td),
-        wspd: clean(wspd),
-        wdir: clean(wdir),
-        timeLabel: times[idx]
+      const toNum = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
       };
+
+      const T = levels.map(p => toNum(j.hourly[`temperature_${p}hPa`]?.[idx]));
+      const RH = levels.map(p => toNum(j.hourly[`relative_humidity_${p}hPa`]?.[idx]));
+      const wspd = levels.map(p => toNum(j.hourly[`wind_speed_${p}hPa`]?.[idx]));
+      const wdir = levels.map(p => toNum(j.hourly[`wind_direction_${p}hPa`]?.[idx]));
+
+      const Td = levels.map((p, i) => dewPointC(T[i], RH[i]));
+
+      return { levels, T, Td, RH, wspd, wdir, timeLabel: times[idx] };
     }
 
     /* ========= Rendering ========= */
@@ -899,8 +1030,16 @@
       const ctx = document.getElementById("tephCanvas");
       destroyChart(charts.teph);
 
-      const ptsT = teph.levels.map((p, i) => ({ x: teph.T[i], y: p })).filter(pt => pt.x != null);
-      const ptsTd = teph.levels.map((p, i) => ({ x: teph.Td[i], y: p })).filter(pt => pt.x != null);
+      const ptsT = teph.levels.map((p, i) => ({ x: teph.T[i], y: p })).filter(pt => pt.x != null && Number.isFinite(pt.x));
+      const ptsTd = teph.levels.map((p, i) => ({ x: teph.Td[i], y: p })).filter(pt => pt.x != null && Number.isFinite(pt.x));
+
+      const commentEl = document.getElementById("tephComment");
+
+      if (ptsT.length < 2) {
+        commentEl.innerHTML = `No usable pressure-level data returned for this time.<br/><span class="muted">Try another station/day.</span>`;
+        document.getElementById("tephMeta").textContent = `Fixed at 12:00 local • (no data)`;
+        return;
+      }
 
       charts.teph = new Chart(ctx, {
         type: "scatter",
@@ -915,13 +1054,23 @@
           maintainAspectRatio: false,
           plugins: { legend: { labels: { color: "#cfe0ef" } } },
           scales: {
-            x: { title: { display: true, text: "Temperature (°C)", color: "#9fb2c2", font: { weight: "600" } }, ticks: { color: "#9fb2c2" }, grid: { color: "rgba(255,255,255,.08)" } },
-            y: { reverse: true, title: { display: true, text: "Pressure (hPa)", color: "#9fb2c2", font: { weight: "600" } }, ticks: { color: "#9fb2c2" }, grid: { color: "rgba(255,255,255,.08)" } }
+            x: {
+              title: { display: true, text: "Temperature (°C)", color: "#9fb2c2", font: { weight: "600" } },
+              ticks: { color: "#9fb2c2" },
+              grid: { color: "rgba(255,255,255,.08)" }
+            },
+            y: {
+              reverse: true,
+              title: { display: true, text: "Pressure (hPa)", color: "#9fb2c2", font: { weight: "600" } },
+              ticks: { color: "#9fb2c2" },
+              grid: { color: "rgba(255,255,255,.08)" }
+            }
           }
         }
       });
 
       document.getElementById("tephMeta").textContent = `Fixed at 12:00 local • ${teph.timeLabel}`;
+      commentEl.innerHTML = makeTephComment(teph);
     }
 
     /* ========= Controller ========= */
@@ -979,6 +1128,8 @@
         renderDir(rows, a, b);
         renderConditions(rows, a, b);
 
+        // Upper-air at 12:00 local
+        document.getElementById("tephComment").textContent = "Loading upper-air…";
         const teph = await loadTephigramAtNoon(st.latitude, st.longitude, selectedDay);
         renderTephigram(teph);
 
