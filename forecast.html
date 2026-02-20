@@ -13,13 +13,10 @@
   <style>
     :root {
       --bg: #061b28;
-      --panel: #0a2333;
-      --panel2: #082033;
       --text: #eaf3fb;
       --muted: #9fb2c2;
       --accent: #22b8a7;
       --warn: #f5a623;
-      --line: #133246;
       --radius: 18px;
     }
 
@@ -30,21 +27,22 @@
     body {
       margin: 0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      background: radial-gradient(1200px 600px at 20% -10%, rgba(34, 184, 167, .18), transparent 60%),
+      background:
+        radial-gradient(1200px 600px at 20% -10%, rgba(34, 184, 167, .18), transparent 60%),
         radial-gradient(900px 500px at 90% 10%, rgba(90, 140, 255, .10), transparent 55%),
         var(--bg);
       color: var(--text);
     }
 
     .wrap {
-      max-width: 980px;
+      max-width: 1120px;
       margin: 0 auto;
-      padding: 20px 16px 40px;
+      padding: 18px 16px 40px;
     }
 
     .top {
       display: flex;
-      gap: 12px;
+      gap: 14px;
       align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
@@ -55,7 +53,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      min-width: 280px;
+      min-width: 320px;
     }
 
     .brand h1 {
@@ -67,7 +65,7 @@
     .brand .sub {
       color: var(--muted);
       font-size: 13px;
-      margin-top: 2px;
+      margin-top: 3px;
     }
 
     .controls {
@@ -113,9 +111,9 @@
       background: transparent;
       border: none;
       color: var(--muted);
-      padding: 9px 12px;
+      padding: 9px 14px;
       cursor: pointer;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: .2px;
     }
 
@@ -128,17 +126,17 @@
       background: rgba(34, 184, 167, .18);
       border: 1px solid rgba(34, 184, 167, .40);
       color: var(--text);
-      padding: 10px 12px;
+      padding: 10px 14px;
       border-radius: 12px;
       cursor: pointer;
-      font-weight: 700;
+      font-weight: 800;
     }
 
     .btn.ghost {
       background: rgba(255, 255, 255, .04);
       border: 1px solid rgba(255, 255, 255, .10);
       color: var(--muted);
-      font-weight: 600;
+      font-weight: 700;
     }
 
     .grid {
@@ -147,7 +145,7 @@
       gap: 14px;
     }
 
-    @media (min-width: 900px) {
+    @media (min-width: 960px) {
       .grid {
         grid-template-columns: 1fr 1fr;
       }
@@ -171,8 +169,9 @@
       content: "";
       position: absolute;
       inset: -1px;
-      background: radial-gradient(500px 120px at 20% 0%, rgba(34, 184, 167, .20), transparent 55%),
-        radial-gradient(420px 120px at 90% 10%, rgba(90, 140, 255, .12), transparent 60%);
+      background:
+        radial-gradient(520px 120px at 18% 0%, rgba(34, 184, 167, .20), transparent 55%),
+        radial-gradient(420px 120px at 88% 10%, rgba(90, 140, 255, .12), transparent 60%);
       pointer-events: none;
     }
 
@@ -193,7 +192,7 @@
 
     .card h2 small {
       color: var(--muted);
-      font-weight: 600;
+      font-weight: 700;
       font-size: 13px;
     }
 
@@ -210,7 +209,7 @@
 
     .kpi .label {
       color: var(--muted);
-      font-weight: 700;
+      font-weight: 800;
       letter-spacing: .2px;
       font-size: 13px;
       display: flex;
@@ -219,8 +218,8 @@
     }
 
     .kpi .value {
-      font-size: 54px;
-      font-weight: 900;
+      font-size: 56px;
+      font-weight: 950;
       letter-spacing: .5px;
       line-height: .95;
       margin-top: 4px;
@@ -229,14 +228,14 @@
     .kpi .unit {
       font-size: 22px;
       color: var(--muted);
-      font-weight: 800;
+      font-weight: 900;
       margin-left: 8px;
     }
 
     .kpi .subv {
       margin-top: 6px;
       color: var(--muted);
-      font-weight: 650;
+      font-weight: 700;
     }
 
     .kpi .value.small {
@@ -244,7 +243,7 @@
     }
 
     .kpi .value.med {
-      font-size: 46px;
+      font-size: 48px;
     }
 
     .accent {
@@ -268,11 +267,11 @@
       padding-top: 10px;
       border-top: 1px solid rgba(255, 255, 255, .10);
       color: var(--muted);
-      font-weight: 650;
+      font-weight: 750;
     }
 
     .badge {
-      padding: 6px 10px;
+      padding: 7px 11px;
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, .12);
       background: rgba(0, 0, 0, .18);
@@ -280,15 +279,15 @@
 
     canvas {
       width: 100% !important;
-      height: 280px !important;
+      height: 300px !important;
     }
 
     #tephCanvas {
-      height: 360px !important;
+      height: 380px !important;
     }
 
     .footer {
-      margin-top: 16px;
+      margin-top: 14px;
       color: rgba(234, 243, 251, .70);
       font-size: 12px;
       display: flex;
@@ -297,61 +296,58 @@
       flex-wrap: wrap;
     }
 
-    .lock {
-      opacity: .55;
-      filter: grayscale(.25);
-    }
-
-    .lock .btn {
-      cursor: default;
-      opacity: .75;
-    }
-
     .error {
       color: #ffd1d1;
       background: rgba(255, 0, 0, .08);
       border: 1px solid rgba(255, 0, 0, .22);
       padding: 10px 12px;
       border-radius: 12px;
-      font-weight: 650;
+      font-weight: 750;
     }
 
-    /* Tephigram layout: chart + comment */
-    .teph-row {
+    /* Teph + Quick Read layout */
+    .teph-grid {
       display: grid;
       grid-template-columns: 1fr;
       gap: 12px;
       align-items: start;
     }
 
-    @media (min-width: 900px) {
-      .teph-row {
-        grid-template-columns: 2fr 1fr;
+    @media (min-width: 960px) {
+      .teph-grid {
+        grid-template-columns: 1.25fr 0.75fr;
       }
     }
 
-    .teph-note {
+    .quickread {
+      background: rgba(255, 255, 255, .04);
       border: 1px solid rgba(255, 255, 255, .10);
-      background: rgba(0, 0, 0, .14);
-      border-radius: 14px;
-      padding: 12px 12px;
-      color: rgba(234, 243, 251, .86);
-      line-height: 1.35;
-      font-weight: 650;
-      min-height: 120px;
+      border-radius: 16px;
+      padding: 14px 14px 12px;
     }
 
-    .teph-note .title {
+    .quickread .title {
       color: var(--muted);
-      font-weight: 800;
-      font-size: 12px;
-      letter-spacing: .2px;
-      margin-bottom: 6px;
-      text-transform: uppercase;
+      font-weight: 900;
+      letter-spacing: .3px;
+      margin-bottom: 10px;
+      font-size: 13px;
     }
 
-    .teph-note .muted {
-      font-weight: 650;
+    .quickread .line {
+      margin: 6px 0;
+      font-weight: 750;
+      color: rgba(234, 243, 251, .88);
+    }
+
+    .quickread .line b {
+      color: rgba(234, 243, 251, .95);
+    }
+
+    .quickread .dim {
+      color: rgba(234, 243, 251, .68);
+      font-weight: 700;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -362,7 +358,7 @@
     <div class="top">
       <div class="brand">
         <img id="logo" src="aura-logo.png" alt="Aura Weather"
-          style="width:82px;height:auto;filter:drop-shadow(0 10px 22px rgba(0,0,0,.40));border-radius:14px;" />
+          style="width:84px;height:auto;filter:drop-shadow(0 10px 22px rgba(0,0,0,.35));border-radius:14px;" />
         <div>
           <h1>Forecast</h1>
           <div class="sub">Today + Tomorrow only • Solent stations</div>
@@ -371,7 +367,7 @@
 
       <div class="controls">
         <div class="ctrl">
-          <span class="muted" style="font-weight:800;">Location</span>
+          <span class="muted" style="font-weight:900;">Location</span>
           <select id="stationSelect"></select>
         </div>
 
@@ -381,7 +377,7 @@
         </div>
 
         <div class="ctrl">
-          <span class="muted" style="font-weight:800;">Window</span>
+          <span class="muted" style="font-weight:900;">Window</span>
           <input id="startTime" type="time" step="3600" />
           <span class="muted">→</span>
           <input id="endTime" type="time" step="3600" />
@@ -389,6 +385,7 @@
 
         <button class="btn ghost" type="button" onclick="location.href='index.html'">Live Map</button>
         <button id="btnApply" class="btn" type="button">Apply</button>
+
         <button class="btn ghost" type="button" title="Premium coming soon"
           onclick="alert('Premium (7–10 days, model compare, tides, full soundings) — coming soon 🙂')">Unlock Premium
           🔒</button>
@@ -469,28 +466,31 @@
           <small id="tephMeta">Fixed at 12:00 local</small>
         </h2>
 
-        <div class="teph-row">
-          <canvas id="tephCanvas"></canvas>
-          <div class="teph-note">
-            <div class="title">Quick read</div>
-            <div id="tephComment" class="muted">Loading upper-air…</div>
+        <div class="teph-grid">
+          <div>
+            <canvas id="tephCanvas"></canvas>
+            <div class="footer" style="margin-top:10px;">
+              <div class="muted">Free version: always 12:00. Premium: selectable time + diagnostics.</div>
+              <div class="muted" id="upperAirSource">Upper-air: Open-Meteo pressure-levels</div>
+            </div>
           </div>
-        </div>
 
-        <div class="footer" style="margin-top:10px;">
-          <div class="muted">Free version: always 12:00. Premium: selectable time + diagnostics.</div>
-          <div class="muted">Upper-air model: Open-Meteo (ECMWF pressure-levels)</div>
+          <div class="quickread">
+            <div class="title">QUICK READ</div>
+            <div id="tephComment" class="line">Loading upper-air…</div>
+            <div class="dim" id="tephCommentSub"></div>
+          </div>
         </div>
       </div>
 
-      <div class="card span2 lock">
+      <div class="card span2" style="opacity:.55;filter:grayscale(.25);">
         <h2>
           <span>Days 3–7 (Premium)</span>
           <small>Locked</small>
         </h2>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <span class="badge">Day 3 🔒</span><span class="badge">Day 4 🔒</span><span class="badge">Day 5 🔒</span><span
-            class="badge">Day 6 🔒</span><span class="badge">Day 7 🔒</span>
+          <span class="badge">Day 3 🔒</span><span class="badge">Day 4 🔒</span><span class="badge">Day 5 🔒</span>
+          <span class="badge">Day 6 🔒</span><span class="badge">Day 7 🔒</span>
         </div>
         <div class="footer" style="margin-top:10px;">
           <div class="muted">Unlock: 7–10 days, model compare, tides/current overlays, full soundings, exports.</div>
@@ -507,17 +507,18 @@
     const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";
 
-    // If you're not using a view, point this at forecast_hourly
-    const FORECAST_TABLE = "forecast_hourly_latest"; // or "forecast_hourly"
+
+    // IMPORTANT: use forecast_hourly (your ingester writes here)
+    const FORECAST_TABLE = "forecast_hourly";
 
     const TZ_LABEL = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
 
     /* ========= State ========= */
     let stations = [];
-    let selectedDay = "today"; // today | tomorrow
+    let selectedDay = "today";
     let charts = { wind: null, dir: null, cond: null, teph: null };
 
-    /* ========= Helpers ========= */
+    /* ========= UI Errors ========= */
     function showError(msg) {
       const el = document.getElementById("errorBox");
       el.style.display = "block";
@@ -529,18 +530,17 @@
       el.textContent = "";
     }
 
+    /* ========= Helpers ========= */
     function roundUpToNextHour(d) {
       const x = new Date(d);
       x.setMinutes(0, 0, 0);
       x.setHours(x.getHours() + 1);
       return x;
     }
-
     function clampToDay(d, dayStart, dayEnd) {
       const t = d.getTime();
       return new Date(Math.max(dayStart.getTime(), Math.min(dayEnd.getTime(), t)));
     }
-
     function iso(d) { return new Date(d).toISOString(); }
 
     function dayBoundsLocal(which) {
@@ -553,9 +553,7 @@
       return { start, end };
     }
 
-    function timeStr(d) {
-      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    }
+    function timeStr(d) { return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
 
     function degToCardinal(deg) {
       if (deg == null || isNaN(deg)) return "—";
@@ -601,23 +599,6 @@
       return sd;
     }
 
-    /* ========= Supabase fetch ========= */
-    async function sbGet(path) {
-      const url = `${SUPABASE_URL}/rest/v1/${path}`;
-      const res = await fetch(url, {
-        headers: {
-          "apikey": SUPABASE_ANON_KEY,
-          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-          "Accept": "application/json"
-        }
-      });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`${res.status} ${res.statusText}: ${txt}`);
-      }
-      return res.json();
-    }
-
     function titleCaseSmart(s) {
       return String(s)
         .split(" ")
@@ -639,36 +620,38 @@
       return titleCaseSmart(s);
     }
 
-    async function loadAvailableStationIds() {
-      const a = dayBoundsLocal("today").start;
-      const b = dayBoundsLocal("tomorrow").end;
-      const q =
-        `${FORECAST_TABLE}?select=station_id,valid_time` +
-        `&valid_time=gte.${encodeURIComponent(iso(a))}` +
-        `&valid_time=lte.${encodeURIComponent(iso(b))}` +
-        `&limit=5000`;
-      const rows = await sbGet(q);
-      const set = new Set();
-      (rows || []).forEach(r => { if (r.station_id) set.add(r.station_id); });
-      return set;
+    /* ========= Supabase REST ========= */
+    async function sbGet(path) {
+      const url = `${SUPABASE_URL}/rest/v1/${path}`;
+      const res = await fetch(url, {
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "Accept": "application/json"
+        }
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`${res.status} ${res.statusText}: ${txt}`);
+      }
+      return res.json();
+    }
+
+    async function latestIssueTime() {
+      // Grab a single newest row across table
+      const rows = await sbGet(`${FORECAST_TABLE}?select=issue_time&order=issue_time.desc&limit=1`);
+      const it = rows?.[0]?.issue_time;
+      if (!it) throw new Error(`Could not find issue_time in ${FORECAST_TABLE}`);
+      return it;
     }
 
     async function loadStations() {
       const rows = await sbGet(`stations?select=id,code,name,latitude,longitude&order=code.asc`);
       const all = rows || [];
-
-      let available = null;
-      try {
-        available = await loadAvailableStationIds();
-      } catch (e) {
-        console.warn("Availability check failed; showing all stations.", e);
-      }
-
-      stations = available ? all.filter(s => available.has(s.id)) : all;
+      stations = all.filter(s => s.latitude != null && s.longitude != null);
 
       const sel = document.getElementById("stationSelect");
       sel.innerHTML = "";
-
       stations.forEach(s => {
         const opt = document.createElement("option");
         opt.value = s.id;
@@ -677,151 +660,71 @@
         sel.appendChild(opt);
       });
 
-      if (!stations.length) {
-        throw new Error("No stations with forecast data found (check FORECAST_TABLE + valid_time range).");
-      }
-
+      if (!stations.length) throw new Error("No stations found with lat/lon in stations table.");
       sel.value = stations[0].id;
     }
 
     async function loadForecastDay(stationId, which) {
       const { start, end } = dayBoundsLocal(which);
+
+      // Keep your stored times (DB is UTC). We filter on UTC ISO.
       const startISO = iso(start);
       const endISO = iso(end);
 
+      // IMPORTANT: constrain to the latest issue_time so we don't mix runs
+      const issue = await latestIssueTime();
+
       const q =
-        `${FORECAST_TABLE}?select=*` +
+        `${FORECAST_TABLE}?select=valid_time,wind_speed_kt,wind_gust_kt,wind_dir_deg,temperature_c,cloud_cover_pct,precip_mm,issue_time` +
         `&station_id=eq.${stationId}` +
+        `&issue_time=eq.${encodeURIComponent(issue)}` +
         `&valid_time=gte.${encodeURIComponent(startISO)}` +
         `&valid_time=lte.${encodeURIComponent(endISO)}` +
         `&order=valid_time.asc`;
 
       const rows = await sbGet(q);
 
-      const pick = (obj, keys) => {
-        for (const k of keys) {
-          if (obj && obj[k] != null) return obj[k];
-        }
-        return null;
-      };
-
-      const toNum = (v) => {
-        const n = Number(v);
-        return Number.isFinite(n) ? n : null;
-      };
-
-      return (rows || []).map(r => {
-        const tRaw = pick(r, ["valid_time", "time", "datetime", "timestamp", "validTime"]);
-        return {
-          raw: r,
-          valid_time: tRaw,
-          t: new Date(tRaw),
-          wind_speed_kt: toNum(pick(r, ["wind_speed_kt"])),
-          wind_gust_kt: toNum(pick(r, ["wind_gust_kt"])),
-          wind_dir_deg: toNum(pick(r, ["wind_dir_deg"])),
-          temperature_c: toNum(pick(r, ["temperature_c"])),
-          cloud_cover_pct: toNum(pick(r, ["cloud_cover_pct"])),
-          precip_mm: toNum(pick(r, ["precip_mm"]))
-        };
-      }).filter(r => r.t.toString() !== "Invalid Date");
+      return (rows || []).map(r => ({
+        ...r,
+        t: new Date(r.valid_time)
+      })).filter(r => r.t.toString() !== "Invalid Date");
     }
 
-    /* ========= Upper-air: request T + RH and compute Td ========= */
+    /* ========= Upper-air (Open-Meteo) ========= */
     function dewPointC(Tc, RH) {
-      // Magnus formula (good enough for this “quick read”)
-      if (!Number.isFinite(Tc) || !Number.isFinite(RH)) return null;
-      const rh = Math.min(100, Math.max(1, RH));
-      const a = 17.27;
-      const b = 237.7;
+      if (!Number.isFinite(Tc) || !Number.isFinite(RH) || RH <= 2) return null;
+      const rh = Math.min(100, Math.max(2, RH));
+      const a = 17.27, b = 237.7;
       const alpha = ((a * Tc) / (b + Tc)) + Math.log(rh / 100);
       const Td = (b * alpha) / (a - alpha);
       return Number.isFinite(Td) ? Td : null;
     }
 
-    function windUV(speedKt, dirDegFrom) {
-      if (!Number.isFinite(speedKt) || !Number.isFinite(dirDegFrom)) return null;
-      const rad = (dirDegFrom * Math.PI) / 180;
-      const u = -speedKt * Math.sin(rad);
-      const v = -speedKt * Math.cos(rad);
-      return { u, v };
+    function nearestIndexByTime(timesIso, targetDate) {
+      let bestI = -1, bestDt = Infinity;
+      const target = targetDate.getTime();
+      for (let i = 0; i < timesIso.length; i++) {
+        const t = new Date(timesIso[i]).getTime();
+        if (!Number.isFinite(t)) continue;
+        const dt = Math.abs(t - target);
+        if (dt < bestDt) { bestDt = dt; bestI = i; }
+      }
+      return bestI;
     }
 
-    function mag(u, v) { return Math.sqrt(u * u + v * v); }
-
-    function signedAngleDiff(a, b) {
-      // difference b-a in [-180, 180]
-      const d = ((b - a + 540) % 360) - 180;
-      return d;
-    }
-
-    function makeTephComment(teph) {
-      const get = (p, arr) => {
-        const i = teph.levels.indexOf(p);
-        if (i === -1) return null;
-        return arr[i];
-      };
-
-      const T1000 = get(1000, teph.T);
-      const T850 = get(850, teph.T);
-      const T700 = get(700, teph.T);
-      const RH850 = get(850, teph.RH);
-
-      // Stability proxy: cooling with height
-      let stab = "Stability: —";
-      if (Number.isFinite(T1000) && Number.isFinite(T700)) {
-        const dT = T700 - T1000; // negative = colder aloft
-        if (dT <= -12) stab = `Stability: more unstable (ΔT700-1000 ≈ ${dT.toFixed(0)}°C)`;
-        else if (dT <= -7) stab = `Stability: mildly unstable (ΔT700-1000 ≈ ${dT.toFixed(0)}°C)`;
-        else if (dT <= -3) stab = `Stability: near-neutral (ΔT700-1000 ≈ ${dT.toFixed(0)}°C)`;
-        else stab = `Stability: stable (ΔT700-1000 ≈ ${dT.toFixed(0)}°C)`;
-      }
-
-      // Shear proxy: 1000–700 vector shear
-      let shear = "Wind shear: —";
-      const uv1000 = windUV(get(1000, teph.wspd), get(1000, teph.wdir));
-      const uv700 = windUV(get(700, teph.wspd), get(700, teph.wdir));
-      if (uv1000 && uv700) {
-        const du = uv700.u - uv1000.u;
-        const dv = uv700.v - uv1000.v;
-        const sh = mag(du, dv);
-        if (sh < 10) shear = `Wind shear (1000–700): weak (~${sh.toFixed(0)} kt)`;
-        else if (sh < 20) shear = `Wind shear (1000–700): moderate (~${sh.toFixed(0)} kt)`;
-        else shear = `Wind shear (1000–700): strong (~${sh.toFixed(0)} kt)`;
-      }
-
-      // Veer/back between 1000 and 700
-      let veer = "";
-      const d1000 = get(1000, teph.wdir);
-      const d700 = get(700, teph.wdir);
-      if (Number.isFinite(d1000) && Number.isFinite(d700)) {
-        const dd = signedAngleDiff(d1000, d700);
-        if (dd > 15) veer = `Veering with height (~${dd.toFixed(0)}°) → typically warm advection.`;
-        else if (dd < -15) veer = `Backing with height (~${dd.toFixed(0)}°) → typically cold advection.`;
-        else veer = `Little veer/back between 1000–700 (~${dd.toFixed(0)}°).`;
-      }
-
-      // Moisture note
-      let moist = "";
-      if (Number.isFinite(RH850)) {
-        if (RH850 >= 85) moist = `Moisture: very moist at 850 hPa (RH ~${RH850.toFixed(0)}%).`;
-        else if (RH850 >= 65) moist = `Moisture: fairly moist at 850 hPa (RH ~${RH850.toFixed(0)}%).`;
-        else moist = `Moisture: drier aloft at 850 hPa (RH ~${RH850.toFixed(0)}%).`;
-      }
-
-      return [
-        shear,
-        stab,
-        veer,
-        moist
-      ].filter(Boolean).join("<br/>");
+    function profileLooksInvalid(arr) {
+      const finite = arr.filter(v => Number.isFinite(v));
+      if (finite.length < 2) return true;
+      const nonZero = finite.filter(v => Math.abs(v) > 0.001);
+      return nonZero.length < 2;
     }
 
     async function loadTephigramAtNoon(lat, lon, which) {
       const { start } = dayBoundsLocal(which);
-      const dateLocal = new Date(start);
-      dateLocal.setHours(12, 0, 0, 0);
+      const targetLocal = new Date(start);
+      targetLocal.setHours(12, 0, 0, 0);
 
-      const dateStr = dateLocal.toISOString().slice(0, 10);
+      const dateStr = targetLocal.toISOString().slice(0, 10);
       const levels = [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200];
 
       const vars = [];
@@ -832,6 +735,7 @@
         vars.push(`wind_direction_${p}hPa`);
       }
 
+      // IMPORTANT: no model pin here (pressure-level availability varies)
       const url =
         `https://api.open-meteo.com/v1/forecast` +
         `?latitude=${encodeURIComponent(lat)}` +
@@ -839,9 +743,8 @@
         `&timezone=${encodeURIComponent(TZ_LABEL)}` +
         `&start_date=${encodeURIComponent(dateStr)}` +
         `&end_date=${encodeURIComponent(dateStr)}` +
-        `&models=ecmwf_ifs` +
         `&hourly=${encodeURIComponent(vars.join(","))}` +
-        `&temperature_unit=celsius&wind_speed_unit=kn&precipitation_unit=mm`;
+        `&temperature_unit=celsius&wind_speed_unit=kn`;
 
       const res = await fetch(url);
       if (!res.ok) {
@@ -849,10 +752,11 @@
         throw new Error(`Open-Meteo ${res.status}: ${txt}`);
       }
       const j = await res.json();
-
       const times = j?.hourly?.time || [];
-      const idx = times.findIndex(t => t.endsWith("T12:00"));
-      if (idx === -1) throw new Error("No 12:00 sounding in Open-Meteo response");
+      if (!times.length) throw new Error("Open-Meteo: no hourly.time in upper-air response");
+
+      const idx = nearestIndexByTime(times, targetLocal);
+      if (idx === -1) throw new Error("Open-Meteo: cannot find time near 12:00 local");
 
       const toNum = (v) => {
         const n = Number(v);
@@ -863,13 +767,113 @@
       const RH = levels.map(p => toNum(j.hourly[`relative_humidity_${p}hPa`]?.[idx]));
       const wspd = levels.map(p => toNum(j.hourly[`wind_speed_${p}hPa`]?.[idx]));
       const wdir = levels.map(p => toNum(j.hourly[`wind_direction_${p}hPa`]?.[idx]));
-
       const Td = levels.map((p, i) => dewPointC(T[i], RH[i]));
+
+      if (profileLooksInvalid(T) || profileLooksInvalid(Td)) {
+        throw new Error("Upper-air pressure-level profile looks invalid (mostly 0/empty).");
+      }
 
       return { levels, T, Td, RH, wspd, wdir, timeLabel: times[idx] };
     }
 
-    /* ========= Rendering ========= */
+    function windUVFromSpdDir(spdKt, dirDeg) {
+      if (!Number.isFinite(spdKt) || !Number.isFinite(dirDeg)) return { u: null, v: null };
+      const rad = dirDeg * Math.PI / 180;
+      // meteorological dir = FROM
+      const u = -spdKt * Math.sin(rad);
+      const v = -spdKt * Math.cos(rad);
+      return { u, v };
+    }
+
+    function vectorShearKt(teph, pTop = 700, pBot = 1000) {
+      const iTop = teph.levels.indexOf(pTop);
+      const iBot = teph.levels.indexOf(pBot);
+      if (iTop === -1 || iBot === -1) return null;
+
+      const a = windUVFromSpdDir(teph.wspd[iBot], teph.wdir[iBot]);
+      const b = windUVFromSpdDir(teph.wspd[iTop], teph.wdir[iTop]);
+      if (a.u == null || a.v == null || b.u == null || b.v == null) return null;
+      const du = b.u - a.u;
+      const dv = b.v - a.v;
+      return Math.sqrt(du * du + dv * dv);
+    }
+
+    function veerBackBetween(teph, pTop = 700, pBot = 1000) {
+      const iTop = teph.levels.indexOf(pTop);
+      const iBot = teph.levels.indexOf(pBot);
+      if (iTop === -1 || iBot === -1) return null;
+      const d0 = teph.wdir[iBot], d1 = teph.wdir[iTop];
+      if (!Number.isFinite(d0) || !Number.isFinite(d1)) return null;
+      // signed shortest diff
+      let diff = ((d1 - d0 + 540) % 360) - 180;
+      return diff; // + = veer, - = back
+    }
+
+    function stabilityDeltaT(teph, pTop = 700, pBot = 1000) {
+      const iTop = teph.levels.indexOf(pTop);
+      const iBot = teph.levels.indexOf(pBot);
+      if (iTop === -1 || iBot === -1) return null;
+      const Ttop = teph.T[iTop], Tbot = teph.T[iBot];
+      if (!Number.isFinite(Ttop) || !Number.isFinite(Tbot)) return null;
+      // stable if lapse small / inversion: Ttop - Tbot >= 0 (since higher is colder usually negative)
+      return Ttop - Tbot;
+    }
+
+    function moistureRH(teph, p = 850) {
+      const i = teph.levels.indexOf(p);
+      if (i === -1) return null;
+      const rh = teph.RH[i];
+      return Number.isFinite(rh) ? rh : null;
+    }
+
+    function quickReadText(teph) {
+      const shear = vectorShearKt(teph, 700, 1000);
+      const dvb = veerBackBetween(teph, 700, 1000);
+      const dT = stabilityDeltaT(teph, 700, 1000);
+      const rh850 = moistureRH(teph, 850);
+
+      let shearTxt = "—";
+      if (Number.isFinite(shear)) {
+        shearTxt = shear < 8 ? `weak (~${fmt(shear, 0)} kt)` :
+          shear < 15 ? `moderate (~${fmt(shear, 0)} kt)` :
+            `strong (~${fmt(shear, 0)} kt)`;
+      }
+
+      let stabTxt = "—";
+      if (Number.isFinite(dT)) {
+        // dT = T700 - T1000
+        // more negative = normal decrease with height; less negative / positive = more stable
+        stabTxt = dT > -2 ? `stable (ΔT700–1000 ≈ ${fmt(dT, 1)}°C)` :
+          dT > -8 ? `neutral-ish (ΔT700–1000 ≈ ${fmt(dT, 1)}°C)` :
+            `less stable (ΔT700–1000 ≈ ${fmt(dT, 1)}°C)`;
+      }
+
+      let vbTxt = "—";
+      if (Number.isFinite(dvb)) {
+        const abs = Math.abs(dvb);
+        if (abs < 15) vbTxt = `little veer/back (~${fmt(dvb, 0)}°)`;
+        else vbTxt = dvb > 0 ? `veer with height (~+${fmt(abs, 0)}°)` : `back with height (~-${fmt(abs, 0)}°)`;
+      }
+
+      let moistTxt = "—";
+      if (Number.isFinite(rh850)) {
+        moistTxt = rh850 < 30 ? `dry aloft (RH850 ~${fmt(rh850, 0)}%)` :
+          rh850 < 60 ? `some moisture (RH850 ~${fmt(rh850, 0)}%)` :
+            `moist (RH850 ~${fmt(rh850, 0)}%)`;
+      }
+
+      return {
+        lines: [
+          `<b>Wind shear (1000–700):</b> ${shearTxt}`,
+          `<b>Stability:</b> ${stabTxt}`,
+          `<b>Veer/back (1000→700):</b> ${vbTxt}`,
+          `<b>Moisture:</b> ${moistTxt}`
+        ],
+        sub: `Quick read based on 1000/850/700 hPa from Open-Meteo at the closest hour to 12:00 local.`
+      };
+    }
+
+    /* ========= Charts ========= */
     function destroyChart(ch) { if (ch) ch.destroy(); }
 
     function renderWind(rows, highlightStart, highlightEnd) {
@@ -882,31 +886,18 @@
       charts.wind = new Chart(ctx, {
         type: "line",
         data: {
-          labels,
-          datasets: [
-            { label: "Wind (kt)", data: wind, tension: 0.25, pointRadius: 3 },
-            { label: "Gusts (kt)", data: gust, tension: 0.25, pointRadius: 3 }
+          labels, datasets: [
+            { label: "Wind (kt)", data: wind, tension: 0.25, pointRadius: 2 },
+            { label: "Gusts (kt)", data: gust, tension: 0.25, pointRadius: 2 }
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: {
-            legend: { labels: { color: "#cfe0ef" } },
-            tooltip: { mode: "index", intersect: false }
-          },
+          plugins: { legend: { labels: { color: "#cfe0ef" } }, tooltip: { mode: "index", intersect: false } },
           scales: {
-            x: {
-              type: "time",
-              time: { unit: "hour", displayFormats: { hour: "HH:mm" } },
-              ticks: { color: "#9fb2c2" },
-              grid: { color: "rgba(255,255,255,.08)" }
-            },
-            y: {
-              ticks: { color: "#9fb2c2" },
-              grid: { color: "rgba(255,255,255,.08)" },
-              title: { display: true, text: "Knots", color: "#9fb2c2", font: { weight: "600" } }
-            }
+            x: { type: "time", time: { unit: "hour", displayFormats: { hour: "HH:mm" } }, ticks: { color: "#9fb2c2" }, grid: { color: "rgba(255,255,255,.08)" } },
+            y: { ticks: { color: "#9fb2c2" }, grid: { color: "rgba(255,255,255,.08)" }, title: { display: true, text: "Knots", color: "#9fb2c2", font: { weight: "600" } } }
           }
         }
       });
@@ -922,18 +913,13 @@
       destroyChart(charts.dir);
       charts.dir = new Chart(ctx, {
         type: "line",
-        data: { labels, datasets: [{ label: "Direction (°)", data: dir, tension: 0.2, pointRadius: 2 }] },
+        data: { labels, datasets: [{ label: "Direction (°)", data: dir, tension: 0.2, pointRadius: 1 }] },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false } },
           scales: {
-            x: {
-              type: "time",
-              time: { unit: "hour", displayFormats: { hour: "HH:mm" } },
-              ticks: { color: "#9fb2c2" },
-              grid: { color: "rgba(255,255,255,.08)" }
-            },
+            x: { type: "time", time: { unit: "hour", displayFormats: { hour: "HH:mm" } }, ticks: { color: "#9fb2c2" }, grid: { color: "rgba(255,255,255,.08)" } },
             y: { min: 0, max: 360, ticks: { color: "#9fb2c2", stepSize: 90 }, grid: { color: "rgba(255,255,255,.08)" } }
           }
         }
@@ -954,11 +940,10 @@
       destroyChart(charts.cond);
       charts.cond = new Chart(ctx, {
         data: {
-          labels,
-          datasets: [
-            { type: "line", label: "Temp (°C)", data: temp, tension: 0.25, pointRadius: 2 },
-            { type: "line", label: "Cloud (%)", data: cloud, tension: 0.2, pointRadius: 2 },
-            { type: "line", label: "Precip (mm)", data: rain, tension: 0.2, pointRadius: 2 }
+          labels, datasets: [
+            { type: "line", label: "Temp (°C)", data: temp, tension: 0.25, pointRadius: 1 },
+            { type: "line", label: "Cloud (%)", data: cloud, tension: 0.2, pointRadius: 1 },
+            { type: "line", label: "Precip (mm)", data: rain, tension: 0.2, pointRadius: 1 }
           ]
         },
         options: {
@@ -973,6 +958,23 @@
       });
 
       document.getElementById("condMeta").textContent = `${timeStr(highlightStart)}–${timeStr(highlightEnd)} (summary uses this window)`;
+    }
+
+    function bestTwoHourWindow(rows) {
+      if (!rows || rows.length < 3) return null;
+      const r = rows.slice().sort((a, b) => a.t - b.t);
+      let best = null;
+      for (let i = 0; i < r.length - 2; i++) {
+        const t0 = r[i].t;
+        const t1 = new Date(t0); t1.setHours(t1.getHours() + 2);
+        const w = r.filter(x => x.t >= t0 && x.t <= t1);
+        if (w.length < 2) continue;
+        const wm = mean(w.map(x => x.wind_speed_kt)) ?? 0;
+        const sd = steadinessMetric(w.map(x => x.wind_dir_deg)) ?? 999;
+        const score = wm - 0.05 * sd;
+        if (!best || score > best.score) best = { score, label: `${timeStr(t0)}–${timeStr(t1)} (score ${fmt(score, 1)})` };
+      }
+      return best;
     }
 
     function renderSummary(rows, highlightStart, highlightEnd, stationLabel) {
@@ -1004,42 +1006,12 @@
       document.getElementById("badgeSteady").textContent = sd == null ? "Steadiness: —" : `Steadiness: ±${fmt(sd, 0)}°`;
     }
 
-    function bestTwoHourWindow(rows) {
-      if (!rows || rows.length < 3) return null;
-      const r = rows.slice().sort((a, b) => a.t - b.t);
-      let best = null;
-
-      for (let i = 0; i < r.length - 2; i++) {
-        const t0 = r[i].t;
-        const t1 = new Date(t0); t1.setHours(t1.getHours() + 2);
-        const w = r.filter(x => x.t >= t0 && x.t <= t1);
-        if (w.length < 2) continue;
-
-        const wm = mean(w.map(x => x.wind_speed_kt)) ?? 0;
-        const sd = steadinessMetric(w.map(x => x.wind_dir_deg)) ?? 999;
-        const score = wm - 0.05 * sd;
-
-        if (!best || score > best.score) {
-          best = { score, start: t0, end: t1, label: `${timeStr(t0)}–${timeStr(t1)} (score ${fmt(score, 1)})` };
-        }
-      }
-      return best;
-    }
-
     function renderTephigram(teph) {
       const ctx = document.getElementById("tephCanvas");
       destroyChart(charts.teph);
 
-      const ptsT = teph.levels.map((p, i) => ({ x: teph.T[i], y: p })).filter(pt => pt.x != null && Number.isFinite(pt.x));
-      const ptsTd = teph.levels.map((p, i) => ({ x: teph.Td[i], y: p })).filter(pt => pt.x != null && Number.isFinite(pt.x));
-
-      const commentEl = document.getElementById("tephComment");
-
-      if (ptsT.length < 2) {
-        commentEl.innerHTML = `No usable pressure-level data returned for this time.<br/><span class="muted">Try another station/day.</span>`;
-        document.getElementById("tephMeta").textContent = `Fixed at 12:00 local • (no data)`;
-        return;
-      }
+      const ptsT = teph.levels.map((p, i) => ({ x: teph.T[i], y: p })).filter(pt => pt.x != null);
+      const ptsTd = teph.levels.map((p, i) => ({ x: teph.Td[i], y: p })).filter(pt => pt.x != null);
 
       charts.teph = new Chart(ctx, {
         type: "scatter",
@@ -1054,23 +1026,16 @@
           maintainAspectRatio: false,
           plugins: { legend: { labels: { color: "#cfe0ef" } } },
           scales: {
-            x: {
-              title: { display: true, text: "Temperature (°C)", color: "#9fb2c2", font: { weight: "600" } },
-              ticks: { color: "#9fb2c2" },
-              grid: { color: "rgba(255,255,255,.08)" }
-            },
-            y: {
-              reverse: true,
-              title: { display: true, text: "Pressure (hPa)", color: "#9fb2c2", font: { weight: "600" } },
-              ticks: { color: "#9fb2c2" },
-              grid: { color: "rgba(255,255,255,.08)" }
-            }
+            x: { title: { display: true, text: "Temperature (°C)", color: "#9fb2c2", font: { weight: "600" } }, ticks: { color: "#9fb2c2" }, grid: { color: "rgba(255,255,255,.08)" } },
+            y: { reverse: true, title: { display: true, text: "Pressure (hPa)", color: "#9fb2c2", font: { weight: "600" } }, ticks: { color: "#9fb2c2" }, grid: { color: "rgba(255,255,255,.08)" } }
           }
         }
       });
 
       document.getElementById("tephMeta").textContent = `Fixed at 12:00 local • ${teph.timeLabel}`;
-      commentEl.innerHTML = makeTephComment(teph);
+      const qr = quickReadText(teph);
+      document.getElementById("tephComment").innerHTML = qr.lines.join("<br/>");
+      document.getElementById("tephCommentSub").textContent = qr.sub;
     }
 
     /* ========= Controller ========= */
@@ -1119,7 +1084,7 @@
         const stationLabel = prettifyLabel(stationLabelRaw);
 
         const rows = await loadForecastDay(stationId, selectedDay);
-        if (!rows.length) throw new Error("No forecast rows returned for this station/day");
+        if (!rows.length) throw new Error("No forecast rows returned for this station/day (check issue_time + valid_time).");
 
         const { a, b } = parseWindowTimes();
 
@@ -1128,10 +1093,19 @@
         renderDir(rows, a, b);
         renderConditions(rows, a, b);
 
-        // Upper-air at 12:00 local
+        // Upper air: fail gracefully if unavailable
         document.getElementById("tephComment").textContent = "Loading upper-air…";
-        const teph = await loadTephigramAtNoon(st.latitude, st.longitude, selectedDay);
-        renderTephigram(teph);
+        document.getElementById("tephCommentSub").textContent = "";
+        try {
+          const teph = await loadTephigramAtNoon(st.latitude, st.longitude, selectedDay);
+          renderTephigram(teph);
+        } catch (e) {
+          console.warn("Upper-air failed:", e);
+          document.getElementById("tephMeta").textContent = "Fixed at 12:00 local • (no data)";
+          document.getElementById("tephComment").textContent = "Upper-air unavailable for this run.";
+          document.getElementById("tephCommentSub").textContent = "This can happen if pressure-level variables aren’t returned for the selected point/time.";
+          if (charts.teph) { charts.teph.destroy(); charts.teph = null; }
+        }
 
       } catch (e) {
         console.error(e);
@@ -1140,8 +1114,8 @@
     }
 
     /* ========= Boot ========= */
-    document.getElementById("btnToday").addEventListener("click", () => { setDay("today"); });
-    document.getElementById("btnTomorrow").addEventListener("click", () => { setDay("tomorrow"); });
+    document.getElementById("btnToday").addEventListener("click", () => setDay("today"));
+    document.getElementById("btnTomorrow").addEventListener("click", () => setDay("tomorrow"));
     document.getElementById("btnApply").addEventListener("click", apply);
 
     (async function init() {
