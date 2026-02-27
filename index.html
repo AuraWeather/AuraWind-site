@@ -873,7 +873,7 @@
                 .lte("observed_at", endISO)
                 .order("observed_at", { ascending: true });
 
-            if (typeof query.abortSignal === "function" && signal) query = query.abortSignal(signal;
+            if (typeof query.abortSignal === "function" && signal) query = query.abortSignal(signal);
 
             const { data, error } = await query;
 
