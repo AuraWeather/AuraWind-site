@@ -1,4 +1,3 @@
-<!-- /forecast.html -->
 <!doctype html>
 <html lang="en">
 
@@ -17,9 +16,12 @@
       --text: #eaf3fb;
       --muted: #9fb2c2;
       --accent: #22b8a7;
-      --blue: #5a8cff;
-      /* lighter blue for “Live Map” */
+      --warn: #f5a623;
       --radius: 18px;
+
+      /* NEW: lighter blue for Live Map */
+      --lightBtnBg: rgba(90, 140, 255, .22);
+      --lightBtnBorder: rgba(90, 140, 255, .55);
     }
 
     * {
@@ -141,12 +143,31 @@
       font-weight: 700;
     }
 
-    /* ✅ Live Map button (lighter blue) */
-    .btn.live {
-      background: rgba(90, 140, 255, .18);
-      border: 1px solid rgba(90, 140, 255, .42);
+    /* NEW: light Live Map button */
+    .btn.light {
+      background: var(--lightBtnBg);
+      border: 1px solid var(--lightBtnBorder);
       color: var(--text);
-      font-weight: 850;
+      font-weight: 900;
+    }
+
+    /* NEW: stack Live Map above Apply */
+    .apply-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .apply-stack .btn {
+      width: 140px;
+    }
+
+    .apply-stack .btn.light {
+      width: 140px;
+      padding: 12px 14px;
+      /* bigger */
+      border-radius: 14px;
     }
 
     .grid {
@@ -359,6 +380,17 @@
       font-weight: 700;
       margin-top: 10px;
     }
+
+    /* Make controls feel nicer on smaller widths */
+    @media (max-width: 720px) {
+      .apply-stack .btn {
+        width: 100%;
+      }
+
+      .apply-stack {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 
@@ -393,9 +425,11 @@
           <input id="endTime" type="time" step="3600" />
         </div>
 
-        <!-- ✅ Live Map moved ABOVE Apply -->
-        <button class="btn live" type="button" onclick="location.href='index.html'">Live Map</button>
-        <button id="btnApply" class="btn" type="button">Apply</button>
+        <!-- NEW STACK: Live Map above Apply -->
+        <div class="apply-stack">
+          <button class="btn light" type="button" onclick="location.href='index.html'">Live Map</button>
+          <button id="btnApply" class="btn" type="button">Apply</button>
+        </div>
 
         <button class="btn ghost" type="button" title="Premium coming soon"
           onclick="alert('Premium (7–10 days, model compare, tides, full soundings) — coming soon 🙂')">Unlock Premium
@@ -513,7 +547,7 @@
     </div>
   </div>
 
-  <!-- ✅ Your original JS from forecast.html continues below unchanged -->
+  <!-- Your existing JS can remain exactly the same below this line -->
   <script>
     /* ========= CONFIG ========= */
     const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
@@ -539,16 +573,8 @@
     }
 
     /* ========= Helpers ========= */
-    function roundUpToNextHour(d) {
-      const x = new Date(d);
-      x.setMinutes(0, 0, 0);
-      x.setHours(x.getHours() + 1);
-      return x;
-    }
-    function clampToDay(d, dayStart, dayEnd) {
-      const t = d.getTime();
-      return new Date(Math.max(dayStart.getTime(), Math.min(dayEnd.getTime(), t)));
-    }
+    function roundUpToNextHour(d) { const x = new Date(d); x.setMinutes(0, 0, 0); x.setHours(x.getHours() + 1); return x; }
+    function clampToDay(d, dayStart, dayEnd) { const t = d.getTime(); return new Date(Math.max(dayStart.getTime(), Math.min(dayEnd.getTime(), t))); }
     function iso(d) { return new Date(d).toISOString(); }
 
     function dayBoundsLocal(which) {
@@ -581,21 +607,9 @@
       return ang;
     }
 
-    function fmt(n, digits = 0) {
-      if (n == null || isNaN(n)) return "—";
-      return Number(n).toFixed(digits);
-    }
-
-    function mean(arr) {
-      const v = arr.filter(x => x != null && !isNaN(x));
-      if (!v.length) return null;
-      return v.reduce((a, b) => a + b, 0) / v.length;
-    }
-    function max(arr) {
-      const v = arr.filter(x => x != null && !isNaN(x));
-      if (!v.length) return null;
-      return Math.max(...v);
-    }
+    function fmt(n, digits = 0) { if (n == null || isNaN(n)) return "—"; return Number(n).toFixed(digits); }
+    function mean(arr) { const v = arr.filter(x => x != null && !isNaN(x)); if (!v.length) return null; return v.reduce((a, b) => a + b, 0) / v.length; }
+    function max(arr) { const v = arr.filter(x => x != null && !isNaN(x)); if (!v.length) return null; return Math.max(...v); }
 
     function steadinessMetric(windDirArr) {
       const v = windDirArr.filter(x => x != null && !isNaN(x));
@@ -675,7 +689,6 @@
       const { start, end } = dayBoundsLocal(which);
       const startISO = iso(start);
       const endISO = iso(end);
-
       const issue = await latestIssueTime();
 
       const q =
@@ -688,8 +701,7 @@
 
       const rows = await sbGet(q);
 
-      return (rows || []).map(r => ({ ...r, t: new Date(r.valid_time) }))
-        .filter(r => r.t.toString() !== "Invalid Date");
+      return (rows || []).map(r => ({ ...r, t: new Date(r.valid_time) })).filter(r => r.t.toString() !== "Invalid Date");
     }
 
     /* ========= Upper-air (Open-Meteo) ========= */
@@ -1034,7 +1046,6 @@
       document.getElementById("tephCommentSub").textContent = qr.sub;
     }
 
-    /* ========= Controller ========= */
     function setDay(which) {
       selectedDay = which;
       document.getElementById("btnToday").classList.toggle("active", which === "today");
@@ -1108,7 +1119,6 @@
       }
     }
 
-    /* ========= Boot ========= */
     document.getElementById("btnToday").addEventListener("click", () => setDay("today"));
     document.getElementById("btnTomorrow").addEventListener("click", () => setDay("tomorrow"));
     document.getElementById("btnApply").addEventListener("click", apply);

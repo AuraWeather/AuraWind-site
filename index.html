@@ -20,15 +20,20 @@
             --bg: #0b1120;
             --text: #0b0f1a;
             --muted: rgba(0, 0, 0, 0.62);
+            --accent: #14b8a6;
 
-            /* Forecast-page continuity */
-            --accent: #22b8a7;
-            /* forecast accent */
-            --accent2: #5a8cff;
-            /* light blue used on forecast page */
+            /* "Forecast page colour" feel */
+            --forecastBtnBg: rgba(6, 27, 40, 0.85);
+
+            /* Flow button */
+            --flowOffBg: rgba(20, 184, 166, 0.25);
+            --flowOffBorder: rgba(20, 184, 166, 0.55);
+            --flowOnBg: rgba(20, 184, 166, 0.55);
+            --flowOnBorder: rgba(20, 184, 166, 0.90);
 
             --hud-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
             --hud-border: rgba(0, 0, 0, 0.12);
+            --hud-bg: rgba(255, 255, 255, 0.88);
         }
 
         html,
@@ -52,7 +57,7 @@
             background: var(--bg);
         }
 
-        /* Overlay HUD */
+        /* Overlay HUD (no header bar) */
         .hud {
             position: fixed;
             inset: 0;
@@ -70,9 +75,9 @@
             pointer-events: none;
         }
 
-        /* Bigger logo (and your new padded logo will read even better) */
+        /* Bigger logo + you're pushing a padded asset too */
         #logo {
-            height: clamp(170px, 14vw, 230px);
+            height: clamp(140px, 12vw, 190px);
             width: auto;
             display: block;
             object-fit: contain;
@@ -88,7 +93,7 @@
         }
 
         .hud-title .h1 {
-            font-size: clamp(22px, 2.1vw, 32px);
+            font-size: clamp(22px, 2.1vw, 34px);
             font-weight: 950;
             letter-spacing: 0.2px;
             line-height: 1.05;
@@ -101,6 +106,7 @@
             line-height: 1.05;
         }
 
+        /* Status as plain text */
         .status-text {
             margin-left: 16px;
             font-size: clamp(16px, 1.4vw, 22px);
@@ -110,74 +116,78 @@
             white-space: nowrap;
         }
 
-        /* Actions container (fix spacing + alignment) */
-        .hud-actions {
+        /* Top-right controls group */
+        .hud-right {
             position: absolute;
             top: 12px;
             right: 12px;
             display: flex;
-            gap: 10px;
-            /* ✅ fixes Flow/Forecast being too close */
+            gap: 12px;
             align-items: center;
             pointer-events: auto;
-            /* ✅ clickable */
-            z-index: 1200;
         }
 
-        .btn {
+        .hud-btn {
+            border: 0;
             border-radius: 12px;
             padding: 0.58rem 0.95rem;
             font-weight: 900;
             cursor: pointer;
-            border: 1px solid rgba(255, 255, 255, 0.18);
             box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
             transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
-            user-select: none;
             text-decoration: none;
+            user-select: none;
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            color: #fff;
-            /* ✅ white text */
-            background: rgba(6, 27, 40, 0.78);
+            color: #ffffff;
+            /* white text */
         }
 
-        .btn:hover {
+        .hud-btn:hover {
             transform: translateY(-1px);
             filter: brightness(1.03);
         }
 
-        .btn:disabled {
+        .hud-btn:disabled {
             opacity: 0.6;
             cursor: default;
             transform: none;
         }
 
-        /* ✅ Forecast button same “family” as forecast page */
-        #forecastBtn {
-            background: rgba(34, 184, 167, 0.22);
-            border: 1px solid rgba(34, 184, 167, 0.45);
-        }
-
-        /* ✅ Refresh keeps accent-y vibe, with white text */
-        #refreshBtn {
-            background: rgba(34, 184, 167, 0.50);
-            border: 1px solid rgba(34, 184, 167, 0.55);
-            color: #fff;
-        }
-
-        /* Flow toggle button */
+        /* Flow toggle */
         #flowBtn {
-            background: rgba(255, 255, 255, 0.20);
-            border: 1px solid rgba(255, 255, 255, 0.28);
+            background: var(--flowOffBg);
+            border: 1px solid var(--flowOffBorder);
+            color: #ffffff;
+            font-weight: 950;
         }
 
         #flowBtn.active {
-            background: rgba(34, 184, 167, 0.26);
-            border-color: rgba(34, 184, 167, 0.55);
+            background: var(--flowOnBg);
+            border: 1px solid var(--flowOnBorder);
         }
 
-        /* Legend */
+        /* Forecast button uses "forecast page colour" */
+        #forecastBtn {
+            background: var(--forecastBtnBg);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #ffffff;
+            font-weight: 900;
+            letter-spacing: 0.2px;
+        }
+
+        /* Refresh */
+        #refreshBtn {
+            background: var(--accent);
+            border: 1px solid rgba(20, 184, 166, 0.55);
+            color: #ffffff;
+            /* white text */
+            font-weight: 950;
+            box-shadow: 0 10px 22px rgba(20, 184, 166, 0.18);
+        }
+
+        /* Legend to match: white card + black text */
         .legend {
             position: absolute;
             right: 12px;
@@ -216,46 +226,19 @@
             border: 1px solid rgba(0, 0, 0, 0.25);
         }
 
-        /* Popup polish */
-        .leaflet-popup-content-wrapper {
-            border-radius: 14px;
-            box-shadow: 0 18px 50px rgba(0, 0, 0, .22);
-        }
-
-        .leaflet-popup-content {
-            margin: 10px 12px;
-        }
-
-        .ts-root {
-            width: 400px;
-        }
-
-        .ts-root canvas {
-            width: 100% !important;
-            height: 100% !important;
-        }
-
-        @media (max-width: 768px) {
-            .ts-root {
-                width: 260px;
-            }
-
+        /* Mobile tweaks */
+        @media (max-width: 560px) {
             #logo {
-                height: 130px;
+                height: 120px;
             }
 
-            .hud-left {
-                top: 6px;
+            .hud-right {
+                gap: 10px;
             }
 
-            .btn {
-                padding: 0.5rem 0.75rem;
+            .hud-btn {
+                padding: 0.52rem 0.75rem;
                 border-radius: 12px;
-            }
-
-            .legend {
-                transform: scale(0.92);
-                transform-origin: bottom right;
             }
         }
     </style>
@@ -264,6 +247,7 @@
 <body>
     <div id="map"></div>
 
+    <!-- Overlay HUD -->
     <div class="hud">
         <div class="hud-left">
             <img id="logo" src="aura-logo.png" alt="Aura" />
@@ -274,13 +258,15 @@
             <div id="status" class="status-text">Loading…</div>
         </div>
 
-        <!-- ✅ Top-right actions with spacing -->
-        <div class="hud-actions">
-            <button id="flowBtn" class="btn" type="button" title="Toggle wind flow overlay">Flow</button>
-            <a id="forecastBtn" class="btn" href="./forecast.html" title="Free forecast dashboard">Forecast</a>
-            <button id="refreshBtn" class="btn" type="button" title="Refresh now">Refresh</button>
+        <div class="hud-right">
+            <button id="flowBtn" class="hud-btn" type="button" title="Toggle interpolated flow">
+                Flow
+            </button>
+            <a id="forecastBtn" class="hud-btn" href="./forecast.html" title="Free forecast dashboard">Forecast</a>
+            <button id="refreshBtn" class="hud-btn" type="button" title="Refresh now">Refresh</button>
         </div>
 
+        <!-- Legend -->
         <div class="legend" id="legend">
             <h3>Wind speed (kt)</h3>
             <div class="row"><span class="chip" style="background:#00008b"></span> 0–3</div>
@@ -297,7 +283,6 @@
     </div>
 
     <script>
-        /* ========= HUD helpers ========= */
         const statusEl = document.getElementById("status");
         const setStatus = (s) => { if (statusEl) statusEl.textContent = s; };
 
@@ -311,26 +296,72 @@
             setStatus("Load failed");
         });
 
-        /* ========= Config ========= */
+        /* ---------------- Config ---------------- */
         const OBS_URL = "./solent_obs.json";
         const AUTO_REFRESH_MS = 10 * 60 * 1000;
 
-        const BREAKS = [0, 3, 5, 10, 20, 22, 30, 33, 40, 60];
-        const COLORS = ["#00008b", "#4169e1", "#00ffcc", "#00ff00", "#00cc00", "#ff9900", "#ff0000", "#b22222", "#8b008b", "#800080"];
+        // Desktop defaults (mobile auto scales down below)
+        let ARROW_SIZE_PX = 96;
+        let ARROW_FONT_PX = 20;
 
-        /* ========= Responsive sizing ========= */
-        function isMobile() { return window.matchMedia("(max-width: 768px)").matches; }
-        function uiScale() { return isMobile() ? 0.62 : 1.0; }
-        function arrowSizePx() { return Math.round(96 * uiScale()); }
-        function arrowFontPx() { return Math.round(20 * uiScale()); }
+        // Flow visual tuning (slower + shorter, but not tiny)
+        const FLOW_SETTINGS = {
+            enabled: false,
+            particleCount: 850,     // density
+            speedFactor: 0.32,      // lower = slower
+            maxStepPx: 1.25,        // cap speed per frame
+            particleLife: 52,       // lower = shorter streaks
+            lineWidth: 1.35,
+            alpha: 0.55,
+            fadeAlpha: 0.08,        // higher = quicker fade (shorter trails)
+            idwPower: 1.7,          // interpolation sharpness
+            maxInfluenceKm: 55,     // ignore stations farther than this
+            minStations: 3
+        };
+
+        const BREAKS = [0, 3, 5, 10, 20, 22, 30, 33, 40, 60];
+        const COLORS = [
+            "#00008b",
+            "#4169e1",
+            "#00ffcc",
+            "#00ff00",
+            "#00cc00",
+            "#ff9900",
+            "#ff0000",
+            "#b22222",
+            "#8b008b",
+            "#800080",
+        ];
+
+        // Responsive arrow sizes
+        function applyMobileSizing() {
+            const w = Math.min(window.innerWidth || 9999, window.screen?.width || 9999);
+            if (w <= 560) {
+                ARROW_SIZE_PX = 70;
+                ARROW_FONT_PX = 16;
+            } else if (w <= 900) {
+                ARROW_SIZE_PX = 84;
+                ARROW_FONT_PX = 18;
+            } else {
+                ARROW_SIZE_PX = 96;
+                ARROW_FONT_PX = 20;
+            }
+        }
+        applyMobileSizing();
+        window.addEventListener("resize", () => {
+            applyMobileSizing();
+            flowOverlay?.redraw?.();
+        });
 
         const lerp = (a, b, t) => a + (b - a) * t;
 
         function mixHex(a, b, t) {
             const pa = parseInt(a.slice(1), 16);
             const pb = parseInt(b.slice(1), 16);
+
             const ar = (pa >> 16) & 255, ag = (pa >> 8) & 255, ab = pa & 255;
             const br = (pb >> 16) & 255, bg = (pb >> 8) & 255, bb = pb & 255;
+
             const r = Math.round(lerp(ar, br, t));
             const g = Math.round(lerp(ag, bg, t));
             const b2 = Math.round(lerp(ab, bb, t));
@@ -349,22 +380,10 @@
             return COLORS.at(-1);
         }
 
-        function hexToRgba(hex, a = 1) {
-            const h = String(hex || "#000000").replace("#", "");
-            const full = h.length === 3 ? h.split("").map(c => c + c).join("") : h.padEnd(6, "0").slice(0, 6);
-            const n = parseInt(full, 16);
-            const r = (n >> 16) & 255;
-            const g = (n >> 8) & 255;
-            const b = n & 255;
-            return `rgba(${r},${g},${b},${a})`;
-        }
-
-        function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
-
         // Meteorological: direction is FROM; arrow points TO -> add 180
         const rotateFromDirDeg = (d) => (Number(d) + 180) % 360;
 
-        function svgStationArrow(color, size) {
+        function svgStationArrow(color, size = ARROW_SIZE_PX) {
             const stroke = Math.max(4, size / 12).toFixed(1);
             return `
         <svg width="${size}" height="${size}" viewBox="0 0 64 64"
@@ -379,264 +398,17 @@
       `;
         }
 
-        /* ===============================
-           Wind Flow Overlay (Particles)
-           - coloured by interpolated speed (same ramp as arrows)
-           - FIX: actually renders reliably (waits for map view; less aggressive fade)
-           - tuned: slower + shorter trails
-           =============================== */
-
-        function windUVFromMetDir(speedKt, dirFromDeg) {
-            if (!Number.isFinite(speedKt) || !Number.isFinite(dirFromDeg)) return { u: 0, v: 0 };
-            const rad = dirFromDeg * Math.PI / 180;
-            // meteorological = FROM
-            const u = -speedKt * Math.sin(rad); // +u east
-            const v = -speedKt * Math.cos(rad); // +v north
-            return { u, v };
-        }
-
-        class WindFlowOverlay {
-            constructor(map) {
-                this.map = map;
-
-                this.canvas = document.createElement("canvas");
-                this.canvas.style.position = "absolute";
-                this.canvas.style.top = "0";
-                this.canvas.style.left = "0";
-                this.canvas.style.pointerEvents = "none";
-                this.canvas.style.zIndex = "650"; // above tiles; overlays pane
-                this.ctx = this.canvas.getContext("2d", { alpha: true });
-
-                // Data
-                this.raw = [];    // {lat,lon,u,v,spd}
-                this.points = []; // {x,y,u,v,spd}
-                this.particles = [];
-                this.enabled = false;
-                this.lastT = 0;
-                this.raf = null;
-
-                // Interpolation
-                this.power = 2.0;
-                this.radiusPx = isMobile() ? 200 : 260;
-
-                // Visual tuning (slower + shorter)
-                this.fade = isMobile() ? 0.14 : 0.12;            // ✅ not “instant erase”, still short trails
-                this.particleCount = isMobile() ? 340 : 560;
-                this.speedScale = isMobile() ? 0.38 : 0.42;      // ✅ slower
-                this.baseStep = 0.14;                             // ✅ slower
-                this.lineWidth = isMobile() ? 0.85 : 0.95;
-                this.alpha = isMobile() ? 0.46 : 0.52;           // ✅ a touch more visible
-                this.maxAge = isMobile() ? 65 : 80;              // ✅ shorter particle life
-
-                map.getPanes().overlayPane.appendChild(this.canvas);
-
-                this._resize = () => this.resize();
-                map.on("resize", this._resize);
-
-                this._rebuild = () => this.rebuildPointsSafely();
-                map.on("moveend", this._rebuild);
-                map.on("zoomend", this._rebuild);
-
-                // Clear while moving/zooming so it doesn't smear
-                this._clearOnMove = () => this.redrawNow();
-                map.on("move", this._clearOnMove);
-                map.on("zoom", this._clearOnMove);
-                map.on("zoomanim", this._clearOnMove);
-
-                this.resize();
-            }
-
-            resize() {
-                const size = this.map.getSize();
-                const dpr = window.devicePixelRatio || 1;
-                this.canvas.width = Math.round(size.x * dpr);
-                this.canvas.height = Math.round(size.y * dpr);
-                this.canvas.style.width = `${size.x}px`;
-                this.canvas.style.height = `${size.y}px`;
-                this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            }
-
-            redrawNow() {
-                const size = this.map.getSize();
-                this.ctx.clearRect(0, 0, size.x, size.y);
-            }
-
-            setStations(obsRows) {
-                this.raw = (obsRows || [])
-                    .filter(r => r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null)
-                    .map(r => {
-                        const spd = Number(r.wspd_kn);
-                        const dir = Number(r.wdir_degT);
-                        const uv = windUVFromMetDir(spd, dir);
-                        return { lat: Number(r.lat), lon: Number(r.lon), u: uv.u, v: uv.v, spd };
-                    });
-
-                // don’t try to project until map is properly ready
-                if (this.map._loaded) this.rebuildPointsSafely();
-                this.seedParticles(true);
-            }
-
-            rebuildPointsSafely() {
-                if (!this.map._loaded) return;
-                if (!this.raw.length) { this.points = []; return; }
-
-                try {
-                    this.points = this.raw.map(r => {
-                        const p = this.map.latLngToContainerPoint([r.lat, r.lon]);
-                        return { x: p.x, y: p.y, u: r.u, v: r.v, spd: r.spd };
-                    });
-                } catch (e) {
-                    // if map isn’t quite ready mid-animation, just skip
-                    this.points = [];
-                }
-            }
-
-            seedParticles(force = false) {
-                if (!this.enabled && !force) return;
-                const size = this.map.getSize();
-                const W = size.x, H = size.y;
-                this.particles = new Array(this.particleCount).fill(0).map(() => ({
-                    x: Math.random() * W,
-                    y: Math.random() * H,
-                    age: Math.random() * this.maxAge,
-                }));
-            }
-
-            enable() {
-                if (this.enabled) return;
-                this.enabled = true;
-                this.resize();
-                this.rebuildPointsSafely();
-                this.seedParticles(true);
-                this.lastT = performance.now();
-                this.loop();
-            }
-
-            disable() {
-                this.enabled = false;
-                if (this.raf) cancelAnimationFrame(this.raf);
-                this.raf = null;
-                this.redrawNow();
-            }
-
-            toggle() { this.enabled ? this.disable() : this.enable(); }
-
-            fieldAt(x, y) {
-                const pts = this.points;
-                if (!pts.length) return { u: 0, v: 0, w: 0 };
-
-                let su = 0, sv = 0, sw = 0;
-                const r2 = this.radiusPx * this.radiusPx;
-                const pwr = this.power;
-
-                for (let i = 0; i < pts.length; i++) {
-                    const dx = x - pts[i].x;
-                    const dy = y - pts[i].y;
-                    const d2 = dx * dx + dy * dy;
-                    if (d2 > r2) continue;
-
-                    const w = 1 / Math.pow(Math.max(8, Math.sqrt(d2)), pwr);
-                    su += pts[i].u * w;
-                    sv += pts[i].v * w;
-                    sw += w;
-                }
-
-                if (sw <= 0) return { u: 0, v: 0, w: 0 };
-                return { u: su / sw, v: sv / sw, w: sw };
-            }
-
-            loop() {
-                if (!this.enabled) return;
-
-                // If points are empty (e.g., first frame after fitBounds), keep trying
-                if (!this.points.length && this.map._loaded) {
-                    this.rebuildPointsSafely();
-                }
-
-                const t = performance.now();
-                const dt = clamp((t - this.lastT) / 16.67, 0.6, 2.0);
-                this.lastT = t;
-
-                const size = this.map.getSize();
-                const W = size.x, H = size.y;
-
-                // Fade (short trails, but visible)
-                this.ctx.globalCompositeOperation = "destination-out";
-                this.ctx.fillStyle = `rgba(255,255,255,${this.fade})`;
-                this.ctx.fillRect(0, 0, W, H);
-                this.ctx.globalCompositeOperation = "source-over";
-
-                this.ctx.lineWidth = this.lineWidth;
-
-                for (let i = 0; i < this.particles.length; i++) {
-                    const p = this.particles[i];
-
-                    if (p.age > this.maxAge || p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) {
-                        p.x = Math.random() * W;
-                        p.y = Math.random() * H;
-                        p.age = 0;
-                        continue;
-                    }
-
-                    const f = this.fieldAt(p.x, p.y);
-                    if (f.w === 0) {
-                        p.x += (Math.random() - 0.5) * 0.35;
-                        p.y += (Math.random() - 0.5) * 0.35;
-                        p.age += 1;
-                        continue;
-                    }
-
-                    // speed in knots (u/v are knots)
-                    const spd = Math.sqrt(f.u * f.u + f.v * f.v);
-
-                    // match arrow palette + interpolate between colours
-                    const hex = colorForSpeed(spd);
-
-                    // subtle alpha; slightly higher in stronger winds
-                    const a = this.alpha * clamp(spd / 18, 0.22, 1.0);
-                    this.ctx.strokeStyle = hexToRgba(hex, a);
-
-                    // slower motion
-                    const pxPerFrame = this.baseStep * this.speedScale * dt;
-
-                    // v north is up; canvas y is down
-                    const nx = p.x + f.u * pxPerFrame;
-                    const ny = p.y - f.v * pxPerFrame;
-
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(p.x, p.y);
-                    this.ctx.lineTo(nx, ny);
-                    this.ctx.stroke();
-
-                    p.x = nx;
-                    p.y = ny;
-                    p.age += 1;
-                }
-
-                this.raf = requestAnimationFrame(() => this.loop());
-            }
-        }
-
-        /* ---------------- Map ---------------- */
+        // map + layers
         const map = L.map("map", { zoomControl: true });
-
         L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
             attribution: "&copy; OpenStreetMap, &copy; CARTO",
         }).addTo(map);
 
         const layerStations = L.layerGroup().addTo(map);
 
-        // Flow overlay
-        const flow = new WindFlowOverlay(map);
-
-        const flowBtn = document.getElementById("flowBtn");
-        flowBtn.addEventListener("click", () => {
-            flow.toggle();
-            flowBtn.classList.toggle("active", flow.enabled);
-        });
-
-        // Refresh button
         const refreshBtn = document.getElementById("refreshBtn");
+        const flowBtn = document.getElementById("flowBtn");
+
         refreshBtn.addEventListener("click", () => loadObs(true));
 
         function clearStations() { layerStations.clearLayers(); }
@@ -646,19 +418,16 @@
 
             const color = colorForSpeed(st.wspd_kn);
             const rotate = rotateFromDirDeg(st.wdir_degT);
-
-            const A = arrowSizePx();
-            const F = arrowFontPx();
-            const arrow = svgStationArrow(color, A);
+            const arrow = svgStationArrow(color, ARROW_SIZE_PX);
 
             const html = `
-        <div style="transform:rotate(${rotate}deg);opacity:${isMobile() ? 0.9 : 1}">${arrow}</div>
+        <div style="transform:rotate(${rotate}deg)">${arrow}</div>
         <div style="
           position:relative;
-          top:-${A / 2 - 2}px;
-          width:${A}px;
+          top:-${ARROW_SIZE_PX / 2 - 2}px;
+          width:${ARROW_SIZE_PX}px;
           text-align:center;
-          font:900 ${F}px/1 system-ui;
+          font:900 ${ARROW_FONT_PX}px/1 system-ui;
           color:#111;
           text-shadow:0 0 2px #fff,0 0 8px rgba(255,255,255,.95);
         ">${Math.round(st.wspd_kn)}</div>
@@ -666,8 +435,8 @@
 
             const icon = L.divIcon({
                 html,
-                iconSize: [A, A],
-                iconAnchor: [A / 2, A / 2],
+                iconSize: [ARROW_SIZE_PX, ARROW_SIZE_PX],
+                iconAnchor: [ARROW_SIZE_PX / 2, ARROW_SIZE_PX / 2],
                 className: "",
             });
 
@@ -681,10 +450,11 @@
                 L.DomEvent.stop(e);
 
                 const mount = document.createElement("div");
-                mount.style.width = isMobile() ? "260px" : "420px";
+                // Responsive popup width
+                mount.style.width = "min(420px, 86vw)";
 
                 const popup = L.popup({
-                    maxWidth: isMobile() ? 280 : 560,
+                    maxWidth: 560,
                     autoClose: true,
                     closeOnClick: true,
                     closeButton: false,
@@ -704,6 +474,7 @@
             if (!points.length) return;
 
             let latMin = 90, latMax = -90, lonMin = 180, lonMax = -180;
+
             for (const p of points) {
                 if (p.lat != null && p.lon != null) {
                     latMin = Math.min(latMin, p.lat);
@@ -714,12 +485,18 @@
             }
 
             map.fitBounds(
-                [[latMin - 0.06, lonMin - 0.1], [latMax + 0.06, lonMax + 0.1]],
+                [
+                    [latMin - 0.06, lonMin - 0.1],
+                    [latMax + 0.06, lonMax + 0.1],
+                ],
                 { padding: [20, 20] }
             );
         }
 
         let autoTimer = null;
+
+        // Keep latest stations for flow interpolation
+        let latestStations = [];
 
         async function loadObs(fromButton = false) {
             try {
@@ -757,26 +534,21 @@
 
                 const ok = obs.filter((r) => r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null);
 
-                // Fit first (so flow can project reliably)
+                clearStations();
+                for (const r of ok) addStationMarker(r);
+
+                latestStations = ok.slice();
+
+                // update flow stations if enabled
+                flowOverlay?.setStations?.(latestStations);
+
                 if (ok.length) {
                     if (!map._fitDone || fromButton) {
                         fitToDataBounds(ok);
                         map._fitDone = true;
                     }
-                }
-
-                clearStations();
-                for (const r of ok) addStationMarker(r);
-
-                // Update flow vectors; rebuild happens on moveend/zoomend too
-                flow.setStations(ok);
-
-                if (ok.length) {
                     const gen = data?.meta?.generated_at || new Date().toISOString();
-                    const genStr = (() => {
-                        try { return new Date(gen).toLocaleString(undefined, { hour12: false }); }
-                        catch { return String(gen); }
-                    })();
+                    const genStr = (() => { try { return new Date(gen).toLocaleString(undefined, { hour12: false }); } catch { return String(gen); } })();
                     setStatus(`Stations: ${ok.length} • Updated: ${genStr}`);
                 } else {
                     setStatus("No stations in data");
@@ -787,13 +559,294 @@
                 setStatus("Load failed");
             } finally {
                 refreshBtn.disabled = false;
+
                 if (autoTimer) clearTimeout(autoTimer);
                 autoTimer = setTimeout(loadObs, AUTO_REFRESH_MS);
             }
         }
 
+        /* ============================================================
+          FLOW OVERLAY (interpolated particle field on a canvas layer)
+          - IDW interpolation of u/v using station winds
+          - Particle colours match arrow scale (interpolated smoothly)
+          - Safe init: only runs after map is ready
+        ============================================================ */
+
+        function kmBetween(lat1, lon1, lat2, lon2) {
+            // fast haversine-ish
+            const R = 6371;
+            const toRad = (x) => x * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+            return 2 * R * Math.asin(Math.sqrt(a));
+        }
+
+        function uvFromSpdDir(spdKt, dirDegFrom) {
+            if (!Number.isFinite(spdKt) || !Number.isFinite(dirDegFrom)) return { u: 0, v: 0 };
+            const rad = dirDegFrom * Math.PI / 180;
+            // meteorological: FROM
+            const u = -spdKt * Math.sin(rad);
+            const v = -spdKt * Math.cos(rad);
+            return { u, v };
+        }
+
+        function spdFromUV(u, v) {
+            return Math.sqrt(u * u + v * v);
+        }
+
+        class WindFlowOverlay extends L.Layer {
+            constructor(opts = {}) {
+                super();
+                this.opts = opts;
+                this._map = null;
+                this._canvas = null;
+                this._ctx = null;
+                this._anim = null;
+
+                this._stations = [];
+                this._particles = [];
+                this._ready = false;
+
+                this._redrawBound = () => this.redraw();
+            }
+
+            onAdd(mapRef) {
+                this._map = mapRef;
+
+                this._canvas = L.DomUtil.create("canvas", "leaflet-windflow");
+                this._canvas.style.position = "absolute";
+                this._canvas.style.top = "0";
+                this._canvas.style.left = "0";
+                this._canvas.style.pointerEvents = "none";
+                this._canvas.style.zIndex = "450"; // above tiles, below markers (markers are in panes)
+                this._ctx = this._canvas.getContext("2d");
+
+                const pane = this._map.getPanes().overlayPane;
+                pane.appendChild(this._canvas);
+
+                this._map.on("move zoom resize", this._redrawBound);
+
+                this.redraw();
+                this._ready = true;
+                this._initParticles();
+                this._start();
+            }
+
+            onRemove() {
+                this._stop();
+                if (this._map) {
+                    this._map.off("move zoom resize", this._redrawBound);
+                }
+                if (this._canvas?.parentNode) this._canvas.parentNode.removeChild(this._canvas);
+                this._canvas = null;
+                this._ctx = null;
+                this._map = null;
+                this._ready = false;
+            }
+
+            setStations(stations) {
+                this._stations = Array.isArray(stations) ? stations.slice() : [];
+                // refresh particles so they don't get "stuck" if field changes a lot
+                if (this._ready) this._initParticles(true);
+            }
+
+            redraw() {
+                if (!this._map || !this._canvas) return;
+                const size = this._map.getSize();
+                this._canvas.width = Math.round(size.x);
+                this._canvas.height = Math.round(size.y);
+            }
+
+            _initParticles(soft = false) {
+                if (!this._canvas) return;
+
+                const n = this.opts.particleCount ?? 700;
+                const w = this._canvas.width;
+                const h = this._canvas.height;
+
+                if (!soft || this._particles.length !== n) {
+                    this._particles = [];
+                    for (let i = 0; i < n; i++) {
+                        this._particles.push(this._spawnParticle(w, h));
+                    }
+                } else {
+                    // keep but re-randomize positions slightly
+                    for (const p of this._particles) {
+                        if (Math.random() < 0.35) {
+                            p.x = Math.random() * w;
+                            p.y = Math.random() * h;
+                            p.age = Math.floor(Math.random() * (this.opts.particleLife ?? 50));
+                        }
+                    }
+                }
+            }
+
+            _spawnParticle(w, h) {
+                return {
+                    x: Math.random() * w,
+                    y: Math.random() * h,
+                    age: Math.floor(Math.random() * (this.opts.particleLife ?? 50)),
+                };
+            }
+
+            _fieldAt(lat, lon) {
+                const st = this._stations;
+                const minStations = this.opts.minStations ?? 3;
+                if (!st || st.length < minStations) return null;
+
+                const p = this.opts.idwPower ?? 1.6;
+                const maxKm = this.opts.maxInfluenceKm ?? 55;
+
+                let sw = 0, su = 0, sv = 0, used = 0;
+
+                for (const s of st) {
+                    const dKm = kmBetween(lat, lon, s.lat, s.lon);
+                    if (!Number.isFinite(dKm) || dKm <= 0) continue;
+                    if (dKm > maxKm) continue;
+
+                    const w = 1 / Math.pow(dKm, p);
+                    const uv = uvFromSpdDir(Number(s.wspd_kn), Number(s.wdir_degT));
+                    sw += w;
+                    su += w * uv.u;
+                    sv += w * uv.v;
+                    used++;
+                }
+
+                if (used < minStations || sw <= 0) return null;
+                const u = su / sw;
+                const v = sv / sw;
+                return { u, v, spd: spdFromUV(u, v) };
+            }
+
+            _stepParticle(p) {
+                const ctx = this._ctx;
+                const mapRef = this._map;
+                if (!ctx || !mapRef) return;
+
+                const w = this._canvas.width;
+                const h = this._canvas.height;
+
+                // Convert px -> lat/lon
+                const ll = mapRef.containerPointToLatLng([p.x, p.y]);
+                const f = this._fieldAt(ll.lat, ll.lng);
+
+                if (!f) {
+                    // respawn if no field
+                    p.x = Math.random() * w;
+                    p.y = Math.random() * h;
+                    p.age = 0;
+                    return;
+                }
+
+                const speedFactor = this.opts.speedFactor ?? 0.35;
+                const maxStep = this.opts.maxStepPx ?? 1.25;
+
+                // Direction: u east, v north -> convert to pixel motion
+                // Approx using two nearby points to get px delta for a small lat/lon step:
+                const d = 0.02; // degrees "probe" (small)
+                const ll2 = L.latLng(ll.lat + (f.v >= 0 ? d : -d), ll.lng + (f.u >= 0 ? d : -d));
+                const a = mapRef.latLngToContainerPoint(ll);
+                const b = mapRef.latLngToContainerPoint(ll2);
+
+                let dx = (b.x - a.x);
+                let dy = (b.y - a.y);
+
+                const mag = Math.sqrt(dx * dx + dy * dy) || 1;
+                dx /= mag;
+                dy /= mag;
+
+                // Scale by wind speed
+                const spd = Math.max(0, Math.min(60, f.spd ?? 0)); // clamp for sanity
+                let step = spd * speedFactor / 10; // tune
+                step = Math.min(maxStep, Math.max(0.1, step));
+
+                const x0 = p.x, y0 = p.y;
+                p.x += dx * step;
+                p.y += dy * step;
+
+                // Draw segment coloured by speed (smooth interpolation)
+                const col = colorForSpeed(spd);
+                ctx.strokeStyle = col;
+                ctx.globalAlpha = this.opts.alpha ?? 0.55;
+                ctx.lineWidth = this.opts.lineWidth ?? 1.2;
+                ctx.beginPath();
+                ctx.moveTo(x0, y0);
+                ctx.lineTo(p.x, p.y);
+                ctx.stroke();
+
+                p.age++;
+                const life = this.opts.particleLife ?? 50;
+
+                if (p.age > life || p.x < -10 || p.y < -10 || p.x > w + 10 || p.y > h + 10) {
+                    // respawn
+                    const np = this._spawnParticle(w, h);
+                    p.x = np.x; p.y = np.y; p.age = np.age;
+                }
+            }
+
+            _tick() {
+                const ctx = this._ctx;
+                if (!ctx || !this._canvas) return;
+
+                // Fade previous frame (controls trail length)
+                ctx.globalCompositeOperation = "source-over";
+                ctx.globalAlpha = this.opts.fadeAlpha ?? 0.08;
+                ctx.fillStyle = "rgba(255,255,255,1)"; // just alpha matters
+                ctx.fillRect(0, 0, this._canvas.width, this._canvas.height);
+
+                ctx.globalCompositeOperation = "source-over";
+
+                for (const p of this._particles) this._stepParticle(p);
+
+                this._anim = requestAnimationFrame(() => this._tick());
+            }
+
+            _start() {
+                if (this._anim) return;
+                this._anim = requestAnimationFrame(() => this._tick());
+            }
+
+            _stop() {
+                if (this._anim) cancelAnimationFrame(this._anim);
+                this._anim = null;
+                // clear canvas on stop
+                if (this._ctx && this._canvas) {
+                    this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+                }
+            }
+        }
+
+        let flowOverlay = null;
+
+        function setFlowEnabled(on) {
+            FLOW_SETTINGS.enabled = !!on;
+            flowBtn.classList.toggle("active", FLOW_SETTINGS.enabled);
+
+            if (FLOW_SETTINGS.enabled) {
+                if (!flowOverlay) {
+                    flowOverlay = new WindFlowOverlay(FLOW_SETTINGS);
+                }
+                // Ensure map is ready before adding
+                map.whenReady(() => {
+                    if (!map.hasLayer(flowOverlay)) {
+                        flowOverlay.addTo(map);
+                        flowOverlay.setStations(latestStations);
+                    }
+                });
+            } else {
+                if (flowOverlay && map.hasLayer(flowOverlay)) map.removeLayer(flowOverlay);
+            }
+        }
+
+        flowBtn.addEventListener("click", () => setFlowEnabled(!FLOW_SETTINGS.enabled));
+
+        /* Boot */
         document.addEventListener("DOMContentLoaded", () => loadObs(false));
-        map.whenReady(() => { if (!map._fitDone) loadObs(false); });
+        map.whenReady(() => {
+            if (!map._fitDone) loadObs(false);
+        });
     </script>
 
     <!-- Supabase -->
@@ -805,7 +858,7 @@
         const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     </script>
 
-    <!-- Time-series popup (unchanged from your version, kept intact) -->
+    <!-- Time-series + Forecast overlay + Source toggle (unchanged, but popup width is responsive above) -->
     <script>
         const stationIdCache = new Map();
         const seriesCache = new Map();
@@ -825,6 +878,7 @@
         async function getStationId(idOrCode) {
             if (idOrCode == null) return null;
 
+            // Accept UUIDs directly
             const raw = String(idOrCode);
             const key = raw.trim();
             if (!key) return null;
@@ -833,14 +887,28 @@
             const cached = stationIdCache.get(key);
             if (cached && now() - cached.ts < STATION_CACHE_MS) return cached.id;
 
-            let { data, error } = await sb.from("stations").select("id").eq("code", key).limit(1).maybeSingle();
+            // 1) Try exact match on code
+            let q = sb.from("stations").select("id").eq("code", key).limit(1).maybeSingle();
+            let { data, error } = await q;
 
+            // 2) Fallback: sometimes we pass station_name / site_id style
             if (!data?.id && !error) {
-                ({ data, error } = await sb.from("stations").select("id").eq("name", key).limit(1).maybeSingle());
+                ({ data, error } = await sb
+                    .from("stations")
+                    .select("id")
+                    .eq("name", key)
+                    .limit(1)
+                    .maybeSingle());
             }
 
+            // 3) Fallback: try case-insensitive match (handles accidental case differences)
             if (!data?.id && !error) {
-                ({ data, error } = await sb.from("stations").select("id").ilike("code", key).limit(1).maybeSingle());
+                ({ data, error } = await sb
+                    .from("stations")
+                    .select("id")
+                    .ilike("code", key)
+                    .limit(1)
+                    .maybeSingle());
             }
 
             if (error) {
@@ -945,7 +1013,7 @@
             };
 
             containerEl.innerHTML = `
-        <div class="ts-root">
+        <div style="width:min(400px, 86vw);">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
             <span style="font-size:12px;opacity:.7;">Window:</span>
             <select class="ts-window" style="font-size:12px;padding:2px 6px;border-radius:10px;">
@@ -954,7 +1022,6 @@
               <option value="12">12h</option>
               <option value="24">24h</option>
             </select>
-
             <span style="font-size:12px;opacity:.7;margin-left:10px;">Source:</span>
             <select class="ts-source" style="font-size:12px;padding:2px 6px;border-radius:10px;">
               <option value="wind" selected>Wind</option>
@@ -964,16 +1031,16 @@
 
           <div class="panel-wind">
             <div style="width:100%;height:180px;position:relative;margin-bottom:10px;">
-              <canvas class="ts-canvas-speed"></canvas>
+              <canvas class="ts-canvas-speed" style="width:100%;height:180px;"></canvas>
             </div>
             <div style="width:100%;height:140px;position:relative;">
-              <canvas class="ts-canvas-dir"></canvas>
+              <canvas class="ts-canvas-dir" style="width:100%;height:140px;"></canvas>
             </div>
           </div>
 
           <div class="panel-mslp" style="display:none;">
             <div style="width:100%;height:200px;position:relative;">
-              <canvas class="ts-canvas-mslp"></canvas>
+              <canvas class="ts-canvas-mslp" style="width:100%;height:200px;"></canvas>
             </div>
           </div>
 
@@ -991,7 +1058,10 @@
             const mslpCtx = containerEl.querySelector(".ts-canvas-mslp").getContext("2d");
 
             const statusEl = containerEl.querySelector(".ts-status");
-            const setDisabled = (d) => { selWindow.disabled = d; selSource.disabled = d; };
+            const setDisabled = (d) => {
+                selWindow.disabled = d;
+                selSource.disabled = d;
+            };
 
             function showMode(mode) {
                 containerEl.__tsState.mode = mode;
@@ -1037,13 +1107,23 @@
                     animation: { duration: 120 },
                 };
 
-                const state = containerEl.__tsState;
+                if (!containerEl.__tsState.speedChart) {
+                    containerEl.__tsState.speedChart = new Chart(speedCtx, { type: "line", data: speedData, options: speedOpts });
+                } else {
+                    const c = containerEl.__tsState.speedChart;
+                    c.data = speedData;
+                    c.options = speedOpts;
+                    c.update();
+                }
 
-                if (!state.speedChart) state.speedChart = new Chart(speedCtx, { type: "line", data: speedData, options: speedOpts });
-                else { state.speedChart.data = speedData; state.speedChart.options = speedOpts; state.speedChart.update(); }
-
-                if (!state.dirChart) state.dirChart = new Chart(dirCtx, { type: "line", data: dirData, options: dirOpts });
-                else { state.dirChart.data = dirData; state.dirChart.options = dirOpts; state.dirChart.update(); }
+                if (!containerEl.__tsState.dirChart) {
+                    containerEl.__tsState.dirChart = new Chart(dirCtx, { type: "line", data: dirData, options: dirOpts });
+                } else {
+                    const c2 = containerEl.__tsState.dirChart;
+                    c2.data = dirData;
+                    c2.options = dirOpts;
+                    c2.update();
+                }
             }
 
             function upsertMSLPChart(labels, ts_obs, mslp_obs, rain_obs, ts_fcst, mslp_fc, rain_fc) {
@@ -1072,10 +1152,14 @@
                     animation: { duration: 120 },
                 };
 
-                const state = containerEl.__tsState;
-
-                if (!state.mslpRainChart) state.mslpRainChart = new Chart(mslpCtx, { data, options: opts });
-                else { state.mslpRainChart.data = data; state.mslpRainChart.options = opts; state.mslpRainChart.update(); }
+                if (!containerEl.__tsState.mslpRainChart) {
+                    containerEl.__tsState.mslpRainChart = new Chart(mslpCtx, { data, options: opts });
+                } else {
+                    const c = containerEl.__tsState.mslpRainChart;
+                    c.data = data;
+                    c.options = opts;
+                    c.update();
+                }
             }
 
             async function load(hours) {
@@ -1119,8 +1203,11 @@
 
                 const labels = Array.from(new Set([...ts, ...f_ts])).sort();
 
-                if (state.mode === "wind") upsertWindCharts(labels, ts, wspd, gust, wdir, f_ts, f_wspd, f_gust, f_wdir);
-                else upsertMSLPChart(labels, ts, mslp, rain, f_ts, f_mslp, f_rain);
+                if (state.mode === "wind") {
+                    upsertWindCharts(labels, ts, wspd, gust, wdir, f_ts, f_wspd, f_gust, f_wdir);
+                } else {
+                    upsertMSLPChart(labels, ts, mslp, rain, f_ts, f_mslp, f_rain);
+                }
 
                 if (leafletPopup?.update) {
                     leafletPopup.update();
@@ -1137,17 +1224,18 @@
                     gust.filter((v) => v != null).length,
                     wdir.filter((v) => v != null).length
                 );
-                const nonNullMSLP = Math.max(
-                    mslp.filter((v) => v != null).length,
-                    rain.filter((v) => v != null).length
-                );
+                const nonNullMSLP = Math.max(mslp.filter((v) => v != null).length, rain.filter((v) => v != null).length);
 
                 statusEl.textContent = `${state.mode === "wind" ? nonNullWind : nonNullMSLP} pts`;
                 setDisabled(false);
             }
 
             selWindow.addEventListener("change", () => load(parseInt(selWindow.value, 10)));
-            selSource.addEventListener("change", () => { showMode(selSource.value); load(parseInt(selWindow.value, 10)); });
+            selSource.addEventListener("change", () => {
+                state = containerEl.__tsState;
+                showMode(selSource.value);
+                load(parseInt(selWindow.value, 10));
+            });
 
             showMode("wind");
             selWindow.value = String(defaultHours);
