@@ -20,7 +20,12 @@
             --bg: #0b1120;
             --text: #0b0f1a;
             --muted: rgba(0, 0, 0, 0.62);
-            --accent: #14b8a6;
+
+            /* Forecast-page continuity */
+            --accent: #22b8a7;
+            /* forecast accent */
+            --accent2: #5a8cff;
+            /* light blue used on forecast page */
 
             --hud-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
             --hud-border: rgba(0, 0, 0, 0.12);
@@ -65,8 +70,9 @@
             pointer-events: none;
         }
 
+        /* Bigger logo (and your new padded logo will read even better) */
         #logo {
-            height: clamp(120px, 10vw, 160px);
+            height: clamp(170px, 14vw, 230px);
             width: auto;
             display: block;
             object-fit: contain;
@@ -104,75 +110,71 @@
             white-space: nowrap;
         }
 
-        /* Buttons */
-        #refreshBtn {
+        /* Actions container (fix spacing + alignment) */
+        .hud-actions {
             position: absolute;
             top: 12px;
             right: 12px;
+            display: flex;
+            gap: 10px;
+            /* ✅ fixes Flow/Forecast being too close */
+            align-items: center;
             pointer-events: auto;
-            background: var(--accent);
-            color: #062b2a;
-            border: 0;
+            /* ✅ clickable */
+            z-index: 1200;
+        }
+
+        .btn {
             border-radius: 12px;
             padding: 0.58rem 0.95rem;
             font-weight: 900;
             cursor: pointer;
-            box-shadow: 0 10px 22px rgba(20, 184, 166, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
             transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
-        }
-
-        #forecastBtn {
-            position: absolute;
-            top: 12px;
-            right: 118px;
-            pointer-events: auto;
-            background: rgba(6, 27, 40, 0.75);
-            color: #eaf3fb;
-            border: 1px solid rgba(255, 255, 255, 0.28);
-            border-radius: 12px;
-            padding: 0.58rem 0.95rem;
-            font-weight: 800;
-            letter-spacing: 0.2px;
-            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.15);
-            cursor: pointer;
+            user-select: none;
             text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #fff;
+            /* ✅ white text */
+            background: rgba(6, 27, 40, 0.78);
         }
 
-        #forecastBtn:hover {
-            background: rgba(6, 27, 40, 0.90);
-        }
-
-        #flowBtn {
-            position: absolute;
-            top: 12px;
-            right: 208px;
-            pointer-events: auto;
-            background: rgba(255, 255, 255, 0.75);
-            color: #0b0f1a;
-            border: 1px solid rgba(0, 0, 0, 0.12);
-            border-radius: 12px;
-            padding: 0.58rem 0.95rem;
-            font-weight: 900;
-            cursor: pointer;
-            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.10);
-            transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
-        }
-
-        #flowBtn.active {
-            background: rgba(20, 184, 166, 0.30);
-            border-color: rgba(20, 184, 166, 0.45);
-        }
-
-        #refreshBtn:hover,
-        #flowBtn:hover {
+        .btn:hover {
             transform: translateY(-1px);
-            filter: brightness(1.02);
+            filter: brightness(1.03);
         }
 
-        #refreshBtn:disabled {
+        .btn:disabled {
             opacity: 0.6;
             cursor: default;
             transform: none;
+        }
+
+        /* ✅ Forecast button same “family” as forecast page */
+        #forecastBtn {
+            background: rgba(34, 184, 167, 0.22);
+            border: 1px solid rgba(34, 184, 167, 0.45);
+        }
+
+        /* ✅ Refresh keeps accent-y vibe, with white text */
+        #refreshBtn {
+            background: rgba(34, 184, 167, 0.50);
+            border: 1px solid rgba(34, 184, 167, 0.55);
+            color: #fff;
+        }
+
+        /* Flow toggle button */
+        #flowBtn {
+            background: rgba(255, 255, 255, 0.20);
+            border: 1px solid rgba(255, 255, 255, 0.28);
+        }
+
+        #flowBtn.active {
+            background: rgba(34, 184, 167, 0.26);
+            border-color: rgba(34, 184, 167, 0.55);
         }
 
         /* Legend */
@@ -239,22 +241,16 @@
             }
 
             #logo {
-                height: 92px;
+                height: 130px;
             }
 
             .hud-left {
                 top: 6px;
             }
 
-            #refreshBtn,
-            #forecastBtn,
-            #flowBtn {
+            .btn {
                 padding: 0.5rem 0.75rem;
                 border-radius: 12px;
-            }
-
-            #flowBtn {
-                right: 180px;
             }
 
             .legend {
@@ -278,9 +274,12 @@
             <div id="status" class="status-text">Loading…</div>
         </div>
 
-        <button id="flowBtn" title="Toggle wind flow overlay">Flow</button>
-        <a id="forecastBtn" href="./forecast.html" title="Free forecast dashboard">Forecast</a>
-        <button id="refreshBtn" title="Refresh now">Refresh</button>
+        <!-- ✅ Top-right actions with spacing -->
+        <div class="hud-actions">
+            <button id="flowBtn" class="btn" type="button" title="Toggle wind flow overlay">Flow</button>
+            <a id="forecastBtn" class="btn" href="./forecast.html" title="Free forecast dashboard">Forecast</a>
+            <button id="refreshBtn" class="btn" type="button" title="Refresh now">Refresh</button>
+        </div>
 
         <div class="legend" id="legend">
             <h3>Wind speed (kt)</h3>
@@ -382,8 +381,9 @@
 
         /* ===============================
            Wind Flow Overlay (Particles)
-           - now coloured by interpolated speed using your colorForSpeed() ramp
-           - tuned: SLOWER + SHORTER trails
+           - coloured by interpolated speed (same ramp as arrows)
+           - FIX: actually renders reliably (waits for map view; less aggressive fade)
+           - tuned: slower + shorter trails
            =============================== */
 
         function windUVFromMetDir(speedKt, dirFromDeg) {
@@ -404,10 +404,10 @@
                 this.canvas.style.top = "0";
                 this.canvas.style.left = "0";
                 this.canvas.style.pointerEvents = "none";
-                this.canvas.style.zIndex = "600"; // above tiles, below HUD
+                this.canvas.style.zIndex = "650"; // above tiles; overlays pane
                 this.ctx = this.canvas.getContext("2d", { alpha: true });
 
-                // Data state
+                // Data
                 this.raw = [];    // {lat,lon,u,v,spd}
                 this.points = []; // {x,y,u,v,spd}
                 this.particles = [];
@@ -419,14 +419,14 @@
                 this.power = 2.0;
                 this.radiusPx = isMobile() ? 200 : 260;
 
-                // VISUAL TUNING (SLOW + SHORT)
-                this.fade = 0.24;                 // higher = shorter trails
-                this.particleCount = isMobile() ? 340 : 520;
-                this.speedScale = isMobile() ? 0.45 : 0.50;  // overall speed multiplier (lower = slower)
-                this.baseStep = 0.18;             // base px step (lower = slower)
+                // Visual tuning (slower + shorter)
+                this.fade = isMobile() ? 0.14 : 0.12;            // ✅ not “instant erase”, still short trails
+                this.particleCount = isMobile() ? 340 : 560;
+                this.speedScale = isMobile() ? 0.38 : 0.42;      // ✅ slower
+                this.baseStep = 0.14;                             // ✅ slower
                 this.lineWidth = isMobile() ? 0.85 : 0.95;
-                this.alpha = isMobile() ? 0.42 : 0.48;
-                this.maxAge = isMobile() ? 70 : 85;          // lower = shorter particle lifespan
+                this.alpha = isMobile() ? 0.46 : 0.52;           // ✅ a touch more visible
+                this.maxAge = isMobile() ? 65 : 80;              // ✅ shorter particle life
 
                 map.getPanes().overlayPane.appendChild(this.canvas);
 
@@ -437,7 +437,7 @@
                 map.on("moveend", this._rebuild);
                 map.on("zoomend", this._rebuild);
 
-                // Clear trails while moving so it doesn't smear
+                // Clear while moving/zooming so it doesn't smear
                 this._clearOnMove = () => this.redrawNow();
                 map.on("move", this._clearOnMove);
                 map.on("zoom", this._clearOnMove);
@@ -471,30 +471,30 @@
                         return { lat: Number(r.lat), lon: Number(r.lon), u: uv.u, v: uv.v, spd };
                     });
 
-                this.rebuildPointsSafely();
+                // don’t try to project until map is properly ready
+                if (this.map._loaded) this.rebuildPointsSafely();
                 this.seedParticles(true);
             }
 
             rebuildPointsSafely() {
-                // If map has no view yet, latLngToContainerPoint can throw. Wait for fitBounds.
-                try {
-                    const c = this.map.getCenter();
-                    if (!c) return;
-                } catch {
-                    return;
-                }
+                if (!this.map._loaded) return;
+                if (!this.raw.length) { this.points = []; return; }
 
-                this.points = (this.raw || []).map(r => {
-                    const p = this.map.latLngToContainerPoint([r.lat, r.lon]);
-                    return { x: p.x, y: p.y, u: r.u, v: r.v, spd: r.spd };
-                });
+                try {
+                    this.points = this.raw.map(r => {
+                        const p = this.map.latLngToContainerPoint([r.lat, r.lon]);
+                        return { x: p.x, y: p.y, u: r.u, v: r.v, spd: r.spd };
+                    });
+                } catch (e) {
+                    // if map isn’t quite ready mid-animation, just skip
+                    this.points = [];
+                }
             }
 
             seedParticles(force = false) {
                 if (!this.enabled && !force) return;
                 const size = this.map.getSize();
                 const W = size.x, H = size.y;
-
                 this.particles = new Array(this.particleCount).fill(0).map(() => ({
                     x: Math.random() * W,
                     y: Math.random() * H,
@@ -505,6 +505,7 @@
             enable() {
                 if (this.enabled) return;
                 this.enabled = true;
+                this.resize();
                 this.rebuildPointsSafely();
                 this.seedParticles(true);
                 this.lastT = performance.now();
@@ -547,6 +548,11 @@
             loop() {
                 if (!this.enabled) return;
 
+                // If points are empty (e.g., first frame after fitBounds), keep trying
+                if (!this.points.length && this.map._loaded) {
+                    this.rebuildPointsSafely();
+                }
+
                 const t = performance.now();
                 const dt = clamp((t - this.lastT) / 16.67, 0.6, 2.0);
                 this.lastT = t;
@@ -554,7 +560,7 @@
                 const size = this.map.getSize();
                 const W = size.x, H = size.y;
 
-                // Fade (short trails)
+                // Fade (short trails, but visible)
                 this.ctx.globalCompositeOperation = "destination-out";
                 this.ctx.fillStyle = `rgba(255,255,255,${this.fade})`;
                 this.ctx.fillRect(0, 0, W, H);
@@ -574,8 +580,8 @@
 
                     const f = this.fieldAt(p.x, p.y);
                     if (f.w === 0) {
-                        p.x += (Math.random() - 0.5) * 0.4;
-                        p.y += (Math.random() - 0.5) * 0.4;
+                        p.x += (Math.random() - 0.5) * 0.35;
+                        p.y += (Math.random() - 0.5) * 0.35;
                         p.age += 1;
                         continue;
                     }
@@ -586,11 +592,11 @@
                     // match arrow palette + interpolate between colours
                     const hex = colorForSpeed(spd);
 
-                    // keep subtle; slight boost in stronger winds
+                    // subtle alpha; slightly higher in stronger winds
                     const a = this.alpha * clamp(spd / 18, 0.22, 1.0);
                     this.ctx.strokeStyle = hexToRgba(hex, a);
 
-                    // MUCH SLOWER
+                    // slower motion
                     const pxPerFrame = this.baseStep * this.speedScale * dt;
 
                     // v north is up; canvas y is down
@@ -622,6 +628,7 @@
 
         // Flow overlay
         const flow = new WindFlowOverlay(map);
+
         const flowBtn = document.getElementById("flowBtn");
         flowBtn.addEventListener("click", () => {
             flow.toggle();
@@ -750,7 +757,7 @@
 
                 const ok = obs.filter((r) => r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null);
 
-                // Ensure map has a view before flow tries latLngToContainerPoint
+                // Fit first (so flow can project reliably)
                 if (ok.length) {
                     if (!map._fitDone || fromButton) {
                         fitToDataBounds(ok);
@@ -761,7 +768,7 @@
                 clearStations();
                 for (const r of ok) addStationMarker(r);
 
-                // update flow vectors (safe; rebuilds on moveend/zoomend too)
+                // Update flow vectors; rebuild happens on moveend/zoomend too
                 flow.setStations(ok);
 
                 if (ok.length) {
@@ -798,7 +805,7 @@
         const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     </script>
 
-    <!-- Time-series popup -->
+    <!-- Time-series popup (unchanged from your version, kept intact) -->
     <script>
         const stationIdCache = new Map();
         const seriesCache = new Map();
@@ -876,9 +883,7 @@
                 .lte("observed_at", endISO)
                 .order("observed_at", { ascending: true });
 
-            if (typeof query.abortSignal === "function" && signal) {
-                query = query.abortSignal(signal);
-            }
+            if (typeof query.abortSignal === "function" && signal) query = query.abortSignal(signal);
 
             const { data, error } = await query;
 
@@ -909,9 +914,7 @@
                 .lte("valid_time", endISO)
                 .order("valid_time", { ascending: true });
 
-            if (typeof q.abortSignal === "function" && signal) {
-                q = q.abortSignal(signal);
-            }
+            if (typeof q.abortSignal === "function" && signal) q = q.abortSignal(signal);
 
             const { data, error } = await q;
 

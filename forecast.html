@@ -1,3 +1,4 @@
+<!-- /forecast.html -->
 <!doctype html>
 <html lang="en">
 
@@ -16,7 +17,8 @@
       --text: #eaf3fb;
       --muted: #9fb2c2;
       --accent: #22b8a7;
-      --warn: #f5a623;
+      --blue: #5a8cff;
+      /* lighter blue for “Live Map” */
       --radius: 18px;
     }
 
@@ -137,6 +139,14 @@
       border: 1px solid rgba(255, 255, 255, .10);
       color: var(--muted);
       font-weight: 700;
+    }
+
+    /* ✅ Live Map button (lighter blue) */
+    .btn.live {
+      background: rgba(90, 140, 255, .18);
+      border: 1px solid rgba(90, 140, 255, .42);
+      color: var(--text);
+      font-weight: 850;
     }
 
     .grid {
@@ -383,7 +393,8 @@
           <input id="endTime" type="time" step="3600" />
         </div>
 
-        <button class="btn ghost" type="button" onclick="location.href='index.html'">Live Map</button>
+        <!-- ✅ Live Map moved ABOVE Apply -->
+        <button class="btn live" type="button" onclick="location.href='index.html'">Live Map</button>
         <button id="btnApply" class="btn" type="button">Apply</button>
 
         <button class="btn ghost" type="button" title="Premium coming soon"
@@ -502,15 +513,12 @@
     </div>
   </div>
 
+  <!-- ✅ Your original JS from forecast.html continues below unchanged -->
   <script>
     /* ========= CONFIG ========= */
     const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";
-
-
-    // IMPORTANT: use forecast_hourly (your ingester writes here)
     const FORECAST_TABLE = "forecast_hourly";
-
     const TZ_LABEL = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
 
     /* ========= State ========= */
@@ -638,7 +646,6 @@
     }
 
     async function latestIssueTime() {
-      // Grab a single newest row across table
       const rows = await sbGet(`${FORECAST_TABLE}?select=issue_time&order=issue_time.desc&limit=1`);
       const it = rows?.[0]?.issue_time;
       if (!it) throw new Error(`Could not find issue_time in ${FORECAST_TABLE}`);
@@ -666,12 +673,9 @@
 
     async function loadForecastDay(stationId, which) {
       const { start, end } = dayBoundsLocal(which);
-
-      // Keep your stored times (DB is UTC). We filter on UTC ISO.
       const startISO = iso(start);
       const endISO = iso(end);
 
-      // IMPORTANT: constrain to the latest issue_time so we don't mix runs
       const issue = await latestIssueTime();
 
       const q =
@@ -684,10 +688,8 @@
 
       const rows = await sbGet(q);
 
-      return (rows || []).map(r => ({
-        ...r,
-        t: new Date(r.valid_time)
-      })).filter(r => r.t.toString() !== "Invalid Date");
+      return (rows || []).map(r => ({ ...r, t: new Date(r.valid_time) }))
+        .filter(r => r.t.toString() !== "Invalid Date");
     }
 
     /* ========= Upper-air (Open-Meteo) ========= */
@@ -735,7 +737,6 @@
         vars.push(`wind_direction_${p}hPa`);
       }
 
-      // IMPORTANT: no model pin here (pressure-level availability varies)
       const url =
         `https://api.open-meteo.com/v1/forecast` +
         `?latitude=${encodeURIComponent(lat)}` +
@@ -779,7 +780,6 @@
     function windUVFromSpdDir(spdKt, dirDeg) {
       if (!Number.isFinite(spdKt) || !Number.isFinite(dirDeg)) return { u: null, v: null };
       const rad = dirDeg * Math.PI / 180;
-      // meteorological dir = FROM
       const u = -spdKt * Math.sin(rad);
       const v = -spdKt * Math.cos(rad);
       return { u, v };
@@ -804,9 +804,8 @@
       if (iTop === -1 || iBot === -1) return null;
       const d0 = teph.wdir[iBot], d1 = teph.wdir[iTop];
       if (!Number.isFinite(d0) || !Number.isFinite(d1)) return null;
-      // signed shortest diff
       let diff = ((d1 - d0 + 540) % 360) - 180;
-      return diff; // + = veer, - = back
+      return diff;
     }
 
     function stabilityDeltaT(teph, pTop = 700, pBot = 1000) {
@@ -815,7 +814,6 @@
       if (iTop === -1 || iBot === -1) return null;
       const Ttop = teph.T[iTop], Tbot = teph.T[iBot];
       if (!Number.isFinite(Ttop) || !Number.isFinite(Tbot)) return null;
-      // stable if lapse small / inversion: Ttop - Tbot >= 0 (since higher is colder usually negative)
       return Ttop - Tbot;
     }
 
@@ -841,8 +839,6 @@
 
       let stabTxt = "—";
       if (Number.isFinite(dT)) {
-        // dT = T700 - T1000
-        // more negative = normal decrease with height; less negative / positive = more stable
         stabTxt = dT > -2 ? `stable (ΔT700–1000 ≈ ${fmt(dT, 1)}°C)` :
           dT > -8 ? `neutral-ish (ΔT700–1000 ≈ ${fmt(dT, 1)}°C)` :
             `less stable (ΔT700–1000 ≈ ${fmt(dT, 1)}°C)`;
@@ -1093,7 +1089,6 @@
         renderDir(rows, a, b);
         renderConditions(rows, a, b);
 
-        // Upper air: fail gracefully if unavailable
         document.getElementById("tephComment").textContent = "Loading upper-air…";
         document.getElementById("tephCommentSub").textContent = "";
         try {
