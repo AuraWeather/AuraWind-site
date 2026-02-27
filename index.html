@@ -311,8 +311,8 @@
             speedFactor: 0.32,      // lower = slower
             maxStepPx: 1.25,        // cap speed per frame
             particleLife: 52,       // lower = shorter streaks
-            lineWidth: 1.35,
-            alpha: 0.55,
+            lineWidth: 2.2,
+            alpha: 0.85,
             fadeAlpha: 0.08,        // higher = quicker fade (shorter trails)
             idwPower: 1.7,          // interpolation sharpness
             maxInfluenceKm: 55,     // ignore stations farther than this
@@ -790,13 +790,17 @@
                 const ctx = this._ctx;
                 if (!ctx || !this._canvas) return;
 
-                // Fade previous frame (controls trail length)
-                ctx.globalCompositeOperation = "source-over";
-                ctx.globalAlpha = this.opts.fadeAlpha ?? 0.08;
-                ctx.fillStyle = "rgba(255,255,255,1)"; // just alpha matters
+                // Fade previous frame WITHOUT whitening the map.
+                // This keeps the canvas transparent and just reduces existing trail alpha.
+                const fade = this.opts.fadeAlpha ?? 0.08;          // 0.05–0.15 typical
+                ctx.globalCompositeOperation = "destination-in";
+                ctx.globalAlpha = 1 - fade;                        // multiply alpha down
+                ctx.fillStyle = "rgba(0,0,0,1)";
                 ctx.fillRect(0, 0, this._canvas.width, this._canvas.height);
 
+                // Back to normal drawing
                 ctx.globalCompositeOperation = "source-over";
+                ctx.globalAlpha = 1;
 
                 for (const p of this._particles) this._stepParticle(p);
 
