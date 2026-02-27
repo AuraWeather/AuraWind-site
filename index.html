@@ -129,7 +129,6 @@
             position: absolute;
             top: 12px;
             right: 118px;
-            /* sits just left of refresh */
             pointer-events: auto;
             background: rgba(6, 27, 40, 0.75);
             color: var(--text);
@@ -146,7 +145,6 @@
         #forecastBtn:hover {
             background: rgba(6, 27, 40, 0.90);
         }
-
 
         #refreshBtn:hover {
             transform: translateY(-1px);
@@ -196,6 +194,52 @@
             height: 10px;
             border-radius: 3px;
             border: 1px solid rgba(0, 0, 0, 0.25);
+        }
+
+        /* ===== Leaflet popup: compact card look ===== */
+        .leaflet-popup-content-wrapper {
+            border-radius: 14px;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, .22);
+        }
+
+        .leaflet-popup-content {
+            margin: 10px 12px;
+        }
+
+        /* ===== Timeseries popup content ===== */
+        .ts-root {
+            width: 400px;
+        }
+
+        .ts-root canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* ===== Mobile overrides ===== */
+        @media (max-width: 768px) {
+            .ts-root {
+                width: 260px;
+            }
+
+            .legend {
+                transform: scale(0.92);
+                transform-origin: bottom right;
+            }
+
+            #logo {
+                height: 92px;
+            }
+
+            .hud-left {
+                top: 6px;
+            }
+
+            #refreshBtn,
+            #forecastBtn {
+                padding: 0.5rem 0.75rem;
+                border-radius: 12px;
+            }
         }
     </style>
 </head>
@@ -254,9 +298,6 @@
         const OBS_URL = "./solent_obs.json";
         const AUTO_REFRESH_MS = 10 * 60 * 1000;
 
-        const ARROW_SIZE_PX = 96;
-        const ARROW_FONT_PX = 20;
-
         const BREAKS = [0, 3, 5, 10, 20, 22, 30, 33, 40, 60];
         const COLORS = [
             "#00008b",
@@ -271,18 +312,32 @@
             "#800080",
         ];
 
+        /* ---------------- Responsive sizing (mobile-friendly) ---------------- */
+        function isMobile() {
+            return window.matchMedia("(max-width: 768px)").matches;
+        }
+
+        function uiScale() {
+            // tune to taste: 0.58–0.70 range is usually nice
+            return isMobile() ? 0.62 : 1.0;
+        }
+
+        function arrowSizePx() {
+            return Math.round(96 * uiScale()); // ~60px on mobile
+        }
+
+        function arrowFontPx() {
+            return Math.round(20 * uiScale()); // ~12–13px on mobile
+        }
+
         const lerp = (a, b, t) => a + (b - a) * t;
 
         function mixHex(a, b, t) {
             const pa = parseInt(a.slice(1), 16);
             const pb = parseInt(b.slice(1), 16);
 
-            const ar = (pa >> 16) & 255,
-                ag = (pa >> 8) & 255,
-                ab = pa & 255;
-            const br = (pb >> 16) & 255,
-                bg = (pb >> 8) & 255,
-                bb = pb & 255;
+            const ar = (pa >> 16) & 255, ag = (pa >> 8) & 255, ab = pa & 255;
+            const br = (pb >> 16) & 255, bg = (pb >> 8) & 255, bb = pb & 255;
 
             const r = Math.round(lerp(ar, br, t));
             const g = Math.round(lerp(ag, bg, t));
@@ -293,8 +348,7 @@
         function colorForSpeed(spd) {
             if (spd == null || Number.isNaN(spd)) return "#999";
             for (let i = 0; i < BREAKS.length - 1; i++) {
-                const lo = BREAKS[i],
-                    hi = BREAKS[i + 1];
+                const lo = BREAKS[i], hi = BREAKS[i + 1];
                 if (spd <= hi) {
                     const t = Math.max(0, Math.min(1, (spd - lo) / Math.max(1e-9, hi - lo)));
                     return mixHex(COLORS[i], COLORS[i + 1], t);
@@ -306,19 +360,19 @@
         // Meteorological: direction is FROM; arrow points TO -> add 180
         const rotateFromDirDeg = (d) => (Number(d) + 180) % 360;
 
-        function svgStationArrow(color, size = ARROW_SIZE_PX) {
+        function svgStationArrow(color, size) {
             const stroke = Math.max(4, size / 12).toFixed(1);
             return `
-          <svg width="${size}" height="${size}" viewBox="0 0 64 64"
-            xmlns="http://www.w3.org/2000/svg"
-            style="filter:drop-shadow(0 0 3px rgba(0,0,0,.35));">
-            <g transform="translate(32,32)">
-              <line x1="0" y1="20" x2="0" y2="-16"
-                stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"/>
-              <polygon points="0,-26 -10,-8 10,-8" fill="${color}"/>
-            </g>
-          </svg>
-        `;
+        <svg width="${size}" height="${size}" viewBox="0 0 64 64"
+          xmlns="http://www.w3.org/2000/svg"
+          style="filter:drop-shadow(0 0 3px rgba(0,0,0,.35));">
+          <g transform="translate(32,32)">
+            <line x1="0" y1="20" x2="0" y2="-16"
+              stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"/>
+            <polygon points="0,-26 -10,-8 10,-8" fill="${color}"/>
+          </g>
+        </svg>
+      `;
         }
 
         // map + layers
@@ -341,25 +395,29 @@
 
             const color = colorForSpeed(st.wspd_kn);
             const rotate = rotateFromDirDeg(st.wdir_degT);
-            const arrow = svgStationArrow(color, ARROW_SIZE_PX);
+
+            const A = arrowSizePx();
+            const F = arrowFontPx();
+
+            const arrow = svgStationArrow(color, A);
 
             const html = `
-          <div style="transform:rotate(${rotate}deg)">${arrow}</div>
-          <div style="
-            position:relative;
-            top:-${ARROW_SIZE_PX / 2 - 2}px;
-            width:${ARROW_SIZE_PX}px;
-            text-align:center;
-            font:800 ${ARROW_FONT_PX}px/1 system-ui;
-            color:#111;
-            text-shadow:0 0 2px #fff,0 0 8px rgba(255,255,255,.95);
-          ">${Math.round(st.wspd_kn)}</div>
-        `;
+        <div style="transform:rotate(${rotate}deg);opacity:${isMobile() ? 0.9 : 1}">${arrow}</div>
+        <div style="
+          position:relative;
+          top:-${A / 2 - 2}px;
+          width:${A}px;
+          text-align:center;
+          font:900 ${F}px/1 system-ui;
+          color:#111;
+          text-shadow:0 0 2px #fff,0 0 8px rgba(255,255,255,.95);
+        ">${Math.round(st.wspd_kn)}</div>
+      `;
 
             const icon = L.divIcon({
                 html,
-                iconSize: [ARROW_SIZE_PX, ARROW_SIZE_PX],
-                iconAnchor: [ARROW_SIZE_PX / 2, ARROW_SIZE_PX / 2],
+                iconSize: [A, A],
+                iconAnchor: [A / 2, A / 2],
                 className: "",
             });
 
@@ -373,10 +431,10 @@
                 L.DomEvent.stop(e);
 
                 const mount = document.createElement("div");
-                mount.style.width = "420px";
+                mount.style.width = isMobile() ? "260px" : "420px";
 
                 const popup = L.popup({
-                    maxWidth: 560,
+                    maxWidth: isMobile() ? 280 : 560,
                     autoClose: true,
                     closeOnClick: true,
                     closeButton: false,
@@ -395,10 +453,7 @@
         function fitToDataBounds(points) {
             if (!points.length) return;
 
-            let latMin = 90,
-                latMax = -90,
-                lonMin = 180,
-                lonMax = -180;
+            let latMin = 90, latMax = -90, lonMin = 180, lonMax = -180;
 
             for (const p of points) {
                 if (p.lat != null && p.lon != null) {
@@ -454,9 +509,7 @@
                     station_id: r.station_id ?? r.site_id ?? r.id,
                 }));
 
-                const ok = obs.filter(
-                    (r) => r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null
-                );
+                const ok = obs.filter((r) => r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null);
 
                 clearStations();
                 for (const r of ok) addStationMarker(r);
@@ -467,7 +520,10 @@
                         map._fitDone = true;
                     }
                     const gen = data?.meta?.generated_at || new Date().toISOString();
-                    const genStr = (() => { try { return new Date(gen).toLocaleString(undefined, { hour12: false }); } catch { return String(gen); } })();
+                    const genStr = (() => {
+                        try { return new Date(gen).toLocaleString(undefined, { hour12: false }); }
+                        catch { return String(gen); }
+                    })();
                     setStatus(`Stations: ${ok.length} • Updated: ${genStr}`);
                 } else {
                     setStatus("No stations in data");
@@ -487,6 +543,12 @@
         document.addEventListener("DOMContentLoaded", () => loadObs(false));
         map.whenReady(() => {
             if (!map._fitDone) loadObs(false);
+        });
+
+        // Re-render markers when viewport changes (orientation, resize)
+        window.addEventListener("resize", () => {
+            // avoid hammering: only refit when we already have data on map
+            if (map._fitDone) loadObs(true);
         });
     </script>
 
@@ -516,7 +578,6 @@
             const start = new Date(end.getTime() - hours * 3600 * 1000);
             return { startISO: start.toISOString(), endISO: end.toISOString() };
         }
-
 
         async function getStationId(idOrCode) {
             if (idOrCode == null) return null;
@@ -563,7 +624,6 @@
             stationIdCache.set(key, { id, ts: now() });
             return id;
         }
-
 
         function normalizeRow(r) {
             const tsRaw = r.observed_at || r.ts || r.time || r.datetime;
@@ -657,40 +717,41 @@
             };
 
             containerEl.innerHTML = `
-          <div style="width:400px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-              <span style="font-size:12px;opacity:.7;">Window:</span>
-              <select class="ts-window" style="font-size:12px;padding:2px 6px;border-radius:10px;">
-                <option value="3">3h</option>
-                <option value="6" selected>6h</option>
-                <option value="12">12h</option>
-                <option value="24">24h</option>
-              </select>
-              <span style="font-size:12px;opacity:.7;margin-left:10px;">Source:</span>
-              <select class="ts-source" style="font-size:12px;padding:2px 6px;border-radius:10px;">
-                <option value="wind" selected>Wind</option>
-                <option value="mslp">MSLP/Rain</option>
-              </select>
-            </div>
+        <div class="ts-root">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+            <span style="font-size:12px;opacity:.7;">Window:</span>
+            <select class="ts-window" style="font-size:12px;padding:2px 6px;border-radius:10px;">
+              <option value="3">3h</option>
+              <option value="6" selected>6h</option>
+              <option value="12">12h</option>
+              <option value="24">24h</option>
+            </select>
 
-            <div class="panel-wind">
-              <div style="width:100%;height:180px;position:relative;margin-bottom:10px;">
-                <canvas class="ts-canvas-speed" style="width:380px;height:180px;"></canvas>
-              </div>
-              <div style="width:100%;height:140px;position:relative;">
-                <canvas class="ts-canvas-dir" style="width:380px;height:140px;"></canvas>
-              </div>
-            </div>
-
-            <div class="panel-mslp" style="display:none;">
-              <div style="width:100%;height:200px;position:relative;">
-                <canvas class="ts-canvas-mslp" style="width:380px;height:200px;"></canvas>
-              </div>
-            </div>
-
-            <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
+            <span style="font-size:12px;opacity:.7;margin-left:10px;">Source:</span>
+            <select class="ts-source" style="font-size:12px;padding:2px 6px;border-radius:10px;">
+              <option value="wind" selected>Wind</option>
+              <option value="mslp">MSLP/Rain</option>
+            </select>
           </div>
-        `;
+
+          <div class="panel-wind">
+            <div style="width:100%;height:180px;position:relative;margin-bottom:10px;">
+              <canvas class="ts-canvas-speed"></canvas>
+            </div>
+            <div style="width:100%;height:140px;position:relative;">
+              <canvas class="ts-canvas-dir"></canvas>
+            </div>
+          </div>
+
+          <div class="panel-mslp" style="display:none;">
+            <div style="width:100%;height:200px;position:relative;">
+              <canvas class="ts-canvas-mslp"></canvas>
+            </div>
+          </div>
+
+          <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
+        </div>
+      `;
 
             const selWindow = containerEl.querySelector(".ts-window");
             const selSource = containerEl.querySelector(".ts-source");
@@ -857,9 +918,7 @@
                 const seq = ++state.req;
 
                 if (state.abort) {
-                    try {
-                        state.abort.abort();
-                    } catch { }
+                    try { state.abort.abort(); } catch { }
                 }
                 state.abort = new AbortController();
 
@@ -871,12 +930,9 @@
 
                 if (!obsRows.length) {
                     statusEl.textContent = "No data";
-                    state.speedChart?.destroy();
-                    state.speedChart = null;
-                    state.dirChart?.destroy();
-                    state.dirChart = null;
-                    state.mslpRainChart?.destroy();
-                    state.mslpRainChart = null;
+                    state.speedChart?.destroy(); state.speedChart = null;
+                    state.dirChart?.destroy(); state.dirChart = null;
+                    state.mslpRainChart?.destroy(); state.mslpRainChart = null;
                     setDisabled(false);
                     return;
                 }
