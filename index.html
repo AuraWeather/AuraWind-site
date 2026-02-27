@@ -66,7 +66,7 @@
             pointer-events: none;
         }
 
-        /* ~2x bigger logo */
+        /* Logo */
         #logo {
             height: clamp(120px, 10vw, 160px);
             width: auto;
@@ -107,7 +107,7 @@
             white-space: nowrap;
         }
 
-        /* Refresh in top-right (clickable) */
+        /* Refresh */
         #refreshBtn {
             position: absolute;
             top: 12px;
@@ -131,7 +131,7 @@
             right: 118px;
             pointer-events: auto;
             background: rgba(6, 27, 40, 0.75);
-            color: var(--text);
+            color: #eaf3fb;
             border: 1px solid rgba(255, 255, 255, 0.28);
             border-radius: 12px;
             padding: 0.58rem 0.95rem;
@@ -180,7 +180,7 @@
             transform: none;
         }
 
-        /* Legend to match: white card + black text */
+        /* Legend */
         .legend {
             position: absolute;
             right: 12px;
@@ -219,7 +219,7 @@
             border: 1px solid rgba(0, 0, 0, 0.25);
         }
 
-        /* Leaflet popup: compact card look */
+        /* Leaflet popup: compact */
         .leaflet-popup-content-wrapper {
             border-radius: 14px;
             box-shadow: 0 18px 50px rgba(0, 0, 0, .22);
@@ -290,7 +290,6 @@
         <a id="forecastBtn" href="./forecast.html" title="Free forecast dashboard">Forecast</a>
         <button id="refreshBtn" title="Refresh now">Refresh</button>
 
-        <!-- Legend -->
         <div class="legend" id="legend">
             <h3>Wind speed (kt)</h3>
             <div class="row"><span class="chip" style="background:#00008b"></span> 0–3</div>
@@ -327,7 +326,7 @@
         const BREAKS = [0, 3, 5, 10, 20, 22, 30, 33, 40, 60];
         const COLORS = ["#00008b", "#4169e1", "#00ffcc", "#00ff00", "#00cc00", "#ff9900", "#ff0000", "#b22222", "#8b008b", "#800080"];
 
-        /* ---------------- Responsive sizing (mobile-friendly) ---------------- */
+        /* ---------------- Responsive sizing ---------------- */
         function isMobile() { return window.matchMedia("(max-width: 768px)").matches; }
         function uiScale() { return isMobile() ? 0.62 : 1.0; }
         function arrowSizePx() { return Math.round(96 * uiScale()); }
@@ -378,7 +377,7 @@
 
         /* ===============================
            Wind Flow Overlay (Particles)
-           - Interpolated IDW vector field from stations
+           - Safe init: stores lat/lon and rebuilds pixel points after map has a view
            =============================== */
 
         function windUVFromMetDir(speedKt, dirFromDeg) {
@@ -405,7 +404,8 @@
                 // state
                 this.enabled = false;
                 this.particles = [];
-                this.points = []; // stations as pixel coords + u/v
+                this.raw = [];    // stations: lat/lon + u/v
+                this.points = []; // stations: pixel x/y + u/v
                 this.lastT = 0;
                 this.raf = null;
 
@@ -418,7 +418,6 @@
                 this.lineWidth = 1.2;      // particle stroke
                 this.alpha = 0.65;         // stroke alpha
 
-                // mobile tuning
                 if (isMobile()) {
                     this.particleCount = 520;
                     this.radiusPx = 180;
@@ -427,16 +426,22 @@
                     this.speedScale = 0.85;
                 }
 
-                // attach to map overlay pane
                 map.getPanes().overlayPane.appendChild(this.canvas);
 
                 // keep canvas in sync
                 this._resize = () => this.resize();
-                this._move = () => this.redrawNow();
                 map.on("resize", this._resize);
-                map.on("move", this._move);
-                map.on("zoom", this._move);
-                map.on("zoomanim", this._move);
+
+                // rebuild pixel points whenever view changes (now safe)
+                this._rebuild = () => this.rebuildPointsSafely();
+                map.on("moveend", this._rebuild);
+                map.on("zoomend", this._rebuild);
+
+                // clear trails while panning/zooming
+                this._clearOnMove = () => this.redrawNow();
+                map.on("move", this._clearOnMove);
+                map.on("zoom", this._clearOnMove);
+                map.on("zoomanim", this._clearOnMove);
 
                 this.resize();
             }
@@ -452,16 +457,33 @@
             }
 
             setStations(obsRows) {
-                // convert station lat/lon to pixel coords for current view
-                this.points = obsRows
+                // Store as lat/lon first (safe before map has center/zoom)
+                this.raw = (obsRows || [])
                     .filter(r => r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null)
                     .map(r => {
-                        const p = this.map.latLngToContainerPoint([r.lat, r.lon]);
                         const uv = windUVFromMetDir(Number(r.wspd_kn), Number(r.wdir_degT));
-                        return { x: p.x, y: p.y, u: uv.u, v: uv.v, spd: Number(r.wspd_kn) };
+                        return { lat: Number(r.lat), lon: Number(r.lon), u: uv.u, v: uv.v, spd: Number(r.wspd_kn) };
                     });
-                // respawn particles when data changes
+
+                // Try rebuild now; if map isn't ready, it will rebuild on moveend/zoomend
+                this.rebuildPointsSafely();
                 this.seedParticles(true);
+            }
+
+            rebuildPointsSafely() {
+                // If map has no view yet, this can throw. Just skip and wait for moveend.
+                try {
+                    const c = this.map.getCenter();
+                    if (!c) return;
+                } catch {
+                    return;
+                }
+
+                const raw = this.raw || [];
+                this.points = raw.map(r => {
+                    const p = this.map.latLngToContainerPoint([r.lat, r.lon]);
+                    return { x: p.x, y: p.y, u: r.u, v: r.v, spd: r.spd };
+                });
             }
 
             seedParticles(force = false) {
@@ -480,6 +502,7 @@
             enable() {
                 if (this.enabled) return;
                 this.enabled = true;
+                this.rebuildPointsSafely();
                 this.seedParticles(true);
                 this.lastT = performance.now();
                 this.loop();
@@ -489,7 +512,6 @@
                 this.enabled = false;
                 if (this.raf) cancelAnimationFrame(this.raf);
                 this.raf = null;
-                // clear canvas
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             }
 
@@ -499,15 +521,11 @@
             }
 
             redrawNow() {
-                // When map moves, cached station pixel coords change
-                // Recompute points from lat/lon isn't available here, so we rely on setStations() call after loadObs.
-                // But we can at least clear to avoid trails drifting visually during pan.
                 if (!this.enabled) return;
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             }
 
             fieldAt(x, y) {
-                // IDW interpolation in pixel space (fast enough for particle count)
                 const pts = this.points;
                 if (!pts.length) return { u: 0, v: 0, w: 0 };
 
@@ -534,25 +552,24 @@
                 if (!this.enabled) return;
 
                 const t = performance.now();
-                const dt = clamp((t - this.lastT) / 16.67, 0.5, 2.2); // normalize to ~60fps
+                const dt = clamp((t - this.lastT) / 16.67, 0.5, 2.2);
                 this.lastT = t;
 
                 const size = this.map.getSize();
                 const W = size.x, H = size.y;
 
-                // fade previous frame for trails
+                // fade trails
                 this.ctx.fillStyle = `rgba(255,255,255,${this.fade})`;
                 this.ctx.globalCompositeOperation = "destination-out";
                 this.ctx.fillRect(0, 0, W, H);
                 this.ctx.globalCompositeOperation = "source-over";
 
                 this.ctx.lineWidth = this.lineWidth;
-                this.ctx.strokeStyle = `rgba(16,185,129,${this.alpha})`; // teal-ish; we can make speed-colored later
+                this.ctx.strokeStyle = `rgba(16,185,129,${this.alpha})`;
 
                 for (let i = 0; i < this.particles.length; i++) {
                     const p = this.particles[i];
 
-                    // respawn if old or out of bounds
                     if (p.age > 140 || p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) {
                         p.x = Math.random() * W;
                         p.y = Math.random() * H;
@@ -562,18 +579,15 @@
 
                     const f = this.fieldAt(p.x, p.y);
                     if (f.w === 0) {
-                        // no influence nearby -> random walk + age
                         p.x += (Math.random() - 0.5) * 0.6;
                         p.y += (Math.random() - 0.5) * 0.6;
                         p.age += 1;
                         continue;
                     }
 
-                    // Convert kt -> pixels per frame:
-                    // tune constant: higher = faster animation
                     const pxPerFrame = 0.55 * this.speedScale * dt;
                     const nx = p.x + f.u * pxPerFrame;
-                    const ny = p.y - f.v * pxPerFrame; // canvas y down, v is north (+ up)
+                    const ny = p.y - f.v * pxPerFrame; // v north is up; canvas y is down
 
                     this.ctx.beginPath();
                     this.ctx.moveTo(p.x, p.y);
@@ -589,7 +603,7 @@
             }
         }
 
-        // map + layers
+        /* ---------------- Map ---------------- */
         const map = L.map("map", { zoomControl: true });
         L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
             attribution: "&copy; OpenStreetMap, &copy; CARTO",
@@ -597,15 +611,15 @@
 
         const layerStations = L.layerGroup().addTo(map);
 
-        // Flow overlay instance
+        // Flow overlay
         const flow = new WindFlowOverlay(map);
-
         const flowBtn = document.getElementById("flowBtn");
         flowBtn.addEventListener("click", () => {
             flow.toggle();
             flowBtn.classList.toggle("active", flow.enabled);
         });
 
+        // Refresh
         const refreshBtn = document.getElementById("refreshBtn");
         refreshBtn.addEventListener("click", () => loadObs(true));
 
@@ -728,17 +742,21 @@
 
                 const ok = obs.filter((r) => r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null);
 
-                clearStations();
-                for (const r of ok) addStationMarker(r);
-
-                // Update flow field using same stations (works even if disabled; it just seeds)
-                flow.setStations(ok);
-
+                // Ensure map has a view before flow tries to convert lat/lon -> pixels
                 if (ok.length) {
                     if (!map._fitDone || fromButton) {
                         fitToDataBounds(ok);
                         map._fitDone = true;
                     }
+                }
+
+                clearStations();
+                for (const r of ok) addStationMarker(r);
+
+                // Update flow field (safe now, and also rebuilds on moveend/zoomend)
+                flow.setStations(ok);
+
+                if (ok.length) {
                     const gen = data?.meta?.generated_at || new Date().toISOString();
                     const genStr = (() => {
                         try { return new Date(gen).toLocaleString(undefined, { hour12: false }); }
@@ -762,7 +780,7 @@
         document.addEventListener("DOMContentLoaded", () => loadObs(false));
         map.whenReady(() => { if (!map._fitDone) loadObs(false); });
 
-        // Re-render markers when viewport changes (orientation, resize)
+        // Optional: if orientation/viewport changes, re-render
         window.addEventListener("resize", () => {
             if (map._fitDone) loadObs(true);
         });
@@ -773,7 +791,6 @@
     <script>
         const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";
-
         const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     </script>
 
@@ -856,7 +873,7 @@
                 .lte("observed_at", endISO)
                 .order("observed_at", { ascending: true });
 
-            if (typeof query.abortSignal === "function" && signal) query = query.abortSignal(signal);
+            if (typeof query.abortSignal === "function" && signal) query = query.abortSignal(signal;
 
             const { data, error } = await query;
 
