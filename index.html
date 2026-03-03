@@ -1,742 +1,1008 @@
+<!-- /index.html -->
 <!doctype html>
 <html lang="en">
 
 <head>
     <meta charset="utf-8" />
+    <title>AuraWind — Solent Live Observations</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Aura — Solent Live Observations</title>
 
     <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+    <!-- Chart.js + time adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+
     <style>
         :root {
-            --ink: #0b1f2d;
-            --panel: rgba(255, 255, 255, .92);
-            --panel2: rgba(255, 255, 255, .80);
-            --shadow: 0 16px 40px rgba(0, 0, 0, .22);
-            --btn: #0b1f2d;
-            --btn2: #12bfb1;
-            --btnText: #fff;
-            --muted: rgba(11, 31, 45, .72);
-            --radius: 16px;
+            --bg: #0b1120;
+            --text: #0b0f1a;
+            --muted: rgba(0, 0, 0, .62);
+            --accent: #14b8a6;
 
-            /* popup */
-            --popBg: rgba(7, 24, 34, .86);
-            --popBorder: rgba(255, 255, 255, .18);
-            --popText: rgba(234, 243, 251, .96);
-            --popMuted: rgba(234, 243, 251, .72);
+            --forecastBtnBg: rgba(6, 27, 40, .85);
+
+            --flowOffBg: rgba(20, 184, 166, .25);
+            --flowOffBorder: rgba(20, 184, 166, .55);
+            --flowOnBg: rgba(20, 184, 166, .70);
+            --flowOnBorder: rgba(20, 184, 166, .95);
+
+            --hud-shadow: 0 10px 26px rgba(0, 0, 0, .18);
+            --hud-border: rgba(0, 0, 0, .12);
+
+            --popup-bg: rgba(6, 27, 40, .92);
+            --popup-border: rgba(255, 255, 255, .18);
+            --popup-text: rgba(234, 243, 251, .96);
+            --popup-muted: rgba(234, 243, 251, .72);
         }
 
         html,
         body {
             height: 100%;
             margin: 0;
-            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            background: var(--bg);
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
         }
 
         #map {
-            height: 100%;
+            position: fixed;
+            inset: 0;
             width: 100%;
-            background: #e9eef2;
+            height: 100%;
+            z-index: 0;
         }
 
-        /* top overlay header */
-        .topbar {
-            position: absolute;
-            inset: 0 auto auto 0;
-            display: flex;
-            gap: 18px;
-            align-items: flex-start;
-            padding: 14px 14px 0 14px;
+        .leaflet-container {
+            background: var(--bg);
+        }
+
+        .hud {
+            position: fixed;
+            inset: 0;
             pointer-events: none;
             z-index: 1000;
         }
 
-        .logoCard {
-            pointer-events: auto;
-            width: 160px;
-            background: var(--panel);
-            border-radius: 0 0 var(--radius) var(--radius);
-            box-shadow: var(--shadow);
-            overflow: hidden;
-        }
-
-        .logoCard img {
-            display: block;
-            width: 100%;
-            height: auto;
-        }
-
-        .titleBlock {
-            pointer-events: auto;
-            margin-top: 4px;
-            background: rgba(255, 255, 255, .0);
-            color: var(--ink);
-            text-shadow: none;
-        }
-
-        .titleRow {
-            display: flex;
-            align-items: baseline;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .titleRow h1 {
-            margin: 0;
-            font-size: 34px;
-            line-height: 1.05;
-            letter-spacing: .2px;
-            color: var(--ink);
-        }
-
-        .meta {
-            margin-top: 4px;
-            font-weight: 800;
-            color: rgba(11, 31, 45, .78);
-        }
-
-        .meta small {
-            font-weight: 800;
-        }
-
-        /* top right buttons */
-        .btns {
+        .hud-left {
             position: absolute;
-            top: 14px;
-            right: 14px;
+            left: 12px;
+            top: 2px;
             display: flex;
-            gap: 10px;
-            z-index: 1001;
+            align-items: flex-start;
+            gap: 14px;
+            pointer-events: none;
         }
 
-        .btn {
+        #logo {
+            height: clamp(140px, 12vw, 190px);
+            width: auto;
+            display: block;
+            object-fit: contain;
+            filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .18));
+        }
+
+        .hud-title {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            color: var(--text);
+            text-shadow: 0 1px 0 rgba(255, 255, 255, .7);
+        }
+
+        .hud-title .h1 {
+            font-size: clamp(22px, 2.1vw, 34px);
+            font-weight: 950;
+            letter-spacing: .2px;
+            line-height: 1.05;
+        }
+
+        .hud-title .sub {
+            font-size: clamp(14px, 1.25vw, 18px);
+            font-weight: 750;
+            color: var(--muted);
+            line-height: 1.05;
+        }
+
+        .status-text {
+            margin-left: 16px;
+            font-size: clamp(16px, 1.4vw, 22px);
+            font-weight: 900;
+            color: var(--text);
+            text-shadow: 0 2px 0 rgba(255, 255, 255, .75);
+            white-space: nowrap;
+        }
+
+        .hud-right {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
             pointer-events: auto;
-            border: none;
-            border-radius: 14px;
-            padding: 12px 16px;
+        }
+
+        .hud-btn {
+            border: 0;
+            border-radius: 12px;
+            padding: .58rem .95rem;
             font-weight: 900;
             cursor: pointer;
-            box-shadow: 0 14px 32px rgba(0, 0, 0, .22);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, .12);
+            transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
+            text-decoration: none;
+            user-select: none;
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            user-select: none;
-        }
-
-        .btn.flow {
-            background: rgba(18, 191, 177, .22);
-            color: var(--btn);
-            border: 1px solid rgba(18, 191, 177, .45);
-        }
-
-        .btn.forecast {
-            background: rgba(11, 31, 45, .90);
+            gap: 8px;
             color: #fff;
-            border: 1px solid rgba(11, 31, 45, .25);
         }
 
-        .btn.refresh {
-            background: rgba(18, 191, 177, .95);
-            color: #fff;
-            border: 1px solid rgba(18, 191, 177, .25);
+        .hud-btn:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.03);
         }
 
-        .btn:active {
-            transform: translateY(1px);
+        .hud-btn:disabled {
+            opacity: .6;
+            cursor: default;
+            transform: none;
         }
 
-        /* legend */
+        #flowBtn {
+            background: var(--flowOffBg);
+            border: 1px solid var(--flowOffBorder);
+            font-weight: 950;
+        }
+
+        #flowBtn.active {
+            background: var(--flowOnBg);
+            border: 1px solid var(--flowOnBorder);
+        }
+
+        #forecastBtn {
+            background: var(--forecastBtnBg);
+            border: 1px solid rgba(255, 255, 255, .25);
+        }
+
+        #refreshBtn {
+            background: var(--accent);
+            border: 1px solid rgba(20, 184, 166, .55);
+            font-weight: 950;
+            box-shadow: 0 10px 22px rgba(20, 184, 166, .18);
+        }
+
         .legend {
             position: absolute;
-            right: 14px;
-            bottom: 14px;
-            z-index: 1002;
-            background: rgba(255, 255, 255, .92);
+            right: 12px;
+            bottom: 12px;
+            z-index: 999;
+            background: rgba(255, 255, 255, .90);
+            border: 1px solid var(--hud-border);
             border-radius: 14px;
-            box-shadow: var(--shadow);
-            padding: 12px 12px 10px;
-            width: 170px;
-            pointer-events: auto;
+            padding: 10px 12px;
+            box-shadow: var(--hud-shadow);
+            font: 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            color: var(--text);
+            backdrop-filter: blur(10px);
+            pointer-events: none;
         }
 
         .legend h3 {
-            margin: 0 0 8px 0;
-            font-size: 14px;
-            color: var(--ink);
-            letter-spacing: .2px;
+            margin: 0 0 6px 0;
+            font-size: 12px;
+            font-weight: 950;
+            color: var(--text);
         }
 
-        .legRow {
+        .legend .row {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 10px;
+            gap: 8px;
             margin: 4px 0;
-            font-weight: 800;
-            color: rgba(11, 31, 45, .75);
-            font-size: 12px;
+            color: rgba(0, 0, 0, .75);
         }
 
-        .sw {
-            width: 22px;
-            height: 14px;
-            border-radius: 4px;
-            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
+        .chip {
+            width: 18px;
+            height: 10px;
+            border-radius: 3px;
+            border: 1px solid rgba(0, 0, 0, .25);
         }
 
-        .legRow span:last-child {
-            min-width: 56px;
-            text-align: right;
-        }
-
-        /* Leaflet popup styling (smaller + dark) */
+        /* Dark glass popup */
         .leaflet-popup-content-wrapper {
-            background: var(--popBg) !important;
-            color: var(--popText) !important;
+            background: var(--popup-bg) !important;
+            border: 1px solid var(--popup-border) !important;
             border-radius: 14px !important;
             box-shadow: 0 18px 50px rgba(0, 0, 0, .35) !important;
-            border: 1px solid var(--popBorder) !important;
+            color: var(--popup-text) !important;
         }
 
         .leaflet-popup-tip {
-            background: var(--popBg) !important;
-            border: 1px solid var(--popBorder) !important;
+            background: var(--popup-bg) !important;
+            border: 1px solid var(--popup-border) !important;
         }
 
         .leaflet-popup-content {
             margin: 10px 12px !important;
-            width: 190px !important;
-            /* keep it compact */
         }
 
-        .popTitle {
-            font-weight: 950;
-            letter-spacing: .2px;
-            margin-bottom: 6px;
-            font-size: 13px;
-        }
+        @media (max-width:560px) {
+            #logo {
+                height: 120px;
+            }
 
-        .popGrid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px 10px;
-            font-weight: 800;
-            font-size: 12px;
-        }
+            .hud-right {
+                gap: 10px;
+            }
 
-        .k {
-            color: var(--popMuted);
-            font-weight: 900;
-            letter-spacing: .2px;
-        }
-
-        .v {
-            color: var(--popText);
-            font-weight: 950;
-            text-align: right;
-        }
-
-        /* station label next to arrow */
-        .stationLabel {
-            font-weight: 950;
-            color: rgba(0, 0, 0, .84);
-            text-shadow: 0 2px 10px rgba(255, 255, 255, .9);
-            -webkit-text-stroke: 0px;
-            letter-spacing: .2px;
-        }
-
-        /* canvas flow overlay */
-        #flowCanvas {
-            position: absolute;
-            inset: 0;
-            z-index: 650;
-            /* above tiles, below markers/popups */
-            pointer-events: none;
-            /* never block pan/zoom */
-            display: none;
-        }
-
-        /* Make leaflet controls not clash with legend */
-        .leaflet-control-zoom {
-            margin-top: 180px !important;
+            .hud-btn {
+                padding: .52rem .75rem;
+                border-radius: 12px;
+            }
         }
     </style>
 </head>
 
 <body>
     <div id="map"></div>
-    <canvas id="flowCanvas"></canvas>
 
-    <div class="topbar">
-        <div class="logoCard">
-            <!-- replace with your real logo file -->
-            <img src="aura-logo.png" alt="Aura Weather" />
-        </div>
-
-        <div class="titleBlock">
-            <div class="titleRow">
-                <h1>Solent Live<br />Observations</h1>
-                <div class="meta">
-                    <div id="metaLine1">Stations: — • Updated: —</div>
-                    <small>Wind • Gust • Direction</small>
-                </div>
+    <div class="hud">
+        <div class="hud-left">
+            <img id="logo" src="aura-logo.png" alt="Aura" />
+            <div class="hud-title">
+                <div class="h1">Solent Live Observations</div>
+                <div class="sub">Wind • Gust • Direction</div>
             </div>
+            <div id="status" class="status-text">Loading…</div>
         </div>
-    </div>
 
-    <div class="btns">
-        <button id="btnFlow" class="btn flow" type="button">Flow</button>
-        <button class="btn forecast" type="button" onclick="location.href='forecast.html'">Forecast</button>
-        <button id="btnRefresh" class="btn refresh" type="button">Refresh</button>
-    </div>
+        <div class="hud-right">
+            <button id="flowBtn" class="hud-btn" type="button" title="Toggle interpolated flow">Flow</button>
+            <a id="forecastBtn" class="hud-btn" href="./forecast.html" title="Free forecast dashboard">Forecast</a>
+            <button id="refreshBtn" class="hud-btn" type="button" title="Refresh now">Refresh</button>
+        </div>
 
-    <div class="legend" aria-label="Wind speed legend">
-        <h3>Wind speed (kt)</h3>
-        <div id="legendRows"></div>
+        <div class="legend" id="legend">
+            <h3>Wind speed (kt)</h3>
+            <div class="row"><span class="chip" style="background:#00008b"></span> 0–3</div>
+            <div class="row"><span class="chip" style="background:#4169e1"></span> 3–5</div>
+            <div class="row"><span class="chip" style="background:#00ffcc"></span> 5–10</div>
+            <div class="row"><span class="chip" style="background:#00ff00"></span> 10–20</div>
+            <div class="row"><span class="chip" style="background:#00cc00"></span> 20–22</div>
+            <div class="row"><span class="chip" style="background:#ff9900"></span> 22–30</div>
+            <div class="row"><span class="chip" style="background:#ff0000"></span> 30–33</div>
+            <div class="row"><span class="chip" style="background:#b22222"></span> 33–40</div>
+            <div class="row"><span class="chip" style="background:#8b008b"></span> 40–60</div>
+            <div class="row"><span class="chip" style="background:#800080"></span> 60+</div>
+        </div>
     </div>
 
     <script>
-        /* =======================
-           CONFIG (edit these)
-        ======================= */
-        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";
+        const statusEl = document.getElementById("status");
+        const setStatus = (s) => { if (statusEl) statusEl.textContent = s; };
 
-        /*
-          You can point this at whatever you currently use.
-          Expected fields (either from joined view or latest table):
-          - station_id
-          - name (optional) or code
-          - latitude, longitude (or lat/lon)
-          - wind_speed_kt
-          - wind_gust_kt
-          - wind_dir_deg
-          - observed_time (ISO) OR updated_at
-        */
-        const OBS_TABLE = "observations";    // <— change if yours differs
-        const STATIONS_TABLE = "stations";          // should have id, name/code, latitude, longitude
+        /* ---------------- Config ---------------- */
+        const OBS_URL = "./solent_obs.json";
+        const AUTO_REFRESH_MS = 10 * 60 * 1000;
 
-        // Map bounds: keep it tight around Solent / Central South Coast
-        // (This is the “close” view you wanted; tweak if needed.)
-        const SOLENT_BOUNDS = L.latLngBounds(
-            [50.63, -1.88],  // SW corner (near Hurst / Christchurch)
-            [51.15, -0.80]   // NE corner (just east of Portsmouth / inland)
-        );
+        // Tight Solent + soft max bounds
+        const INITIAL_BOUNDS = L.latLngBounds([50.63, -1.92], [51.17, -0.82]);
+        const MAX_BOUNDS = L.latLngBounds([50.25, -2.60], [51.60, -0.20]);
 
-        // Hard max bounds (prevents zooming/panning to the whole UK by accident)
-        const MAX_BOUNDS = L.latLngBounds(
-            [50.30, -2.60],
-            [51.45, -0.20]
-        );
+        // Arrow sizing (smaller, responsive)
+        let ARROW_SIZE_PX = 82;
+        let ARROW_FONT_PX = 18;
 
-        // Marker sizing (keep arrows from becoming huge)
-        const ARROW_SIZE_MIN = 18;
-        const ARROW_SIZE_MAX = 34;
+        function applyMobileSizing() {
+            const w = Math.min(window.innerWidth || 9999, window.screen?.width || 9999);
+            if (w <= 560) { ARROW_SIZE_PX = 60; ARROW_FONT_PX = 14; }
+            else if (w <= 900) { ARROW_SIZE_PX = 72; ARROW_FONT_PX = 16; }
+            else { ARROW_SIZE_PX = 82; ARROW_FONT_PX = 18; }
+        }
+        applyMobileSizing();
 
-        // Flow overlay tuning (make flows bigger)
-        const FLOW_CFG = {
-            particleCount: 260,    // more particles
-            particleSize: 1.9,     // bigger dots
-            trailAlpha: 0.10,      // lower = longer trails
-            stepPx: 1.55,          // advection step per frame
-            curl: 0.06,            // small wobble so it looks alive
+        // Flow (OFF by default) + bigger
+        const FLOW_SETTINGS = {
+            enabled: false,
+            particleCount: 1400,
+            speedFactor: 0.48,
+            maxStepPx: 2.3,
+            particleLife: 70,
+            lineWidth: 2.8,
+            alpha: 0.85,
+            fadeAlpha: 0.07,
+            idwPower: 1.7,
+            maxInfluenceKm: 65,
+            minStations: 3
         };
 
-        /* =======================
-           Helpers
-        ======================= */
-        async function sbGet(path) {
-            const url = `${SUPABASE_URL}/rest/v1/${path}`;
-            const res = await fetch(url, {
-                headers: {
-                    "apikey": SUPABASE_ANON_KEY,
-                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-                    "Accept": "application/json"
+        const BREAKS = [0, 3, 5, 10, 20, 22, 30, 33, 40, 60];
+        const COLORS = ["#00008b", "#4169e1", "#00ffcc", "#00ff00", "#00cc00", "#ff9900", "#ff0000", "#b22222", "#8b008b", "#800080"];
+
+        const lerp = (a, b, t) => a + (b - a) * t;
+        function mixHex(a, b, t) {
+            const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+            const ar = (pa >> 16) & 255, ag = (pa >> 8) & 255, ab = pa & 255;
+            const br = (pb >> 16) & 255, bg = (pb >> 8) & 255, bb = pb & 255;
+            const r = Math.round(lerp(ar, br, t));
+            const g = Math.round(lerp(ag, bg, t));
+            const b2 = Math.round(lerp(ab, bb, t));
+            return `#${((r << 16) | (g << 8) | b2).toString(16).padStart(6, "0")}`;
+        }
+        function colorForSpeed(spd) {
+            if (spd == null || Number.isNaN(spd)) return "#999999";
+            for (let i = 0; i < BREAKS.length - 1; i++) {
+                const lo = BREAKS[i], hi = BREAKS[i + 1];
+                if (spd <= hi) {
+                    const t = Math.max(0, Math.min(1, (spd - lo) / Math.max(1e-9, hi - lo)));
+                    return mixHex(COLORS[i], COLORS[i + 1], t);
                 }
-            });
-            if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${await res.text()}`);
-            return res.json();
-        }
-
-        function fmt(n, d = 0) { return (n == null || !Number.isFinite(Number(n))) ? "—" : Number(n).toFixed(d); }
-        function degToCardinal(deg) {
-            if (deg == null || !Number.isFinite(Number(deg))) return "—";
-            const dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
-            const i = Math.round((((deg % 360) + 360) % 360) / 22.5) % 16;
-            return dirs[i];
-        }
-        function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-
-        function windColorKt(kt) {
-            // same bins you’ve been using
-            if (kt == null || !Number.isFinite(Number(kt))) return "#5c6b7a";
-            const w = Number(kt);
-            if (w < 3) return "#0b1aa6";
-            if (w < 5) return "#2b55d6";
-            if (w < 10) return "#00d8c8";
-            if (w < 20) return "#00ff2a";
-            if (w < 22) return "#00c81a";
-            if (w < 30) return "#ffa500";
-            if (w < 33) return "#ff0000";
-            if (w < 40) return "#b22222";
-            if (w < 60) return "#7a1fa2";
-            return "#5a0077";
-        }
-
-        const LEGEND_BINS = [
-            { label: "0–3", c: "#0b1aa6" },
-            { label: "3–5", c: "#2b55d6" },
-            { label: "5–10", c: "#00d8c8" },
-            { label: "10–20", c: "#00ff2a" },
-            { label: "20–22", c: "#00c81a" },
-            { label: "22–30", c: "#ffa500" },
-            { label: "30–33", c: "#ff0000" },
-            { label: "33–40", c: "#b22222" },
-            { label: "40–60", c: "#7a1fa2" },
-            { label: "60+", c: "#5a0077" },
-        ];
-
-        function renderLegend() {
-            const el = document.getElementById("legendRows");
-            el.innerHTML = "";
-            for (const b of LEGEND_BINS) {
-                const row = document.createElement("div");
-                row.className = "legRow";
-                row.innerHTML = `<div class="sw" style="background:${b.c}"></div><span>${b.label}</span>`;
-                el.appendChild(row);
             }
+            return COLORS.at(-1);
         }
 
-        /* =======================
-           Leaflet init
-        ======================= */
-        const map = L.map("map", {
-            preferCanvas: true,
-            zoomControl: true,
-            zoomSnap: 0.25,
-            zoomDelta: 0.5,
-            wheelDebounceTime: 20
-        });
+        // Arrow shows wind direction FROM (meteorological)
+        const rotateFromDirDeg = (d) => ((Number(d) % 360) + 360) % 360;
 
-        // Tiles (Carto light)
-        L.tileLayer(
-            "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-            { attribution: '&copy; OpenStreetMap, &copy; CARTO', maxZoom: 14 }
-        ).addTo(map);
-
-        // Start tight
-        map.fitBounds(SOLENT_BOUNDS, { padding: [20, 20] });
-        map.setMaxBounds(MAX_BOUNDS);
-        map.options.maxBoundsViscosity = 0.85;
-        map.setMinZoom(7);
-        map.setMaxZoom(14);
-
-        // Groups
-        const markerLayer = L.layerGroup().addTo(map);
-        const labelLayer = L.layerGroup().addTo(map);
-
-        // Make sure canvas overlay resizes with map
-        const flowCanvas = document.getElementById("flowCanvas");
-        const flowCtx = flowCanvas.getContext("2d", { alpha: true });
-
-        function resizeFlowCanvas() {
-            const r = document.getElementById("map").getBoundingClientRect();
-            flowCanvas.width = Math.round(r.width * devicePixelRatio);
-            flowCanvas.height = Math.round(r.height * devicePixelRatio);
-            flowCanvas.style.width = r.width + "px";
-            flowCanvas.style.height = r.height + "px";
-            flowCtx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-        }
-        window.addEventListener("resize", resizeFlowCanvas);
-        map.on("resize", resizeFlowCanvas);
-        map.on("move", () => { if (flowOn) seedParticles(); }); // keep particles aligned when panning
-        resizeFlowCanvas();
-
-        /* =======================
-           Station markers (arrows)
-        ======================= */
-        function arrowDivIcon(color, sizePx, rotationDeg) {
-            // Arrow is a simple rotated SVG triangle + tail. Size is controlled, rotation is wind direction (from).
-            const s = sizePx;
-            const svg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 64 64">
-    <defs>
-      <filter id="sh" x="-30%" y="-30%" width="160%" height="160%">
-        <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="rgba(0,0,0,.35)"/>
-      </filter>
-    </defs>
-    <g filter="url(#sh)" transform="translate(32,32) rotate(${rotationDeg}) translate(-32,-32)">
-      <path d="M32 6 L44 30 L36 30 L36 58 L28 58 L28 30 L20 30 Z" fill="${color}" opacity="0.96"/>
-    </g>
-  </svg>`;
-            return L.divIcon({
-                className: "",
-                html: svg,
-                iconSize: [s, s],
-                iconAnchor: [s / 2, s / 2]
-            });
-        }
-
-        function popupHtml(st) {
-            const name = st.name || st.code || st.station_id || "Station";
-            const w = Number(st.wind_speed_kt);
-            const g = Number(st.wind_gust_kt);
-            const d = Number(st.wind_dir_deg);
+        function svgStationArrow(color, size = ARROW_SIZE_PX) {
+            const stroke = Math.max(4, size / 12).toFixed(1);
             return `
-    <div class="popTitle">${escapeHtml(name)}</div>
-    <div class="popGrid">
-      <div class="k">WIND</div><div class="v">${fmt(w, 0)} kt</div>
-      <div class="k">GUST</div><div class="v">${fmt(g, 0)} kt</div>
-      <div class="k">DIR</div><div class="v">${Number.isFinite(d) ? Math.round(d) + "° " + degToCardinal(d) : "—"}</div>
-    </div>
-  `;
+        <svg width="${size}" height="${size}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
+             style="filter:drop-shadow(0 0 3px rgba(0,0,0,.35));">
+          <g transform="translate(32,32)">
+            <line x1="0" y1="20" x2="0" y2="-16" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"/>
+            <polygon points="0,-26 -10,-8 10,-8" fill="${color}"/>
+          </g>
+        </svg>`;
         }
 
-        function escapeHtml(s) {
-            return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
-        }
+        /* ---------------- Map ---------------- */
+        const map = L.map("map", { zoomControl: true, inertia: true, worldCopyJump: false });
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+            attribution: "&copy; OpenStreetMap, &copy; CARTO",
+            maxZoom: 14
+        }).addTo(map);
 
-        function clearMarkers() {
-            markerLayer.clearLayers();
-            labelLayer.clearLayers();
-        }
+        map.fitBounds(INITIAL_BOUNDS, { padding: [20, 20] });
+        map.setMaxBounds(MAX_BOUNDS);
+        map.options.maxBoundsViscosity = 0.80;
 
-        /* =======================
-           Flow overlay (particles)
-           - vector field built from stations by inverse-distance weighting
-           - canvas is pointer-events:none so pan/zoom never breaks
-        ======================= */
-        let flowOn = false;
-        let particles = [];
-        let fieldStations = []; // [{lat,lon,u,v}]
+        const layerStations = L.layerGroup().addTo(map);
 
-        function windUV(spdKt, dirFromDeg) {
-            if (!Number.isFinite(spdKt) || !Number.isFinite(dirFromDeg)) return { u: 0, v: 0 };
-            const r = dirFromDeg * Math.PI / 180;
-            // meteorological "from": u = -spd*sin, v = -spd*cos (kt)
-            return { u: -spdKt * Math.sin(r), v: -spdKt * Math.cos(r) };
-        }
+        const refreshBtn = document.getElementById("refreshBtn");
+        const flowBtn = document.getElementById("flowBtn");
+        refreshBtn.addEventListener("click", () => loadObs(true));
 
-        function buildFieldFromStations(rows) {
-            fieldStations = rows
-                .filter(r => Number.isFinite(Number(r.latitude)) && Number.isFinite(Number(r.longitude)))
-                .map(r => {
-                    const lat = Number(r.latitude), lon = Number(r.longitude);
-                    const uv = windUV(Number(r.wind_speed_kt), Number(r.wind_dir_deg));
-                    return { lat, lon, u: uv.u, v: uv.v };
-                });
-        }
+        function clearStations() { layerStations.clearLayers(); }
 
-        function vectorAtLatLng(lat, lon) {
-            // IDW blend, with distance in degrees (fine for small domain)
-            if (!fieldStations.length) return { u: 0, v: 0 };
-            let su = 0, sv = 0, sw = 0;
-            for (const s of fieldStations) {
-                const dlat = lat - s.lat;
-                const dlon = lon - s.lon;
-                const d2 = dlat * dlat + dlon * dlon;
-                const w = 1 / Math.max(1e-6, d2); // stronger local influence
-                su += s.u * w;
-                sv += s.v * w;
-                sw += w;
-            }
-            return { u: su / sw, v: sv / sw };
-        }
+        // Keep latest stations for flow overlay
+        let latestStations = [];
 
-        function seedParticles() {
-            // seed within current map view
-            const b = map.getBounds();
-            particles = [];
-            for (let i = 0; i < FLOW_CFG.particleCount; i++) {
-                const lat = b.getSouth() + Math.random() * (b.getNorth() - b.getSouth());
-                const lon = b.getWest() + Math.random() * (b.getEast() - b.getWest());
-                particles.push({ lat, lon, age: Math.random() * 200 });
-            }
-        }
+        function addStationMarker(st) {
+            if (st.lat == null || st.lon == null || st.wspd_kn == null || st.wdir_degT == null) return;
 
-        function stepFlow() {
-            if (!flowOn) return;
+            const spd = Number(st.wspd_kn);
+            const dir = Number(st.wdir_degT);
+            if (!Number.isFinite(spd) || !Number.isFinite(dir)) return;
 
-            // fade previous frame for trails
-            const w = flowCanvas.clientWidth;
-            const h = flowCanvas.clientHeight;
-            flowCtx.fillStyle = `rgba(6,27,40,${FLOW_CFG.trailAlpha})`;
-            flowCtx.fillRect(0, 0, w, h);
+            const color = colorForSpeed(spd);
+            const rotate = rotateFromDirDeg(dir);
+            const arrow = svgStationArrow(color, ARROW_SIZE_PX);
 
-            const b = map.getBounds();
+            const html = `
+        <div style="transform:rotate(${rotate}deg)">${arrow}</div>
+        <div style="
+          position:relative;
+          top:-${ARROW_SIZE_PX / 2 - 2}px;
+          width:${ARROW_SIZE_PX}px;
+          text-align:center;
+          font:900 ${ARROW_FONT_PX}px/1 system-ui;
+          color:#111;
+          text-shadow:0 0 2px #fff,0 0 8px rgba(255,255,255,.95);
+        ">${Math.round(spd)}</div>
+      `;
 
-            for (const p of particles) {
-                p.age += 1;
+            const icon = L.divIcon({
+                html,
+                iconSize: [ARROW_SIZE_PX, ARROW_SIZE_PX],
+                iconAnchor: [ARROW_SIZE_PX / 2, ARROW_SIZE_PX / 2],
+                className: ""
+            });
 
-                // respawn if out of bounds / too old
-                if (p.age > 320 || !b.contains([p.lat, p.lon])) {
-                    p.lat = b.getSouth() + Math.random() * (b.getNorth() - b.getSouth());
-                    p.lon = b.getWest() + Math.random() * (b.getEast() - b.getWest());
-                    p.age = 0;
-                    continue;
+            const m = L.marker([st.lat, st.lon], { icon }).addTo(layerStations);
+
+            m.on("click", (e) => {
+                L.DomEvent.stop(e);
+                const mount = document.createElement("div");
+                mount.style.width = "min(360px, 82vw)";
+
+                const popup = L.popup({
+                    maxWidth: 420,
+                    autoClose: true,
+                    closeOnClick: true,
+                    closeButton: false,
+                    offset: [0, -10],
+                })
+                    .setLatLng([st.lat, st.lon])
+                    .setContent(mount)
+                    .openOn(map);
+
+                if (window.attachTimeseriesTo) {
+                    window.attachTimeseriesTo(mount, st.station_id, 24, popup);
                 }
-
-                const v = vectorAtLatLng(p.lat, p.lon);
-
-                // convert u/v (kt) to pixel-ish motion: scale to degrees using a tiny factor
-                // this is a visual overlay, so we tune it rather than physical.
-                const speed = Math.hypot(v.u, v.v);
-                const scale = (FLOW_CFG.stepPx / 90000) * (1 + 0.06 * speed);
-
-                // small wobble so it doesn’t look too “grid”
-                const wob = FLOW_CFG.curl;
-                const jx = (Math.random() - 0.5) * wob;
-                const jy = (Math.random() - 0.5) * wob;
-
-                const dLat = (v.v * scale) + jy * scale; // v is north/south-ish
-                const dLon = (v.u * scale) + jx * scale; // u is east/west-ish
-
-                const prev = map.latLngToContainerPoint([p.lat, p.lon]);
-                p.lat += dLat;
-                p.lon += dLon;
-                const next = map.latLngToContainerPoint([p.lat, p.lon]);
-
-                // draw
-                flowCtx.strokeStyle = "rgba(34,184,167,.55)";
-                flowCtx.lineWidth = 1.5;
-                flowCtx.beginPath();
-                flowCtx.moveTo(prev.x, prev.y);
-                flowCtx.lineTo(next.x, next.y);
-                flowCtx.stroke();
-
-                flowCtx.fillStyle = "rgba(34,184,167,.9)";
-                flowCtx.beginPath();
-                flowCtx.arc(next.x, next.y, FLOW_CFG.particleSize, 0, Math.PI * 2);
-                flowCtx.fill();
-            }
-
-            requestAnimationFrame(stepFlow);
+            });
         }
 
-        function setFlow(on) {
-            flowOn = on;
-            flowCanvas.style.display = on ? "block" : "none";
-            if (on) {
-                resizeFlowCanvas();
-                flowCtx.clearRect(0, 0, flowCanvas.clientWidth, flowCanvas.clientHeight);
-                seedParticles();
-                requestAnimationFrame(stepFlow);
-            } else {
-                flowCtx.clearRect(0, 0, flowCanvas.clientWidth, flowCanvas.clientHeight);
+        function fitToDataBounds(points) {
+            if (!points.length) return;
+            let latMin = 90, latMax = -90, lonMin = 180, lonMax = -180;
+            for (const p of points) {
+                if (p.lat != null && p.lon != null) {
+                    latMin = Math.min(latMin, p.lat); latMax = Math.max(latMax, p.lat);
+                    lonMin = Math.min(lonMin, p.lon); lonMax = Math.max(lonMax, p.lon);
+                }
             }
+            map.fitBounds([[latMin - 0.04, lonMin - 0.06], [latMax + 0.04, lonMax + 0.06]], { padding: [20, 20] });
         }
 
-        /* =======================
-           Load & render
-        ======================= */
-        let lastUpdatedISO = null;
+        let autoTimer = null;
 
-        async function loadAndRender() {
-            // 1) load stations
-            const stations = await sbGet(`${STATIONS_TABLE}?select=id,code,name,latitude,longitude&order=code.asc`);
-            const stById = new Map((stations || []).map(s => [String(s.id), s]));
-
-            // 2) load latest obs
-            const obs = await sbGet(`${OBS_TABLE}?select=*`);
-            const rows = (obs || []).map(o => {
-                const st = stById.get(String(o.station_id)) || {};
-                return {
-                    ...o,
-                    name: st.name ?? o.name ?? st.code ?? o.code,
-                    code: st.code ?? o.code,
-                    latitude: Number(o.latitude ?? st.latitude),
-                    longitude: Number(o.longitude ?? st.longitude),
-                    wind_speed_kt: Number(o.wind_speed_kt),
-                    wind_gust_kt: Number(o.wind_gust_kt),
-                    wind_dir_deg: Number(o.wind_dir_deg),
-                    observed_time: o.observed_time ?? o.updated_at ?? o.time ?? null
-                };
-            }).filter(r => Number.isFinite(r.latitude) && Number.isFinite(r.longitude));
-
-            // meta
-            const times = rows.map(r => Date.parse(r.observed_time)).filter(Number.isFinite);
-            lastUpdatedISO = times.length ? new Date(Math.max(...times)).toISOString() : null;
-
-            document.getElementById("metaLine1").textContent =
-                `Stations: ${rows.length} • Updated: ${lastUpdatedISO ? new Date(lastUpdatedISO).toLocaleString() : "—"}`;
-
-            // render markers
-            clearMarkers();
-
-            for (const r of rows) {
-                const w = Number(r.wind_speed_kt);
-                const dir = Number(r.wind_dir_deg);
-                const c = windColorKt(w);
-
-                // size clamp so it never becomes comically huge
-                const size = clamp(ARROW_SIZE_MIN + (w || 0) * 0.9, ARROW_SIZE_MIN, ARROW_SIZE_MAX);
-
-                // rotate arrow so it points *towards* where wind is going (optional)
-                // If you prefer “from” direction, use (dir) instead of (dir + 180)
-                const rot = Number.isFinite(dir) ? (dir + 180) : 0;
-
-                const icon = arrowDivIcon(c, size, rot);
-                const m = L.marker([r.latitude, r.longitude], { icon, keyboard: false, riseOnHover: true })
-                    .bindPopup(popupHtml(r), { closeButton: false, autoPanPadding: [30, 30], maxWidth: 220 })
-                    .addTo(markerLayer);
-
-                // label (speed number) – small + not huge
-                const label = L.marker([r.latitude, r.longitude], {
-                    icon: L.divIcon({
-                        className: "",
-                        html: `<div class="stationLabel">${Number.isFinite(w) ? Math.round(w) : "—"}</div>`,
-                        iconSize: [30, 14],
-                        iconAnchor: [15, -2]
-                    }),
-                    interactive: false
-                }).addTo(labelLayer);
-
-                // nice hover
-                m.on("mouseover", () => m.openPopup());
-                m.on("mouseout", () => m.closePopup());
+        // Robust field mapper: handles your JSON + any fallback keys
+        function pick(r, keys) {
+            for (const k of keys) {
+                const v = r?.[k];
+                if (v !== undefined && v !== null && v !== "") return v;
             }
-
-            // flow field
-            buildFieldFromStations(rows);
-            if (flowOn) seedParticles();
-
-            // keep view tight (only if user hasn’t moved far)
-            // If you ALWAYS want it to snap back, uncomment the next line:
-            // map.fitBounds(SOLENT_BOUNDS, { padding:[20,20] });
+            return null;
+        }
+        function toNum(x) {
+            const n = Number(x);
+            return Number.isFinite(n) ? n : null;
         }
 
-        /* =======================
-           UI wiring
-        ======================= */
-        renderLegend();
-
-        document.getElementById("btnRefresh").addEventListener("click", async () => {
-            try { await loadAndRender(); }
-            catch (e) { console.error(e); alert("Refresh failed: " + (e.message || e)); }
-        });
-
-        document.getElementById("btnFlow").addEventListener("click", () => {
-            setFlow(!flowOn);
-            document.getElementById("btnFlow").style.background = flowOn ? "rgba(18,191,177,.95)" : "rgba(18,191,177,.22)";
-            document.getElementById("btnFlow").style.color = flowOn ? "#fff" : "var(--btn)";
-        });
-
-        /* =======================
-           Init
-        ======================= */
-        (async function init() {
+        async function loadObs(fromButton = false) {
             try {
-                // Always start in Solent view
-                map.fitBounds(SOLENT_BOUNDS, { padding: [20, 20] });
-                await loadAndRender();
+                refreshBtn.disabled = true;
+                setStatus(fromButton ? "Refreshing…" : "Loading…");
+
+                const res = await fetch(`${OBS_URL}?ts=${Date.now()}`, { cache: "no-store" });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                const data = await res.json();
+                const rows = Array.isArray(data?.obs) ? data.obs : (Array.isArray(data) ? data : []);
+
+                const obs = rows.map(r => ({
+                    lat: toNum(pick(r, ["lat", "latitude", "Latitude"])),
+                    lon: toNum(pick(r, ["lon", "lng", "longitude", "Longitude"])),
+                    wspd_kn: toNum(pick(r, ["wspd_kn", "wind_speed_kt", "wind_speed_kn", "wind_knots", "wind_speed", "wspd"])),
+                    gust_kn: toNum(pick(r, ["gust_kn", "wind_gust_kt", "wind_gust", "gust"])),
+                    wdir_degT: toNum(pick(r, ["wdir_degT", "wind_dir_deg", "wind_direction", "direction", "wdir"])),
+                    station_name: pick(r, ["station_name", "name", "Site", "station_id", "site_id", "id"]),
+                    station_id: pick(r, ["station_id", "site_id", "id", "code", "name"])
+                }));
+
+                const ok = obs.filter(o => o.lat != null && o.lon != null && o.wspd_kn != null && o.wdir_degT != null);
+
+                clearStations();
+                ok.forEach(addStationMarker);
+
+                latestStations = ok.slice();
+                flowOverlay?.setStations?.(latestStations);
+
+                if (ok.length) {
+                    if (!map._fitDone) {
+                        fitToDataBounds(ok);
+                        map._fitDone = true;
+                    }
+                    const gen = data?.meta?.generated_at || new Date().toISOString();
+                    const genStr = (() => { try { return new Date(gen).toLocaleString(undefined, { hour12: false }); } catch { return String(gen); } })();
+                    setStatus(`Stations: ${ok.length} • Updated: ${genStr}`);
+                } else {
+                    setStatus("No valid stations in JSON");
+                    console.warn("Sample rows:", rows.slice(0, 3));
+                }
             } catch (e) {
                 console.error(e);
-                alert("Init failed: " + (e.message || e));
+                setStatus("Load failed");
+            } finally {
+                refreshBtn.disabled = false;
+                if (autoTimer) clearTimeout(autoTimer);
+                autoTimer = setTimeout(() => loadObs(false), AUTO_REFRESH_MS);
             }
-        })();
+        }
+
+        window.addEventListener("resize", () => {
+            applyMobileSizing();
+            flowOverlay?.redraw?.();
+        });
+
+        /* ============================================================
+          FLOW OVERLAY (canvas)
+        ============================================================ */
+        function kmBetween(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const toRad = (x) => x * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+            return 2 * R * Math.asin(Math.sqrt(a));
+        }
+        function uvFromSpdDir(spdKt, dirDegFrom) {
+            if (!Number.isFinite(spdKt) || !Number.isFinite(dirDegFrom)) return { u: 0, v: 0 };
+            const rad = dirDegFrom * Math.PI / 180;
+            const u = -spdKt * Math.sin(rad);
+            const v = -spdKt * Math.cos(rad);
+            return { u, v };
+        }
+        function spdFromUV(u, v) { return Math.sqrt(u * u + v * v); }
+
+        class WindFlowOverlay extends L.Layer {
+            constructor(opts = {}) {
+                super();
+                this.opts = opts;
+                this._map = null; this._canvas = null; this._ctx = null; this._anim = null;
+                this._stations = []; this._particles = []; this._ready = false;
+                this._redrawBound = () => this.redraw();
+            }
+            onAdd(mapRef) {
+                this._map = mapRef;
+                this._canvas = L.DomUtil.create("canvas", "leaflet-windflow");
+                this._canvas.style.position = "absolute";
+                this._canvas.style.top = "0";
+                this._canvas.style.left = "0";
+                this._canvas.style.pointerEvents = "none";
+                this._canvas.style.zIndex = "450";
+                this._ctx = this._canvas.getContext("2d");
+                this._map.getPanes().overlayPane.appendChild(this._canvas);
+
+                this._map.on("move zoom resize", this._redrawBound);
+                this.redraw();
+                this._ready = true;
+                this._initParticles();
+                this._start();
+            }
+            onRemove() {
+                this._stop();
+                if (this._map) this._map.off("move zoom resize", this._redrawBound);
+                if (this._canvas?.parentNode) this._canvas.parentNode.removeChild(this._canvas);
+                this._canvas = null; this._ctx = null; this._map = null; this._ready = false;
+            }
+            setStations(stations) {
+                this._stations = Array.isArray(stations) ? stations.slice() : [];
+                if (this._ready) this._initParticles(true);
+            }
+            redraw() {
+                if (!this._map || !this._canvas) return;
+                const size = this._map.getSize();
+                this._canvas.width = Math.round(size.x);
+                this._canvas.height = Math.round(size.y);
+            }
+            _spawnParticle(w, h) {
+                return { x: Math.random() * w, y: Math.random() * h, age: Math.floor(Math.random() * (this.opts.particleLife ?? 50)) };
+            }
+            _initParticles(soft = false) {
+                if (!this._canvas) return;
+                const n = this.opts.particleCount ?? 700;
+                const w = this._canvas.width, h = this._canvas.height;
+                if (!soft || this._particles.length !== n) {
+                    this._particles = [];
+                    for (let i = 0; i < n; i++) this._particles.push(this._spawnParticle(w, h));
+                } else {
+                    for (const p of this._particles) {
+                        if (Math.random() < 0.35) {
+                            p.x = Math.random() * w; p.y = Math.random() * h;
+                            p.age = Math.floor(Math.random() * (this.opts.particleLife ?? 50));
+                        }
+                    }
+                }
+            }
+            _fieldAt(lat, lon) {
+                const st = this._stations;
+                const minStations = this.opts.minStations ?? 3;
+                if (!st || st.length < minStations) return null;
+
+                const p = this.opts.idwPower ?? 1.6;
+                const maxKm = this.opts.maxInfluenceKm ?? 55;
+
+                let sw = 0, su = 0, sv = 0, used = 0;
+                for (const s of st) {
+                    const dKm = kmBetween(lat, lon, s.lat, s.lon);
+                    if (!Number.isFinite(dKm) || dKm <= 0) continue;
+                    if (dKm > maxKm) continue;
+                    const w = 1 / Math.pow(dKm, p);
+                    const uv = uvFromSpdDir(Number(s.wspd_kn), Number(s.wdir_degT));
+                    sw += w; su += w * uv.u; sv += w * uv.v; used++;
+                }
+                if (used < minStations || sw <= 0) return null;
+                const u = su / sw, v = sv / sw;
+                return { u, v, spd: spdFromUV(u, v) };
+            }
+            _stepParticle(p) {
+                const ctx = this._ctx, mapRef = this._map;
+                if (!ctx || !mapRef) return;
+                const w = this._canvas.width, h = this._canvas.height;
+
+                const ll = mapRef.containerPointToLatLng([p.x, p.y]);
+                const f = this._fieldAt(ll.lat, ll.lng);
+                if (!f) {
+                    p.x = Math.random() * w; p.y = Math.random() * h; p.age = 0;
+                    return;
+                }
+
+                const speedFactor = this.opts.speedFactor ?? 0.35;
+                const maxStep = this.opts.maxStepPx ?? 1.25;
+
+                const d = 0.02;
+                const ll2 = L.latLng(ll.lat + (f.v >= 0 ? d : -d), ll.lng + (f.u >= 0 ? d : -d));
+                const a = mapRef.latLngToContainerPoint(ll);
+                const b = mapRef.latLngToContainerPoint(ll2);
+
+                let dx = (b.x - a.x), dy = (b.y - a.y);
+                const mag = Math.sqrt(dx * dx + dy * dy) || 1;
+                dx /= mag; dy /= mag;
+
+                const spd = Math.max(0, Math.min(60, f.spd ?? 0));
+                let step = spd * speedFactor / 10;
+                step = Math.min(maxStep, Math.max(0.15, step));
+
+                const x0 = p.x, y0 = p.y;
+                p.x += dx * step; p.y += dy * step;
+
+                ctx.strokeStyle = colorForSpeed(spd);
+                ctx.globalAlpha = this.opts.alpha ?? 0.55;
+                ctx.lineWidth = this.opts.lineWidth ?? 1.2;
+                ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(p.x, p.y); ctx.stroke();
+
+                p.age++;
+                const life = this.opts.particleLife ?? 50;
+                if (p.age > life || p.x < -10 || p.y < -10 || p.x > w + 10 || p.y > h + 10) {
+                    const np = this._spawnParticle(w, h);
+                    p.x = np.x; p.y = np.y; p.age = np.age;
+                }
+            }
+            _tick() {
+                const ctx = this._ctx;
+                if (!ctx || !this._canvas) return;
+
+                const fade = this.opts.fadeAlpha ?? 0.08;
+                ctx.globalCompositeOperation = "destination-in";
+                ctx.globalAlpha = 1 - fade;
+                ctx.fillStyle = "rgba(0,0,0,1)";
+                ctx.fillRect(0, 0, this._canvas.width, this._canvas.height);
+
+                ctx.globalCompositeOperation = "source-over";
+                ctx.globalAlpha = 1;
+
+                for (const p of this._particles) this._stepParticle(p);
+                this._anim = requestAnimationFrame(() => this._tick());
+            }
+            _start() { if (!this._anim) this._anim = requestAnimationFrame(() => this._tick()); }
+            _stop() {
+                if (this._anim) cancelAnimationFrame(this._anim);
+                this._anim = null;
+                if (this._ctx && this._canvas) this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+            }
+        }
+
+        let flowOverlay = null;
+        function setFlowEnabled(on) {
+            FLOW_SETTINGS.enabled = !!on;
+            flowBtn.classList.toggle("active", FLOW_SETTINGS.enabled);
+
+            if (FLOW_SETTINGS.enabled) {
+                if (!flowOverlay) flowOverlay = new WindFlowOverlay(FLOW_SETTINGS);
+                map.whenReady(() => {
+                    if (!map.hasLayer(flowOverlay)) {
+                        flowOverlay.addTo(map);
+                        flowOverlay.setStations(latestStations);
+                    }
+                });
+            } else {
+                if (flowOverlay && map.hasLayer(flowOverlay)) map.removeLayer(flowOverlay);
+            }
+        }
+
+        flowBtn.addEventListener("click", () => setFlowEnabled(!FLOW_SETTINGS.enabled));
+
+        document.addEventListener("DOMContentLoaded", () => loadObs(false));
+    </script>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";
+        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+
+    <!-- Popup time-series (Wind only: obs + latest forecast) -->
+    <script>
+        const stationIdCache = new Map();
+        const seriesCache = new Map();
+        const STATION_CACHE_MS = 24 * 3600 * 1000;
+        const SERIES_CACHE_MS = 2 * 60 * 1000;
+
+        const now = () => Date.now();
+        const UUID_RE =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+        function windowISO(hours, ref = new Date()) {
+            const end = new Date(ref);
+            const start = new Date(end.getTime() - hours * 3600 * 1000);
+            return { startISO: start.toISOString(), endISO: end.toISOString() };
+        }
+
+        async function getStationId(idOrCode) {
+            if (idOrCode == null) return null;
+            const raw = String(idOrCode).trim();
+            if (!raw) return null;
+            if (UUID_RE.test(raw)) return raw;
+
+            const cached = stationIdCache.get(raw);
+            if (cached && now() - cached.ts < STATION_CACHE_MS) return cached.id;
+
+            // Try code/name (your existing schema)
+            let { data, error } = await sb.from("stations").select("id").eq("code", raw).limit(1).maybeSingle();
+            if (!data?.id && !error) ({ data, error } = await sb.from("stations").select("id").eq("name", raw).limit(1).maybeSingle());
+            if (!data?.id && !error) ({ data, error } = await sb.from("stations").select("id").ilike("code", raw).limit(1).maybeSingle());
+
+            if (error) {
+                console.error("[stations lookup]", { raw, error });
+                return null;
+            }
+            const id = data?.id || null;
+            stationIdCache.set(raw, { id, ts: now() });
+            return id;
+        }
+
+        function normalizeObsRow(r) {
+            const tsRaw = r.observed_at || r.ts || r.time || r.datetime;
+            const ts = tsRaw ? new Date(tsRaw).toISOString() : null;
+
+            const wspd = r.wind_speed ?? r.wind_speed_kt ?? r.wspd ?? r.wspd_kn ?? null;
+            const gust = r.wind_gust ?? r.wind_gust_kt ?? r.gust ?? r.gust_kn ?? null;
+            const wdir = r.wind_direction ?? r.wind_dir_deg ?? r.wdir ?? r.dir ?? null;
+            return { ts, wspd, gust, wdir };
+        }
+
+        async function fetchObsSeriesByCode(idOrCode, hours, signal) {
+            const cacheKey = `${idOrCode}|${hours}`;
+            const cached = seriesCache.get(cacheKey);
+            if (cached && now() - cached.ts < SERIES_CACHE_MS) return cached.data;
+
+            const stationId = await getStationId(idOrCode);
+            if (!stationId) return [];
+
+            const { startISO, endISO } = windowISO(hours);
+
+            let query = sb
+                .from("observations")
+                .select("*")
+                .eq("station_id", stationId)
+                .gte("observed_at", startISO)
+                .lte("observed_at", endISO)
+                .order("observed_at", { ascending: true });
+
+            if (typeof query.abortSignal === "function" && signal) query = query.abortSignal(signal);
+            const { data, error } = await query;
+
+            if (signal?.aborted) return [];
+            if (error) { console.error("[observations select]", error); return []; }
+
+            const rows = (data || []).map(normalizeObsRow).filter((r) => r.ts);
+            seriesCache.set(cacheKey, { data: rows, ts: now() });
+            return rows;
+        }
+
+        async function fetchForecastLatestSeries(idOrCodeOrId, hoursBack = 24, hoursFwd = 48, signal) {
+            const stationId = await getStationId(idOrCodeOrId);
+            if (!stationId) return [];
+
+            const nowMs = Date.now();
+            const startISO = new Date(nowMs - hoursBack * 3600 * 1000).toISOString();
+            const endISO = new Date(nowMs + hoursFwd * 3600 * 1000).toISOString();
+
+            let q = sb
+                .from("forecast_hourly_latest")
+                .select("*")
+                .eq("station_id", stationId)
+                .gte("valid_time", startISO)
+                .lte("valid_time", endISO)
+                .order("valid_time", { ascending: true });
+
+            if (typeof q.abortSignal === "function" && signal) q = q.abortSignal(signal);
+
+            const { data, error } = await q;
+            if (signal?.aborted) return [];
+            if (error) { console.error("[forecast_latest select]", error); return []; }
+            return data || [];
+        }
+
+        function align(labels, xs, ys) {
+            const m = new Map(xs.map((x, i) => [x, ys[i]]));
+            return labels.map((t) => (m.has(t) ? m.get(t) : null));
+        }
+
+        function legendBoxLabels() {
+            return {
+                color: "rgba(234,243,251,.92)",
+                boxWidth: 14,
+                boxHeight: 10,
+                padding: 12,
+                usePointStyle: false
+            };
+        }
+
+        async function attachTimeseriesTo(containerEl, stationCodeOrId, defaultHours = 24, leafletPopup = null) {
+            if (containerEl.dataset.bound === "1") return;
+            containerEl.dataset.bound = "1";
+
+            containerEl.__tsState = {
+                req: 0,
+                abort: null,
+                speedChart: null,
+                dirChart: null,
+            };
+
+            containerEl.innerHTML = `
+        <div style="width:min(360px, 82vw);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+            <span style="font-size:12px;color:rgba(234,243,251,.72);font-weight:800;">Window</span>
+            <select class="ts-window" style="font-size:12px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:rgba(234,243,251,.92);">
+              <option value="3">3h</option>
+              <option value="6">6h</option>
+              <option value="12">12h</option>
+              <option value="24" selected>24h</option>
+            </select>
+          </div>
+
+          <div style="width:100%;height:170px;position:relative;margin-bottom:10px;">
+            <canvas class="ts-canvas-speed" style="width:100%;height:170px;"></canvas>
+          </div>
+          <div style="width:100%;height:130px;position:relative;">
+            <canvas class="ts-canvas-dir" style="width:100%;height:130px;"></canvas>
+          </div>
+
+          <div class="ts-status" style="font-size:12px;color:rgba(234,243,251,.72);margin-top:6px;"></div>
+        </div>
+      `;
+
+            const selWindow = containerEl.querySelector(".ts-window");
+            const speedCtx = containerEl.querySelector(".ts-canvas-speed").getContext("2d");
+            const dirCtx = containerEl.querySelector(".ts-canvas-dir").getContext("2d");
+            const statusEl = containerEl.querySelector(".ts-status");
+
+            const setDisabled = (d) => { selWindow.disabled = d; };
+
+            function upsertCharts(labels, ts_obs, wspd, gust, wdir, ts_fcst, wspd_fc, gust_fc, wdir_fc) {
+                const speedData = {
+                    labels,
+                    datasets: [
+                        { label: "Wind", data: align(labels, ts_obs, wspd), borderColor: "#22b8a7", backgroundColor: "rgba(34,184,167,.22)", borderWidth: 2.5, pointRadius: 0, tension: 0.25, spanGaps: true },
+                        { label: "Gust", data: align(labels, ts_obs, gust), borderColor: "#ff5fa2", backgroundColor: "rgba(255,95,162,.18)", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [6, 4] },
+                        { label: "Fcst Wind", data: align(labels, ts_fcst, wspd_fc), borderColor: "#8aa6ff", backgroundColor: "rgba(138,166,255,.15)", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [3, 3] },
+                        { label: "Fcst Gust", data: align(labels, ts_fcst, gust_fc), borderColor: "#ffd166", backgroundColor: "rgba(255,209,102,.15)", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [1, 3] },
+                    ],
+                };
+
+                const nonNull = speedData.datasets.flatMap(d => d.data || []).filter(v => v != null);
+                const maxSpeed = Math.max(10, ...(nonNull.length ? nonNull : [0]));
+
+                const speedOpts = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: "time",
+                            ticks: { color: "rgba(234,243,251,.70)" },
+                            grid: { color: "rgba(255,255,255,.10)" }
+                        },
+                        y: {
+                            suggestedMax: maxSpeed,
+                            ticks: { color: "rgba(234,243,251,.70)" },
+                            grid: { color: "rgba(255,255,255,.10)" },
+                            title: { text: "kt", display: true, color: "rgba(234,243,251,.70)", font: { weight: "700" } }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: "bottom", labels: legendBoxLabels() },
+                        tooltip: { mode: "index", intersect: false }
+                    },
+                    animation: { duration: 120 },
+                };
+
+                const dirData = {
+                    labels,
+                    datasets: [
+                        { label: "Dir", data: align(labels, ts_obs, wdir), borderColor: "rgba(234,243,251,.85)", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true },
+                        { label: "Fcst Dir", data: align(labels, ts_fcst, wdir_fc), borderColor: "#8aa6ff", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [3, 3] },
+                    ],
+                };
+
+                const dirOpts = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { type: "time", ticks: { color: "rgba(234,243,251,.70)" }, grid: { color: "rgba(255,255,255,.10)" } },
+                        y: { min: 0, max: 360, ticks: { stepSize: 90, color: "rgba(234,243,251,.70)" }, grid: { color: "rgba(255,255,255,.10)" } }
+                    },
+                    plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false } },
+                    animation: { duration: 120 },
+                };
+
+                if (!containerEl.__tsState.speedChart) containerEl.__tsState.speedChart = new Chart(speedCtx, { type: "line", data: speedData, options: speedOpts });
+                else { const c = containerEl.__tsState.speedChart; c.data = speedData; c.options = speedOpts; c.update(); }
+
+                if (!containerEl.__tsState.dirChart) containerEl.__tsState.dirChart = new Chart(dirCtx, { type: "line", data: dirData, options: dirOpts });
+                else { const c2 = containerEl.__tsState.dirChart; c2.data = dirData; c2.options = dirOpts; c2.update(); }
+            }
+
+            async function load(hours) {
+                const state = containerEl.__tsState;
+                const seq = ++state.req;
+
+                if (state.abort) { try { state.abort.abort(); } catch { } }
+                state.abort = new AbortController();
+
+                setDisabled(true);
+                statusEl.textContent = "Loading…";
+
+                const obsRows = await fetchObsSeriesByCode(stationCodeOrId, hours, state.abort.signal);
+                if (seq !== state.req) return;
+
+                if (!obsRows.length) {
+                    statusEl.textContent = "No data";
+                    state.speedChart?.destroy(); state.speedChart = null;
+                    state.dirChart?.destroy(); state.dirChart = null;
+                    setDisabled(false);
+                    return;
+                }
+
+                const ts = obsRows.map(r => (r.ts ? new Date(r.ts).toISOString() : null)).filter(Boolean);
+                const wspd = obsRows.map(r => r.wspd);
+                const gust = obsRows.map(r => r.gust);
+                const wdir = obsRows.map(r => r.wdir);
+
+                const stationUuid = await getStationId(stationCodeOrId);
+                const fcRows = stationUuid ? await fetchForecastLatestSeries(stationUuid, hours, 48, state.abort.signal) : [];
+
+                const f_ts = fcRows.map(r => (r.valid_time ? new Date(r.valid_time).toISOString() : null)).filter(Boolean);
+                const f_wspd = fcRows.map(r => r.wind_speed_kt);
+                const f_gust = fcRows.map(r => r.wind_gust_kt);
+                const f_wdir = fcRows.map(r => r.wind_dir_deg);
+
+                const labels = Array.from(new Set([...ts, ...f_ts])).sort();
+
+                upsertCharts(labels, ts, wspd, gust, wdir, f_ts, f_wspd, f_gust, f_wdir);
+
+                if (leafletPopup?.update) {
+                    leafletPopup.update();
+                    setTimeout(() => {
+                        leafletPopup.update();
+                        state.speedChart?.resize();
+                        state.dirChart?.resize();
+                    }, 80);
+                }
+
+                const nonNullPts = Math.max(
+                    wspd.filter(v => v != null).length,
+                    gust.filter(v => v != null).length,
+                    wdir.filter(v => v != null).length
+                );
+                statusEl.textContent = `${nonNullPts} pts`;
+                setDisabled(false);
+            }
+
+            selWindow.addEventListener("change", () => load(parseInt(selWindow.value, 10)));
+            selWindow.value = String(defaultHours);
+            load(defaultHours);
+        }
+
+        window.attachTimeseriesTo = attachTimeseriesTo;
     </script>
 </body>
 
