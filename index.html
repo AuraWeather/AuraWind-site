@@ -302,18 +302,24 @@
         let ARROW_SIZE_PX = 84;
         let ARROW_FONT_PX = 18;
 
-        // Flow visual tuning — BIGGER PARTICLES / STREAKS
+        // === SOLENT BOUNDS (map lock + flow lock) ===
+        const SOLENT_BOUNDS = L.latLngBounds(
+            [50.65, -1.75],  // SW
+            [50.95, -0.95]   // NE
+        );
+
+        // Flow visual tuning — BIGGER PARTICLES / STREAKS (plus tighter influence)
         const FLOW_SETTINGS = {
             enabled: false,
-            particleCount: 900,     // a touch denser
+            particleCount: 900,
             speedFactor: 0.32,
             maxStepPx: 1.35,
-            particleLife: 68,       // longer streaks (feels "bigger")
-            lineWidth: 3.4,         // thicker lines (main "bigger" knob)
-            alpha: 0.92,            // slightly more visible
-            fadeAlpha: 0.06,        // slower fade so trails feel larger
+            particleLife: 68,
+            lineWidth: 3.4,
+            alpha: 0.92,
+            fadeAlpha: 0.06,
             idwPower: 1.7,
-            maxInfluenceKm: 55,
+            maxInfluenceKm: 25,   // tighter than before to stop "escaping"
             minStations: 3
         };
 
@@ -396,8 +402,17 @@
       `;
         }
 
-        // map + layers
-        const map = L.map("map", { zoomControl: true });
+        // === MAP (locked to Solent bounds) ===
+        const map = L.map("map", {
+            zoomControl: true,
+            maxBounds: SOLENT_BOUNDS,
+            maxBoundsViscosity: 1.0
+        });
+
+        // Optional: stop zooming out too far
+        map.setMinZoom(9);
+        map.setMaxZoom(13);
+
         L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
             attribution: "&copy; OpenStreetMap, &copy; CARTO",
         }).addTo(map);
@@ -467,27 +482,9 @@
             });
         }
 
-        function fitToDataBounds(points) {
-            if (!points.length) return;
-
-            let latMin = 90, latMax = -90, lonMin = 180, lonMax = -180;
-
-            for (const p of points) {
-                if (p.lat != null && p.lon != null) {
-                    latMin = Math.min(latMin, p.lat);
-                    latMax = Math.max(latMax, p.lat);
-                    lonMin = Math.min(lonMin, p.lon);
-                    lonMax = Math.max(lonMax, p.lon);
-                }
-            }
-
-            map.fitBounds(
-                [
-                    [latMin - 0.06, lonMin - 0.1],
-                    [latMax + 0.06, lonMax + 0.1],
-                ],
-                { padding: [20, 20] }
-            );
+        // Fit once to Solent bounds (instead of fitting to data)
+        function fitToSolent() {
+            map.fitBounds(SOLENT_BOUNDS, { padding: [20, 20] });
         }
 
         let autoTimer = null;
@@ -532,14 +529,17 @@
                 clearStations();
                 for (const r of ok) addStationMarker(r);
 
-                latestStations = ok.slice();
+                // keep latest for flow (OPTIONAL: filter to Solent bounds only)
+                latestStations = ok.filter(s => SOLENT_BOUNDS.contains([s.lat, s.lon]));
+
                 flowOverlay?.setStations?.(latestStations);
 
+                if (!map._fitDone || fromButton) {
+                    fitToSolent();
+                    map._fitDone = true;
+                }
+
                 if (ok.length) {
-                    if (!map._fitDone || fromButton) {
-                        fitToDataBounds(ok);
-                        map._fitDone = true;
-                    }
                     const gen = data?.meta?.generated_at || new Date().toISOString();
                     const genStr = (() => { try { return new Date(gen).toLocaleString(undefined, { hour12: false }); } catch { return String(gen); } })();
                     setStatus(`Stations: ${ok.length} • Updated: ${genStr}`);
@@ -559,7 +559,7 @@
         }
 
         /* ============================================================
-          FLOW OVERLAY (interpolated particle field on a canvas layer)
+          FLOW OVERLAY (bounded to Solent)
         ============================================================ */
 
         function kmBetween(lat1, lon1, lat2, lon2) {
@@ -633,7 +633,9 @@
             }
 
             setStations(stations) {
-                this._stations = Array.isArray(stations) ? stations.slice() : [];
+                // Keep only stations inside Solent bounds
+                const inBounds = Array.isArray(stations) ? stations.filter(s => SOLENT_BOUNDS.contains([s.lat, s.lon])) : [];
+                this._stations = inBounds.slice();
                 if (this._ready) this._initParticles(true);
             }
 
@@ -673,12 +675,15 @@
             }
 
             _fieldAt(lat, lon) {
+                // HARD FLOW CLIP: outside Solent => no field
+                if (!SOLENT_BOUNDS.contains([lat, lon])) return null;
+
                 const st = this._stations;
                 const minStations = this.opts.minStations ?? 3;
                 if (!st || st.length < minStations) return null;
 
                 const p = this.opts.idwPower ?? 1.6;
-                const maxKm = this.opts.maxInfluenceKm ?? 55;
+                const maxKm = this.opts.maxInfluenceKm ?? 25;
 
                 let sw = 0, su = 0, sv = 0, used = 0;
 
@@ -710,8 +715,16 @@
                 const h = this._canvas.height;
 
                 const ll = mapRef.containerPointToLatLng([p.x, p.y]);
-                const f = this._fieldAt(ll.lat, ll.lng);
 
+                // If particle is outside Solent (lat/lon), respawn
+                if (!SOLENT_BOUNDS.contains([ll.lat, ll.lng])) {
+                    p.x = Math.random() * w;
+                    p.y = Math.random() * h;
+                    p.age = 0;
+                    return;
+                }
+
+                const f = this._fieldAt(ll.lat, ll.lng);
                 if (!f) {
                     p.x = Math.random() * w;
                     p.y = Math.random() * h;
@@ -992,7 +1005,6 @@
                 dirChart: null,
             };
 
-            // Popup content (wind only)
             containerEl.innerHTML = `
         <div style="width:min(340px, 82vw);">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
@@ -1025,12 +1037,11 @@
             const statusEl = containerEl.querySelector(".ts-status");
             const setDisabled = (d) => { selWindow.disabled = d; };
 
-            // Colour scheme (readable + Aura vibes)
             const TS_COLORS = {
-                obsWind: "#3DA5FF",  // blue
-                obsGust: "#FF4DA6",  // pink
-                fcstWind: "#14B8A6", // Aura teal
-                fcstGust: "#8A5CFF", // purple
+                obsWind: "#3DA5FF",
+                obsGust: "#FF4DA6",
+                fcstWind: "#14B8A6",
+                fcstGust: "#8A5CFF",
                 obsDir: "rgba(0,0,0,0.65)",
                 fcstDir: "#14B8A6",
             };
@@ -1039,49 +1050,10 @@
                 const speedData = {
                     labels,
                     datasets: [
-                        {
-                            label: "Wind (kt)",
-                            data: align(labels, ts_obs, wspd),
-                            borderColor: TS_COLORS.obsWind,
-                            backgroundColor: "transparent",
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            tension: 0.25,
-                            spanGaps: true
-                        },
-                        {
-                            label: "Gust (kt)",
-                            data: align(labels, ts_obs, gust),
-                            borderColor: TS_COLORS.obsGust,
-                            backgroundColor: "transparent",
-                            borderWidth: 2,
-                            borderDash: [6, 4],
-                            pointRadius: 0,
-                            tension: 0.25,
-                            spanGaps: true
-                        },
-                        {
-                            label: "Fcst Wind (kt)",
-                            data: align(labels, ts_fcst, wspd_fc),
-                            borderColor: TS_COLORS.fcstWind,
-                            backgroundColor: "transparent",
-                            borderWidth: 2,
-                            borderDash: [4, 3],
-                            pointRadius: 0,
-                            tension: 0.25,
-                            spanGaps: true
-                        },
-                        {
-                            label: "Fcst Gust (kt)",
-                            data: align(labels, ts_fcst, gust_fc),
-                            borderColor: TS_COLORS.fcstGust,
-                            backgroundColor: "transparent",
-                            borderWidth: 2,
-                            borderDash: [2, 3],
-                            pointRadius: 0,
-                            tension: 0.25,
-                            spanGaps: true
-                        },
+                        { label: "Wind (kt)", data: align(labels, ts_obs, wspd), borderColor: TS_COLORS.obsWind, backgroundColor: "transparent", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true },
+                        { label: "Gust (kt)", data: align(labels, ts_obs, gust), borderColor: TS_COLORS.obsGust, backgroundColor: "transparent", borderWidth: 2, borderDash: [6, 4], pointRadius: 0, tension: 0.25, spanGaps: true },
+                        { label: "Fcst Wind (kt)", data: align(labels, ts_fcst, wspd_fc), borderColor: TS_COLORS.fcstWind, backgroundColor: "transparent", borderWidth: 2, borderDash: [4, 3], pointRadius: 0, tension: 0.25, spanGaps: true },
+                        { label: "Fcst Gust (kt)", data: align(labels, ts_fcst, gust_fc), borderColor: TS_COLORS.fcstGust, backgroundColor: "transparent", borderWidth: 2, borderDash: [2, 3], pointRadius: 0, tension: 0.25, spanGaps: true },
                     ],
                 };
 
@@ -1091,10 +1063,7 @@
                 const speedOpts = {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        x: { type: "time" },
-                        y: { suggestedMax: maxSpeed, title: { text: "kt", display: true } }
-                    },
+                    scales: { x: { type: "time" }, y: { suggestedMax: maxSpeed, title: { text: "kt", display: true } } },
                     plugins: {
                         legend: {
                             position: "bottom",
@@ -1102,7 +1071,6 @@
                                 boxWidth: 16,
                                 boxHeight: 10,
                                 padding: 12,
-                                // Semi-translucent rectangles in the right colours
                                 generateLabels: (chart) => {
                                     const base = Chart.defaults.plugins.legend.labels.generateLabels(chart);
                                     base.forEach((item) => {
@@ -1123,37 +1091,15 @@
                 const dirData = {
                     labels,
                     datasets: [
-                        {
-                            label: "Direction (°)",
-                            data: align(labels, ts_obs, wdir),
-                            borderColor: TS_COLORS.obsDir,
-                            backgroundColor: "transparent",
-                            borderWidth: 1.5,
-                            pointRadius: 0,
-                            tension: 0.25,
-                            spanGaps: true
-                        },
-                        {
-                            label: "Fcst Dir (°)",
-                            data: align(labels, ts_fcst, wdir_fc),
-                            borderColor: TS_COLORS.fcstDir,
-                            backgroundColor: "transparent",
-                            borderWidth: 1.5,
-                            pointRadius: 0,
-                            tension: 0.25,
-                            spanGaps: true,
-                            borderDash: [4, 3]
-                        },
+                        { label: "Direction (°)", data: align(labels, ts_obs, wdir), borderColor: TS_COLORS.obsDir, backgroundColor: "transparent", borderWidth: 1.5, pointRadius: 0, tension: 0.25, spanGaps: true },
+                        { label: "Fcst Dir (°)", data: align(labels, ts_fcst, wdir_fc), borderColor: TS_COLORS.fcstDir, backgroundColor: "transparent", borderWidth: 1.5, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [4, 3] },
                     ],
                 };
 
                 const dirOpts = {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        x: { type: "time" },
-                        y: { min: 0, max: 360, ticks: { stepSize: 90 }, title: { text: "°", display: true } }
-                    },
+                    scales: { x: { type: "time" }, y: { min: 0, max: 360, ticks: { stepSize: 90 }, title: { text: "°", display: true } } },
                     plugins: { legend: { display: false } },
                     animation: { duration: 120 },
                 };
