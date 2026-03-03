@@ -19,23 +19,24 @@
         :root {
             --bg: #0b1120;
             --text: #0b0f1a;
-            --muted: rgba(0, 0, 0, .62);
+            --muted: rgba(0, 0, 0, 0.62);
             --accent: #14b8a6;
 
-            --forecastBtnBg: rgba(6, 27, 40, .85);
+            --forecastBtnBg: rgba(6, 27, 40, 0.85);
 
-            --flowOffBg: rgba(20, 184, 166, .25);
-            --flowOffBorder: rgba(20, 184, 166, .55);
-            --flowOnBg: rgba(20, 184, 166, .70);
-            --flowOnBorder: rgba(20, 184, 166, .95);
+            --flowOffBg: rgba(20, 184, 166, 0.25);
+            --flowOffBorder: rgba(20, 184, 166, 0.55);
+            --flowOnBg: rgba(20, 184, 166, 0.55);
+            --flowOnBorder: rgba(20, 184, 166, 0.90);
 
-            --hud-shadow: 0 10px 26px rgba(0, 0, 0, .18);
-            --hud-border: rgba(0, 0, 0, .12);
+            --hud-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
+            --hud-border: rgba(0, 0, 0, 0.12);
+            --hud-bg: rgba(255, 255, 255, 0.88);
 
-            --popup-bg: rgba(6, 27, 40, .92);
-            --popup-border: rgba(255, 255, 255, .18);
-            --popup-text: rgba(234, 243, 251, .96);
-            --popup-muted: rgba(234, 243, 251, .72);
+            /* Popup look */
+            --popup-bg: rgba(255, 255, 255, 0.96);
+            --popup-text: #0b0f1a;
+            --popup-muted: rgba(0, 0, 0, 0.62);
         }
 
         html,
@@ -46,6 +47,7 @@
             font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
         }
 
+        /* Fullscreen map */
         #map {
             position: fixed;
             inset: 0;
@@ -58,6 +60,26 @@
             background: var(--bg);
         }
 
+        /* Ensure popup is LIGHT (you said it unexpectedly went dark) */
+        .leaflet-popup-content-wrapper {
+            background: var(--popup-bg) !important;
+            color: var(--popup-text) !important;
+            border-radius: 16px !important;
+            box-shadow: var(--hud-shadow) !important;
+            border: 1px solid rgba(0, 0, 0, 0.10) !important;
+            backdrop-filter: blur(10px);
+        }
+
+        .leaflet-popup-tip {
+            background: var(--popup-bg) !important;
+            box-shadow: var(--hud-shadow) !important;
+        }
+
+        .leaflet-popup-content {
+            margin: 12px 14px !important;
+        }
+
+        /* Overlay HUD */
         .hud {
             position: fixed;
             inset: 0;
@@ -80,7 +102,7 @@
             width: auto;
             display: block;
             object-fit: contain;
-            filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .18));
+            filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.18));
         }
 
         .hud-title {
@@ -88,13 +110,13 @@
             flex-direction: column;
             gap: 2px;
             color: var(--text);
-            text-shadow: 0 1px 0 rgba(255, 255, 255, .7);
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
         }
 
         .hud-title .h1 {
             font-size: clamp(22px, 2.1vw, 34px);
             font-weight: 950;
-            letter-spacing: .2px;
+            letter-spacing: 0.2px;
             line-height: 1.05;
         }
 
@@ -110,7 +132,7 @@
             font-size: clamp(16px, 1.4vw, 22px);
             font-weight: 900;
             color: var(--text);
-            text-shadow: 0 2px 0 rgba(255, 255, 255, .75);
+            text-shadow: 0 2px 0 rgba(255, 255, 255, 0.75);
             white-space: nowrap;
         }
 
@@ -127,17 +149,17 @@
         .hud-btn {
             border: 0;
             border-radius: 12px;
-            padding: .58rem .95rem;
+            padding: 0.58rem 0.95rem;
             font-weight: 900;
             cursor: pointer;
-            box-shadow: 0 10px 22px rgba(0, 0, 0, .12);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
             transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
             text-decoration: none;
             user-select: none;
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            color: #fff;
+            color: #ffffff;
         }
 
         .hud-btn:hover {
@@ -146,7 +168,7 @@
         }
 
         .hud-btn:disabled {
-            opacity: .6;
+            opacity: 0.6;
             cursor: default;
             transform: none;
         }
@@ -154,6 +176,7 @@
         #flowBtn {
             background: var(--flowOffBg);
             border: 1px solid var(--flowOffBorder);
+            color: #ffffff;
             font-weight: 950;
         }
 
@@ -164,14 +187,18 @@
 
         #forecastBtn {
             background: var(--forecastBtnBg);
-            border: 1px solid rgba(255, 255, 255, .25);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #ffffff;
+            font-weight: 900;
+            letter-spacing: 0.2px;
         }
 
         #refreshBtn {
             background: var(--accent);
-            border: 1px solid rgba(20, 184, 166, .55);
+            border: 1px solid rgba(20, 184, 166, 0.55);
+            color: #ffffff;
             font-weight: 950;
-            box-shadow: 0 10px 22px rgba(20, 184, 166, .18);
+            box-shadow: 0 10px 22px rgba(20, 184, 166, 0.18);
         }
 
         .legend {
@@ -179,7 +206,7 @@
             right: 12px;
             bottom: 12px;
             z-index: 999;
-            background: rgba(255, 255, 255, .90);
+            background: rgba(255, 255, 255, 0.9);
             border: 1px solid var(--hud-border);
             border-radius: 14px;
             padding: 10px 12px;
@@ -202,35 +229,17 @@
             align-items: center;
             gap: 8px;
             margin: 4px 0;
-            color: rgba(0, 0, 0, .75);
+            color: rgba(0, 0, 0, 0.75);
         }
 
         .chip {
             width: 18px;
             height: 10px;
             border-radius: 3px;
-            border: 1px solid rgba(0, 0, 0, .25);
+            border: 1px solid rgba(0, 0, 0, 0.25);
         }
 
-        /* Dark glass popup */
-        .leaflet-popup-content-wrapper {
-            background: var(--popup-bg) !important;
-            border: 1px solid var(--popup-border) !important;
-            border-radius: 14px !important;
-            box-shadow: 0 18px 50px rgba(0, 0, 0, .35) !important;
-            color: var(--popup-text) !important;
-        }
-
-        .leaflet-popup-tip {
-            background: var(--popup-bg) !important;
-            border: 1px solid var(--popup-border) !important;
-        }
-
-        .leaflet-popup-content {
-            margin: 10px 12px !important;
-        }
-
-        @media (max-width:560px) {
+        @media (max-width: 560px) {
             #logo {
                 height: 120px;
             }
@@ -240,7 +249,7 @@
             }
 
             .hud-btn {
-                padding: .52rem .75rem;
+                padding: 0.52rem 0.75rem;
                 border-radius: 12px;
             }
         }
@@ -261,7 +270,9 @@
         </div>
 
         <div class="hud-right">
-            <button id="flowBtn" class="hud-btn" type="button" title="Toggle interpolated flow">Flow</button>
+            <button id="flowBtn" class="hud-btn" type="button" title="Toggle interpolated flow">
+                Flow
+            </button>
             <a id="forecastBtn" class="hud-btn" href="./forecast.html" title="Free forecast dashboard">Forecast</a>
             <button id="refreshBtn" class="hud-btn" type="button" title="Refresh now">Refresh</button>
         </div>
@@ -285,54 +296,92 @@
         const statusEl = document.getElementById("status");
         const setStatus = (s) => { if (statusEl) statusEl.textContent = s; };
 
+        window.addEventListener("error", (e) => {
+            console.error("Global error:", e.error || e.message);
+            setStatus("Script error");
+        });
+
+        window.addEventListener("unhandledrejection", (e) => {
+            console.error("Unhandled promise:", e.reason);
+            setStatus("Load failed");
+        });
+
         /* ---------------- Config ---------------- */
         const OBS_URL = "./solent_obs.json";
         const AUTO_REFRESH_MS = 10 * 60 * 1000;
 
-        // Tight Solent + soft max bounds
-        const INITIAL_BOUNDS = L.latLngBounds([50.63, -1.92], [51.17, -0.82]);
-        const MAX_BOUNDS = L.latLngBounds([50.25, -2.60], [51.60, -0.20]);
-
-        // Arrow sizing (smaller, responsive)
-        let ARROW_SIZE_PX = 82;
-        let ARROW_FONT_PX = 18;
-
-        function applyMobileSizing() {
-            const w = Math.min(window.innerWidth || 9999, window.screen?.width || 9999);
-            if (w <= 560) { ARROW_SIZE_PX = 60; ARROW_FONT_PX = 14; }
-            else if (w <= 900) { ARROW_SIZE_PX = 72; ARROW_FONT_PX = 16; }
-            else { ARROW_SIZE_PX = 82; ARROW_FONT_PX = 18; }
-        }
-        applyMobileSizing();
-
-        // Flow (OFF by default) + bigger
+        // FLOW default OFF (as requested)
         const FLOW_SETTINGS = {
             enabled: false,
+
+            // bigger / more visible (as requested)
             particleCount: 1400,
-            speedFactor: 0.48,
-            maxStepPx: 2.3,
-            particleLife: 70,
-            lineWidth: 2.8,
-            alpha: 0.85,
-            fadeAlpha: 0.07,
+            speedFactor: 0.42,
+            maxStepPx: 2.0,
+            particleLife: 62,
+            lineWidth: 3.0,
+            alpha: 0.90,
+            fadeAlpha: 0.06,
+
             idwPower: 1.7,
-            maxInfluenceKm: 65,
+            maxInfluenceKm: 55,
             minStations: 3
         };
 
+        // Solent-ish bounds (image 2; slightly generous)
+        const SOLENT_BOUNDS = L.latLngBounds(
+            L.latLng(50.65, -2.20),  // SW
+            L.latLng(51.20, -0.80)   // NE
+        );
+
+        // Arrow sizes (smaller on laptop + phone)
+        let ARROW_SIZE_PX = 84;
+        let ARROW_FONT_PX = 18;
+
+        function applyResponsiveArrowSizing() {
+            const w = Math.min(window.innerWidth || 9999, window.screen?.width || 9999);
+            if (w <= 560) {
+                ARROW_SIZE_PX = 58;
+                ARROW_FONT_PX = 14;
+            } else if (w <= 900) {
+                ARROW_SIZE_PX = 70;
+                ARROW_FONT_PX = 16;
+            } else {
+                ARROW_SIZE_PX = 84;
+                ARROW_FONT_PX = 18;
+            }
+        }
+        applyResponsiveArrowSizing();
+
         const BREAKS = [0, 3, 5, 10, 20, 22, 30, 33, 40, 60];
-        const COLORS = ["#00008b", "#4169e1", "#00ffcc", "#00ff00", "#00cc00", "#ff9900", "#ff0000", "#b22222", "#8b008b", "#800080"];
+        const COLORS = [
+            "#00008b",
+            "#4169e1",
+            "#00ffcc",
+            "#00ff00",
+            "#00cc00",
+            "#ff9900",
+            "#ff0000",
+            "#b22222",
+            "#8b008b",
+            "#800080",
+        ];
 
         const lerp = (a, b, t) => a + (b - a) * t;
+
         function mixHex(a, b, t) {
-            const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+            const pa = parseInt(a.slice(1), 16);
+            const pb = parseInt(b.slice(1), 16);
+
             const ar = (pa >> 16) & 255, ag = (pa >> 8) & 255, ab = pa & 255;
             const br = (pb >> 16) & 255, bg = (pb >> 8) & 255, bb = pb & 255;
+
             const r = Math.round(lerp(ar, br, t));
             const g = Math.round(lerp(ag, bg, t));
             const b2 = Math.round(lerp(ab, bb, t));
             return `#${((r << 16) | (g << 8) | b2).toString(16).padStart(6, "0")}`;
         }
+
         function colorForSpeed(spd) {
             if (spd == null || Number.isNaN(spd)) return "#999999";
             for (let i = 0; i < BREAKS.length - 1; i++) {
@@ -345,52 +394,54 @@
             return COLORS.at(-1);
         }
 
-        // Arrow shows wind direction FROM (meteorological)
-        const rotateFromDirDeg = (d) => ((Number(d) % 360) + 360) % 360;
+        // MET convention: wdir is FROM; arrow should point TO => +180
+        const rotateFromDirDeg = (d) => (Number(d) + 180) % 360;
 
         function svgStationArrow(color, size = ARROW_SIZE_PX) {
             const stroke = Math.max(4, size / 12).toFixed(1);
             return `
-        <svg width="${size}" height="${size}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
-             style="filter:drop-shadow(0 0 3px rgba(0,0,0,.35));">
+        <svg width="${size}" height="${size}" viewBox="0 0 64 64"
+          xmlns="http://www.w3.org/2000/svg"
+          style="filter:drop-shadow(0 0 3px rgba(0,0,0,.35));">
           <g transform="translate(32,32)">
-            <line x1="0" y1="20" x2="0" y2="-16" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"/>
+            <line x1="0" y1="20" x2="0" y2="-16"
+              stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"/>
             <polygon points="0,-26 -10,-8 10,-8" fill="${color}"/>
           </g>
-        </svg>`;
+        </svg>
+      `;
         }
 
         /* ---------------- Map ---------------- */
-        const map = L.map("map", { zoomControl: true, inertia: true, worldCopyJump: false });
+        const map = L.map("map", {
+            zoomControl: true,
+            maxBounds: SOLENT_BOUNDS,
+            maxBoundsViscosity: 1.0,   // keeps panning inside bounds
+            minZoom: 8,
+            maxZoom: 13
+        });
+
         L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
             attribution: "&copy; OpenStreetMap, &copy; CARTO",
-            maxZoom: 14
         }).addTo(map);
 
-        map.fitBounds(INITIAL_BOUNDS, { padding: [20, 20] });
-        map.setMaxBounds(MAX_BOUNDS);
-        map.options.maxBoundsViscosity = 0.80;
+        // Start inside bounds (and not “too far away”)
+        map.fitBounds(SOLENT_BOUNDS, { padding: [30, 30] });
 
         const layerStations = L.layerGroup().addTo(map);
 
         const refreshBtn = document.getElementById("refreshBtn");
         const flowBtn = document.getElementById("flowBtn");
+
         refreshBtn.addEventListener("click", () => loadObs(true));
 
         function clearStations() { layerStations.clearLayers(); }
 
-        // Keep latest stations for flow overlay
-        let latestStations = [];
-
         function addStationMarker(st) {
             if (st.lat == null || st.lon == null || st.wspd_kn == null || st.wdir_degT == null) return;
 
-            const spd = Number(st.wspd_kn);
-            const dir = Number(st.wdir_degT);
-            if (!Number.isFinite(spd) || !Number.isFinite(dir)) return;
-
-            const color = colorForSpeed(spd);
-            const rotate = rotateFromDirDeg(dir);
+            const color = colorForSpeed(st.wspd_kn);
+            const rotate = rotateFromDirDeg(st.wdir_degT);
             const arrow = svgStationArrow(color, ARROW_SIZE_PX);
 
             const html = `
@@ -403,22 +454,28 @@
           font:900 ${ARROW_FONT_PX}px/1 system-ui;
           color:#111;
           text-shadow:0 0 2px #fff,0 0 8px rgba(255,255,255,.95);
-        ">${Math.round(spd)}</div>
+        ">${Math.round(st.wspd_kn)}</div>
       `;
 
             const icon = L.divIcon({
                 html,
                 iconSize: [ARROW_SIZE_PX, ARROW_SIZE_PX],
                 iconAnchor: [ARROW_SIZE_PX / 2, ARROW_SIZE_PX / 2],
-                className: ""
+                className: "",
             });
 
             const m = L.marker([st.lat, st.lon], { icon }).addTo(layerStations);
 
+            const gustText = st.gust_kn == null ? "" : ` gust ${Math.round(st.gust_kn)}`;
+            const label = `${st.station_name || st.station_id}<br>${Math.round(st.wspd_kn)} kt${gustText}`;
+            m.bindTooltip(label);
+
             m.on("click", (e) => {
                 L.DomEvent.stop(e);
+
                 const mount = document.createElement("div");
-                mount.style.width = "min(360px, 82vw)";
+                // smaller popup (as requested)
+                mount.style.width = "min(360px, 80vw)";
 
                 const popup = L.popup({
                     maxWidth: 420,
@@ -439,30 +496,29 @@
 
         function fitToDataBounds(points) {
             if (!points.length) return;
+
             let latMin = 90, latMax = -90, lonMin = 180, lonMax = -180;
             for (const p of points) {
                 if (p.lat != null && p.lon != null) {
-                    latMin = Math.min(latMin, p.lat); latMax = Math.max(latMax, p.lat);
-                    lonMin = Math.min(lonMin, p.lon); lonMax = Math.max(lonMax, p.lon);
+                    latMin = Math.min(latMin, p.lat);
+                    latMax = Math.max(latMax, p.lat);
+                    lonMin = Math.min(lonMin, p.lon);
+                    lonMax = Math.max(lonMax, p.lon);
                 }
             }
-            map.fitBounds([[latMin - 0.04, lonMin - 0.06], [latMax + 0.04, lonMax + 0.06]], { padding: [20, 20] });
+
+            const dataBounds = L.latLngBounds(
+                L.latLng(latMin - 0.06, lonMin - 0.10),
+                L.latLng(latMax + 0.06, lonMax + 0.10)
+            );
+
+            // Keep within SOLENT_BOUNDS
+            const target = SOLENT_BOUNDS.contains(dataBounds) ? dataBounds : SOLENT_BOUNDS;
+            map.fitBounds(target, { padding: [22, 22] });
         }
 
         let autoTimer = null;
-
-        // Robust field mapper: handles your JSON + any fallback keys
-        function pick(r, keys) {
-            for (const k of keys) {
-                const v = r?.[k];
-                if (v !== undefined && v !== null && v !== "") return v;
-            }
-            return null;
-        }
-        function toNum(x) {
-            const n = Number(x);
-            return Number.isFinite(n) ? n : null;
-        }
+        let latestStations = [];
 
         async function loadObs(fromButton = false) {
             try {
@@ -470,31 +526,44 @@
                 setStatus(fromButton ? "Refreshing…" : "Loading…");
 
                 const res = await fetch(`${OBS_URL}?ts=${Date.now()}`, { cache: "no-store" });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                if (!res.ok) {
+                    setStatus(`Fetch ${res.status}`);
+                    throw new Error(`HTTP ${res.status}`);
+                }
 
-                const data = await res.json();
-                const rows = Array.isArray(data?.obs) ? data.obs : (Array.isArray(data) ? data : []);
+                let data;
+                try {
+                    data = await res.json();
+                } catch (e) {
+                    const txt = await res.text();
+                    console.error("JSON parse failed:", txt.slice(0, 200));
+                    setStatus("Invalid JSON");
+                    throw e;
+                }
 
-                const obs = rows.map(r => ({
-                    lat: toNum(pick(r, ["lat", "latitude", "Latitude"])),
-                    lon: toNum(pick(r, ["lon", "lng", "longitude", "Longitude"])),
-                    wspd_kn: toNum(pick(r, ["wspd_kn", "wind_speed_kt", "wind_speed_kn", "wind_knots", "wind_speed", "wspd"])),
-                    gust_kn: toNum(pick(r, ["gust_kn", "wind_gust_kt", "wind_gust", "gust"])),
-                    wdir_degT: toNum(pick(r, ["wdir_degT", "wind_dir_deg", "wind_direction", "direction", "wdir"])),
-                    station_name: pick(r, ["station_name", "name", "Site", "station_id", "site_id", "id"]),
-                    station_id: pick(r, ["station_id", "site_id", "id", "code", "name"])
+                const rows = Array.isArray(data?.obs) ? data.obs : Array.isArray(data) ? data : [];
+                const obs = rows.map((r) => ({
+                    lat: r.lat ?? r.latitude ?? r.Latitude,
+                    lon: r.lon ?? r.longitude ?? r.Longitude,
+                    wspd_kn: r.wspd_kn ?? r.wind_speed_kt ?? r.wspd ?? r.wind_knots ?? r.wind_speed,
+                    gust_kn: r.gust_kn ?? r.wind_gust_kt ?? r.wind_gust ?? r.gust ?? null,
+                    wdir_degT: r.wdir_degT ?? r.wind_dir_deg ?? r.wdir ?? r.direction ?? r.wind_direction,
+                    station_name: r.station_name ?? r.name ?? r.Site ?? r.station_id ?? r.site_id ?? r.id,
+                    station_id: r.station_id ?? r.site_id ?? r.id,
                 }));
 
-                const ok = obs.filter(o => o.lat != null && o.lon != null && o.wspd_kn != null && o.wdir_degT != null);
+                const ok = obs.filter((r) =>
+                    r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null
+                );
 
                 clearStations();
-                ok.forEach(addStationMarker);
+                for (const r of ok) addStationMarker(r);
 
                 latestStations = ok.slice();
                 flowOverlay?.setStations?.(latestStations);
 
                 if (ok.length) {
-                    if (!map._fitDone) {
+                    if (!map._fitDone || fromButton) {
                         fitToDataBounds(ok);
                         map._fitDone = true;
                     }
@@ -502,7 +571,7 @@
                     const genStr = (() => { try { return new Date(gen).toLocaleString(undefined, { hour12: false }); } catch { return String(gen); } })();
                     setStatus(`Stations: ${ok.length} • Updated: ${genStr}`);
                 } else {
-                    setStatus("No valid stations in JSON");
+                    setStatus("No stations in data");
                     console.warn("Sample rows:", rows.slice(0, 3));
                 }
             } catch (e) {
@@ -511,26 +580,24 @@
             } finally {
                 refreshBtn.disabled = false;
                 if (autoTimer) clearTimeout(autoTimer);
-                autoTimer = setTimeout(() => loadObs(false), AUTO_REFRESH_MS);
+                autoTimer = setTimeout(loadObs, AUTO_REFRESH_MS);
             }
         }
 
-        window.addEventListener("resize", () => {
-            applyMobileSizing();
-            flowOverlay?.redraw?.();
-        });
-
         /* ============================================================
-          FLOW OVERLAY (canvas)
+          FLOW OVERLAY (canvas particle field)
         ============================================================ */
+
         function kmBetween(lat1, lon1, lat2, lon2) {
             const R = 6371;
             const toRad = (x) => x * Math.PI / 180;
             const dLat = toRad(lat2 - lat1);
             const dLon = toRad(lon2 - lon1);
-            const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+            const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
             return 2 * R * Math.asin(Math.sqrt(a));
         }
+
         function uvFromSpdDir(spdKt, dirDegFrom) {
             if (!Number.isFinite(spdKt) || !Number.isFinite(dirDegFrom)) return { u: 0, v: 0 };
             const rad = dirDegFrom * Math.PI / 180;
@@ -538,18 +605,28 @@
             const v = -spdKt * Math.cos(rad);
             return { u, v };
         }
-        function spdFromUV(u, v) { return Math.sqrt(u * u + v * v); }
+
+        function spdFromUV(u, v) {
+            return Math.sqrt(u * u + v * v);
+        }
 
         class WindFlowOverlay extends L.Layer {
             constructor(opts = {}) {
                 super();
                 this.opts = opts;
-                this._map = null; this._canvas = null; this._ctx = null; this._anim = null;
-                this._stations = []; this._particles = []; this._ready = false;
+                this._map = null;
+                this._canvas = null;
+                this._ctx = null;
+                this._anim = null;
+                this._stations = [];
+                this._particles = [];
+                this._ready = false;
                 this._redrawBound = () => this.redraw();
             }
+
             onAdd(mapRef) {
                 this._map = mapRef;
+
                 this._canvas = L.DomUtil.create("canvas", "leaflet-windflow");
                 this._canvas.style.position = "absolute";
                 this._canvas.style.top = "0";
@@ -557,49 +634,64 @@
                 this._canvas.style.pointerEvents = "none";
                 this._canvas.style.zIndex = "450";
                 this._ctx = this._canvas.getContext("2d");
-                this._map.getPanes().overlayPane.appendChild(this._canvas);
+
+                const pane = this._map.getPanes().overlayPane;
+                pane.appendChild(this._canvas);
 
                 this._map.on("move zoom resize", this._redrawBound);
+
                 this.redraw();
                 this._ready = true;
                 this._initParticles();
                 this._start();
             }
+
             onRemove() {
                 this._stop();
                 if (this._map) this._map.off("move zoom resize", this._redrawBound);
                 if (this._canvas?.parentNode) this._canvas.parentNode.removeChild(this._canvas);
-                this._canvas = null; this._ctx = null; this._map = null; this._ready = false;
+                this._canvas = null;
+                this._ctx = null;
+                this._map = null;
+                this._ready = false;
             }
+
             setStations(stations) {
                 this._stations = Array.isArray(stations) ? stations.slice() : [];
                 if (this._ready) this._initParticles(true);
             }
+
             redraw() {
                 if (!this._map || !this._canvas) return;
                 const size = this._map.getSize();
                 this._canvas.width = Math.round(size.x);
                 this._canvas.height = Math.round(size.y);
             }
-            _spawnParticle(w, h) {
-                return { x: Math.random() * w, y: Math.random() * h, age: Math.floor(Math.random() * (this.opts.particleLife ?? 50)) };
-            }
+
             _initParticles(soft = false) {
                 if (!this._canvas) return;
-                const n = this.opts.particleCount ?? 700;
-                const w = this._canvas.width, h = this._canvas.height;
+                const n = this.opts.particleCount ?? 900;
+                const w = this._canvas.width;
+                const h = this._canvas.height;
+
                 if (!soft || this._particles.length !== n) {
                     this._particles = [];
                     for (let i = 0; i < n; i++) this._particles.push(this._spawnParticle(w, h));
                 } else {
                     for (const p of this._particles) {
                         if (Math.random() < 0.35) {
-                            p.x = Math.random() * w; p.y = Math.random() * h;
-                            p.age = Math.floor(Math.random() * (this.opts.particleLife ?? 50));
+                            p.x = Math.random() * w;
+                            p.y = Math.random() * h;
+                            p.age = Math.floor(Math.random() * (this.opts.particleLife ?? 60));
                         }
                     }
                 }
             }
+
+            _spawnParticle(w, h) {
+                return { x: Math.random() * w, y: Math.random() * h, age: Math.floor(Math.random() * (this.opts.particleLife ?? 60)) };
+            }
+
             _fieldAt(lat, lon) {
                 const st = this._stations;
                 const minStations = this.opts.minStations ?? 3;
@@ -609,66 +701,91 @@
                 const maxKm = this.opts.maxInfluenceKm ?? 55;
 
                 let sw = 0, su = 0, sv = 0, used = 0;
+
                 for (const s of st) {
                     const dKm = kmBetween(lat, lon, s.lat, s.lon);
                     if (!Number.isFinite(dKm) || dKm <= 0) continue;
                     if (dKm > maxKm) continue;
+
                     const w = 1 / Math.pow(dKm, p);
                     const uv = uvFromSpdDir(Number(s.wspd_kn), Number(s.wdir_degT));
-                    sw += w; su += w * uv.u; sv += w * uv.v; used++;
+                    sw += w;
+                    su += w * uv.u;
+                    sv += w * uv.v;
+                    used++;
                 }
+
                 if (used < minStations || sw <= 0) return null;
-                const u = su / sw, v = sv / sw;
+                const u = su / sw;
+                const v = sv / sw;
                 return { u, v, spd: spdFromUV(u, v) };
             }
+
             _stepParticle(p) {
-                const ctx = this._ctx, mapRef = this._map;
+                const ctx = this._ctx;
+                const mapRef = this._map;
                 if (!ctx || !mapRef) return;
-                const w = this._canvas.width, h = this._canvas.height;
+
+                const w = this._canvas.width;
+                const h = this._canvas.height;
 
                 const ll = mapRef.containerPointToLatLng([p.x, p.y]);
                 const f = this._fieldAt(ll.lat, ll.lng);
+
                 if (!f) {
-                    p.x = Math.random() * w; p.y = Math.random() * h; p.age = 0;
+                    p.x = Math.random() * w;
+                    p.y = Math.random() * h;
+                    p.age = 0;
                     return;
                 }
 
-                const speedFactor = this.opts.speedFactor ?? 0.35;
-                const maxStep = this.opts.maxStepPx ?? 1.25;
+                const speedFactor = this.opts.speedFactor ?? 0.4;
+                const maxStep = this.opts.maxStepPx ?? 2.0;
 
                 const d = 0.02;
                 const ll2 = L.latLng(ll.lat + (f.v >= 0 ? d : -d), ll.lng + (f.u >= 0 ? d : -d));
                 const a = mapRef.latLngToContainerPoint(ll);
                 const b = mapRef.latLngToContainerPoint(ll2);
 
-                let dx = (b.x - a.x), dy = (b.y - a.y);
+                let dx = (b.x - a.x);
+                let dy = (b.y - a.y);
+
                 const mag = Math.sqrt(dx * dx + dy * dy) || 1;
-                dx /= mag; dy /= mag;
+                dx /= mag;
+                dy /= mag;
 
                 const spd = Math.max(0, Math.min(60, f.spd ?? 0));
                 let step = spd * speedFactor / 10;
-                step = Math.min(maxStep, Math.max(0.15, step));
+                step = Math.min(maxStep, Math.max(0.2, step));
 
                 const x0 = p.x, y0 = p.y;
-                p.x += dx * step; p.y += dy * step;
+                p.x += dx * step;
+                p.y += dy * step;
 
-                ctx.strokeStyle = colorForSpeed(spd);
-                ctx.globalAlpha = this.opts.alpha ?? 0.55;
-                ctx.lineWidth = this.opts.lineWidth ?? 1.2;
-                ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(p.x, p.y); ctx.stroke();
+                const col = colorForSpeed(spd);
+                ctx.strokeStyle = col;
+                ctx.globalAlpha = this.opts.alpha ?? 0.85;
+                ctx.lineWidth = this.opts.lineWidth ?? 3.0;
+                ctx.beginPath();
+                ctx.moveTo(x0, y0);
+                ctx.lineTo(p.x, p.y);
+                ctx.stroke();
 
                 p.age++;
-                const life = this.opts.particleLife ?? 50;
+                const life = this.opts.particleLife ?? 60;
+
                 if (p.age > life || p.x < -10 || p.y < -10 || p.x > w + 10 || p.y > h + 10) {
                     const np = this._spawnParticle(w, h);
                     p.x = np.x; p.y = np.y; p.age = np.age;
                 }
             }
+
             _tick() {
                 const ctx = this._ctx;
                 if (!ctx || !this._canvas) return;
 
-                const fade = this.opts.fadeAlpha ?? 0.08;
+                // Fade without whitening the map
+                const fade = this.opts.fadeAlpha ?? 0.06;
                 ctx.globalCompositeOperation = "destination-in";
                 ctx.globalAlpha = 1 - fade;
                 ctx.fillStyle = "rgba(0,0,0,1)";
@@ -678,9 +795,15 @@
                 ctx.globalAlpha = 1;
 
                 for (const p of this._particles) this._stepParticle(p);
+
                 this._anim = requestAnimationFrame(() => this._tick());
             }
-            _start() { if (!this._anim) this._anim = requestAnimationFrame(() => this._tick()); }
+
+            _start() {
+                if (this._anim) return;
+                this._anim = requestAnimationFrame(() => this._tick());
+            }
+
             _stop() {
                 if (this._anim) cancelAnimationFrame(this._anim);
                 this._anim = null;
@@ -689,12 +812,14 @@
         }
 
         let flowOverlay = null;
+
         function setFlowEnabled(on) {
             FLOW_SETTINGS.enabled = !!on;
             flowBtn.classList.toggle("active", FLOW_SETTINGS.enabled);
 
             if (FLOW_SETTINGS.enabled) {
                 if (!flowOverlay) flowOverlay = new WindFlowOverlay(FLOW_SETTINGS);
+
                 map.whenReady(() => {
                     if (!map.hasLayer(flowOverlay)) {
                         flowOverlay.addTo(map);
@@ -708,18 +833,28 @@
 
         flowBtn.addEventListener("click", () => setFlowEnabled(!FLOW_SETTINGS.enabled));
 
-        document.addEventListener("DOMContentLoaded", () => loadObs(false));
+        window.addEventListener("resize", () => {
+            applyResponsiveArrowSizing();
+            flowOverlay?.redraw?.();
+        });
+
+        document.addEventListener("DOMContentLoaded", () => {
+            // ensure OFF by default
+            setFlowEnabled(false);
+            loadObs(false);
+        });
     </script>
 
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c"
+            ;
         const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     </script>
 
-    <!-- Popup time-series (Wind only: obs + latest forecast) -->
+    <!-- Popup timeseries (WIND ONLY: no MSLP/Rain in UI) -->
     <script>
         const stationIdCache = new Map();
         const seriesCache = new Map();
@@ -738,34 +873,42 @@
 
         async function getStationId(idOrCode) {
             if (idOrCode == null) return null;
-            const raw = String(idOrCode).trim();
-            if (!raw) return null;
-            if (UUID_RE.test(raw)) return raw;
+            const raw = String(idOrCode);
+            const key = raw.trim();
+            if (!key) return null;
+            if (UUID_RE.test(key)) return key;
 
-            const cached = stationIdCache.get(raw);
+            const cached = stationIdCache.get(key);
             if (cached && now() - cached.ts < STATION_CACHE_MS) return cached.id;
 
-            // Try code/name (your existing schema)
-            let { data, error } = await sb.from("stations").select("id").eq("code", raw).limit(1).maybeSingle();
-            if (!data?.id && !error) ({ data, error } = await sb.from("stations").select("id").eq("name", raw).limit(1).maybeSingle());
-            if (!data?.id && !error) ({ data, error } = await sb.from("stations").select("id").ilike("code", raw).limit(1).maybeSingle());
+            let q = sb.from("stations").select("id").eq("code", key).limit(1).maybeSingle();
+            let { data, error } = await q;
+
+            if (!data?.id && !error) {
+                ({ data, error } = await sb.from("stations").select("id").eq("name", key).limit(1).maybeSingle());
+            }
+            if (!data?.id && !error) {
+                ({ data, error } = await sb.from("stations").select("id").ilike("code", key).limit(1).maybeSingle());
+            }
 
             if (error) {
-                console.error("[stations lookup]", { raw, error });
+                console.error("[stations lookup]", { key, error });
                 return null;
             }
+
             const id = data?.id || null;
-            stationIdCache.set(raw, { id, ts: now() });
+            stationIdCache.set(key, { id, ts: now() });
             return id;
         }
 
-        function normalizeObsRow(r) {
+        function normalizeRow(r) {
             const tsRaw = r.observed_at || r.ts || r.time || r.datetime;
             const ts = tsRaw ? new Date(tsRaw).toISOString() : null;
 
             const wspd = r.wind_speed ?? r.wind_speed_kt ?? r.wspd ?? r.wspd_kn ?? null;
             const gust = r.wind_gust ?? r.wind_gust_kt ?? r.gust ?? r.gust_kn ?? null;
             const wdir = r.wind_direction ?? r.wind_dir_deg ?? r.wdir ?? r.dir ?? null;
+
             return { ts, wspd, gust, wdir };
         }
 
@@ -788,12 +931,15 @@
                 .order("observed_at", { ascending: true });
 
             if (typeof query.abortSignal === "function" && signal) query = query.abortSignal(signal);
+
             const { data, error } = await query;
-
             if (signal?.aborted) return [];
-            if (error) { console.error("[observations select]", error); return []; }
+            if (error) {
+                console.error("[observations select]", error);
+                return [];
+            }
 
-            const rows = (data || []).map(normalizeObsRow).filter((r) => r.ts);
+            const rows = (data || []).map(normalizeRow).filter((r) => r.ts);
             seriesCache.set(cacheKey, { data: rows, ts: now() });
             return rows;
         }
@@ -818,7 +964,10 @@
 
             const { data, error } = await q;
             if (signal?.aborted) return [];
-            if (error) { console.error("[forecast_latest select]", error); return []; }
+            if (error) {
+                console.error("[forecast_latest select]", error);
+                return [];
+            }
             return data || [];
         }
 
@@ -827,14 +976,12 @@
             return labels.map((t) => (m.has(t) ? m.get(t) : null));
         }
 
-        function legendBoxLabels() {
-            return {
-                color: "rgba(234,243,251,.92)",
-                boxWidth: 14,
-                boxHeight: 10,
-                padding: 12,
-                usePointStyle: false
-            };
+        function rgba(hex, a) {
+            const h = String(hex).replace("#", "");
+            const r = parseInt(h.slice(0, 2), 16);
+            const g = parseInt(h.slice(2, 4), 16);
+            const b = parseInt(h.slice(4, 6), 16);
+            return `rgba(${r},${g},${b},${a})`;
         }
 
         async function attachTimeseriesTo(containerEl, stationCodeOrId, defaultHours = 24, leafletPopup = null) {
@@ -849,10 +996,10 @@
             };
 
             containerEl.innerHTML = `
-        <div style="width:min(360px, 82vw);">
+        <div style="width:min(340px, 80vw);">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-            <span style="font-size:12px;color:rgba(234,243,251,.72);font-weight:800;">Window</span>
-            <select class="ts-window" style="font-size:12px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:rgba(234,243,251,.92);">
+            <span style="font-size:12px;opacity:.7;">Window:</span>
+            <select class="ts-window" style="font-size:12px;padding:2px 6px;border-radius:10px;">
               <option value="3">3h</option>
               <option value="6">6h</option>
               <option value="12">12h</option>
@@ -860,14 +1007,14 @@
             </select>
           </div>
 
-          <div style="width:100%;height:170px;position:relative;margin-bottom:10px;">
+          <div style="width:100%;height:170px;position:relative;margin-bottom:8px;">
             <canvas class="ts-canvas-speed" style="width:100%;height:170px;"></canvas>
           </div>
           <div style="width:100%;height:130px;position:relative;">
             <canvas class="ts-canvas-dir" style="width:100%;height:130px;"></canvas>
           </div>
 
-          <div class="ts-status" style="font-size:12px;color:rgba(234,243,251,.72);margin-top:6px;"></div>
+          <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
         </div>
       `;
 
@@ -878,39 +1025,93 @@
 
             const setDisabled = (d) => { selWindow.disabled = d; };
 
-            function upsertCharts(labels, ts_obs, wspd, gust, wdir, ts_fcst, wspd_fc, gust_fc, wdir_fc) {
+            // Palette (readable + legend as semi-translucent squares)
+            const C_WIND = "#14b8a6";     // teal
+            const C_GUST = "#ff4d7d";     // pink/magenta
+            const C_FC_WIND = "#6a5cff";  // purple
+            const C_FC_GUST = "#f5b000";  // amber
+
+            function upsertWindCharts(labels, ts_obs, wspd, gust, wdir, ts_fcst, wspd_fc, gust_fc, wdir_fc) {
                 const speedData = {
                     labels,
                     datasets: [
-                        { label: "Wind", data: align(labels, ts_obs, wspd), borderColor: "#22b8a7", backgroundColor: "rgba(34,184,167,.22)", borderWidth: 2.5, pointRadius: 0, tension: 0.25, spanGaps: true },
-                        { label: "Gust", data: align(labels, ts_obs, gust), borderColor: "#ff5fa2", backgroundColor: "rgba(255,95,162,.18)", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [6, 4] },
-                        { label: "Fcst Wind", data: align(labels, ts_fcst, wspd_fc), borderColor: "#8aa6ff", backgroundColor: "rgba(138,166,255,.15)", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [3, 3] },
-                        { label: "Fcst Gust", data: align(labels, ts_fcst, gust_fc), borderColor: "#ffd166", backgroundColor: "rgba(255,209,102,.15)", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [1, 3] },
+                        {
+                            label: "Wind (kt)",
+                            data: align(labels, ts_obs, wspd),
+                            borderColor: C_WIND,
+                            backgroundColor: rgba(C_WIND, 0.22),
+                            borderWidth: 2.5,
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true
+                        },
+                        {
+                            label: "Gust (kt)",
+                            data: align(labels, ts_obs, gust),
+                            borderColor: C_GUST,
+                            backgroundColor: rgba(C_GUST, 0.18),
+                            borderWidth: 2,
+                            borderDash: [5, 4],
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true
+                        },
+                        {
+                            label: "Fcst Wind (kt)",
+                            data: align(labels, ts_fcst, wspd_fc),
+                            borderColor: C_FC_WIND,
+                            backgroundColor: rgba(C_FC_WIND, 0.16),
+                            borderWidth: 2.2,
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true,
+                            borderDash: [8, 5]
+                        },
+                        {
+                            label: "Fcst Gust (kt)",
+                            data: align(labels, ts_fcst, gust_fc),
+                            borderColor: C_FC_GUST,
+                            backgroundColor: rgba(C_FC_GUST, 0.14),
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true,
+                            borderDash: [2, 4]
+                        },
                     ],
                 };
 
-                const nonNull = speedData.datasets.flatMap(d => d.data || []).filter(v => v != null);
-                const maxSpeed = Math.max(10, ...(nonNull.length ? nonNull : [0]));
+                const nonNullSpeed = speedData.datasets.flatMap((d) => d.data || []).filter((v) => v != null);
+                const maxSpeed = Math.max(10, ...(nonNullSpeed.length ? nonNullSpeed : [0]));
 
                 const speedOpts = {
                     responsive: true,
                     maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: "bottom",
+                            labels: {
+                                // make the legend keys nice boxes
+                                boxWidth: 14,
+                                boxHeight: 10,
+                                usePointStyle: false,
+                                color: "rgba(0,0,0,0.75)"
+                            }
+                        },
+                        tooltip: { mode: "index", intersect: false }
+                    },
                     scales: {
                         x: {
                             type: "time",
-                            ticks: { color: "rgba(234,243,251,.70)" },
-                            grid: { color: "rgba(255,255,255,.10)" }
+                            ticks: { color: "rgba(0,0,0,0.65)" },
+                            grid: { color: "rgba(0,0,0,0.08)" }
                         },
                         y: {
                             suggestedMax: maxSpeed,
-                            ticks: { color: "rgba(234,243,251,.70)" },
-                            grid: { color: "rgba(255,255,255,.10)" },
-                            title: { text: "kt", display: true, color: "rgba(234,243,251,.70)", font: { weight: "700" } }
+                            ticks: { color: "rgba(0,0,0,0.65)" },
+                            grid: { color: "rgba(0,0,0,0.08)" },
+                            title: { text: "kt", display: true, color: "rgba(0,0,0,0.6)" }
                         }
-                    },
-                    plugins: {
-                        legend: { position: "bottom", labels: legendBoxLabels() },
-                        tooltip: { mode: "index", intersect: false }
                     },
                     animation: { duration: 120 },
                 };
@@ -918,27 +1119,58 @@
                 const dirData = {
                     labels,
                     datasets: [
-                        { label: "Dir", data: align(labels, ts_obs, wdir), borderColor: "rgba(234,243,251,.85)", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true },
-                        { label: "Fcst Dir", data: align(labels, ts_fcst, wdir_fc), borderColor: "#8aa6ff", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [3, 3] },
+                        {
+                            label: "Direction (°)",
+                            data: align(labels, ts_obs, wdir),
+                            borderColor: "rgba(0,0,0,0.60)",
+                            backgroundColor: "rgba(0,0,0,0.08)",
+                            borderWidth: 1.8,
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true
+                        },
+                        {
+                            label: "Fcst Dir (°)",
+                            data: align(labels, ts_fcst, wdir_fc),
+                            borderColor: "rgba(106,92,255,0.85)",
+                            backgroundColor: "rgba(106,92,255,0.12)",
+                            borderWidth: 1.8,
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true,
+                            borderDash: [8, 5]
+                        },
                     ],
                 };
 
                 const dirOpts = {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        x: { type: "time", ticks: { color: "rgba(234,243,251,.70)" }, grid: { color: "rgba(255,255,255,.10)" } },
-                        y: { min: 0, max: 360, ticks: { stepSize: 90, color: "rgba(234,243,251,.70)" }, grid: { color: "rgba(255,255,255,.10)" } }
-                    },
                     plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false } },
+                    scales: {
+                        x: { type: "time", ticks: { color: "rgba(0,0,0,0.65)" }, grid: { color: "rgba(0,0,0,0.08)" } },
+                        y: { min: 0, max: 360, ticks: { stepSize: 90, color: "rgba(0,0,0,0.65)" }, grid: { color: "rgba(0,0,0,0.08)" } }
+                    },
                     animation: { duration: 120 },
                 };
 
-                if (!containerEl.__tsState.speedChart) containerEl.__tsState.speedChart = new Chart(speedCtx, { type: "line", data: speedData, options: speedOpts });
-                else { const c = containerEl.__tsState.speedChart; c.data = speedData; c.options = speedOpts; c.update(); }
+                if (!containerEl.__tsState.speedChart) {
+                    containerEl.__tsState.speedChart = new Chart(speedCtx, { type: "line", data: speedData, options: speedOpts });
+                } else {
+                    const c = containerEl.__tsState.speedChart;
+                    c.data = speedData;
+                    c.options = speedOpts;
+                    c.update();
+                }
 
-                if (!containerEl.__tsState.dirChart) containerEl.__tsState.dirChart = new Chart(dirCtx, { type: "line", data: dirData, options: dirOpts });
-                else { const c2 = containerEl.__tsState.dirChart; c2.data = dirData; c2.options = dirOpts; c2.update(); }
+                if (!containerEl.__tsState.dirChart) {
+                    containerEl.__tsState.dirChart = new Chart(dirCtx, { type: "line", data: dirData, options: dirOpts });
+                } else {
+                    const c2 = containerEl.__tsState.dirChart;
+                    c2.data = dirData;
+                    c2.options = dirOpts;
+                    c2.update();
+                }
             }
 
             async function load(hours) {
@@ -962,22 +1194,22 @@
                     return;
                 }
 
-                const ts = obsRows.map(r => (r.ts ? new Date(r.ts).toISOString() : null)).filter(Boolean);
-                const wspd = obsRows.map(r => r.wspd);
-                const gust = obsRows.map(r => r.gust);
-                const wdir = obsRows.map(r => r.wdir);
+                const ts = obsRows.map((r) => (r.ts ? new Date(r.ts).toISOString() : null)).filter(Boolean);
+                const wspd = obsRows.map((r) => r.wspd);
+                const gust = obsRows.map((r) => r.gust);
+                const wdir = obsRows.map((r) => r.wdir);
 
                 const stationUuid = await getStationId(stationCodeOrId);
                 const fcRows = stationUuid ? await fetchForecastLatestSeries(stationUuid, hours, 48, state.abort.signal) : [];
 
-                const f_ts = fcRows.map(r => (r.valid_time ? new Date(r.valid_time).toISOString() : null)).filter(Boolean);
-                const f_wspd = fcRows.map(r => r.wind_speed_kt);
-                const f_gust = fcRows.map(r => r.wind_gust_kt);
-                const f_wdir = fcRows.map(r => r.wind_dir_deg);
+                const f_ts = fcRows.map((r) => (r.valid_time ? new Date(r.valid_time).toISOString() : null)).filter(Boolean);
+                const f_wspd = fcRows.map((r) => r.wind_speed_kt);
+                const f_gust = fcRows.map((r) => r.wind_gust_kt);
+                const f_wdir = fcRows.map((r) => r.wind_dir_deg);
 
                 const labels = Array.from(new Set([...ts, ...f_ts])).sort();
 
-                upsertCharts(labels, ts, wspd, gust, wdir, f_ts, f_wspd, f_gust, f_wdir);
+                upsertWindCharts(labels, ts, wspd, gust, wdir, f_ts, f_wspd, f_gust, f_wdir);
 
                 if (leafletPopup?.update) {
                     leafletPopup.update();
@@ -988,12 +1220,13 @@
                     }, 80);
                 }
 
-                const nonNullPts = Math.max(
-                    wspd.filter(v => v != null).length,
-                    gust.filter(v => v != null).length,
-                    wdir.filter(v => v != null).length
+                const nonNullWind = Math.max(
+                    wspd.filter((v) => v != null).length,
+                    gust.filter((v) => v != null).length,
+                    wdir.filter((v) => v != null).length
                 );
-                statusEl.textContent = `${nonNullPts} pts`;
+
+                statusEl.textContent = `${nonNullWind} pts`;
                 setDisabled(false);
             }
 
