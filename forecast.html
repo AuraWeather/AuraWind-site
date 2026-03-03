@@ -307,14 +307,13 @@
       background: rgba(0, 0, 0, .18);
     }
 
-    /* Charts transparent so the card background shows through */
+    /* Important: keep canvases transparent so no "white boxes" */
     canvas {
       width: 100% !important;
       height: 300px !important;
       background: transparent !important;
     }
 
-    /* Tephigram canvas taller */
     #tephCanvas {
       height: 380px !important;
     }
@@ -400,7 +399,7 @@
     <div class="top">
       <div class="brand">
         <img id="logo" src="aura-logo.png" alt="Aura Weather"
-          style="width:84px;height:auto;filter:drop-shadow(0 10px 22px rgba(0,0,0,.35));border-radius:14px;" />
+          style="width:96px;height:auto;filter:drop-shadow(0 10px 22px rgba(0,0,0,.35));border-radius:14px;" />
         <div>
           <h1>Forecast</h1>
           <div class="sub">Today + Tomorrow only • Solent stations</div>
@@ -426,7 +425,8 @@
         </div>
 
         <div class="apply-stack">
-          <button class="btn light" type="button" onclick="location.href='index.html'">Live Map</button>
+          <!-- simple icon (no SVG needed) -->
+          <button class="btn light" type="button" onclick="location.href='index.html'">🗺️ Live Map</button>
           <button id="btnApply" class="btn" type="button">Apply</button>
         </div>
 
@@ -553,22 +553,16 @@
     const FORECAST_TABLE = "forecast_hourly";
     const TZ_LABEL = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
 
-    /* ========= Chart.js global styling ========= */
-    Chart.defaults.color = "#cfe0ef";
-    Chart.defaults.borderColor = "rgba(255,255,255,.08)";
-    Chart.defaults.backgroundColor = "rgba(0,0,0,0)";
-    Chart.defaults.plugins.legend.labels.color = "#cfe0ef";
-    Chart.defaults.plugins.tooltip.backgroundColor = "rgba(6, 27, 40, 0.92)";
-    Chart.defaults.plugins.tooltip.borderColor = "rgba(255,255,255,0.16)";
-    Chart.defaults.plugins.tooltip.borderWidth = 1;
-    Chart.defaults.plugins.tooltip.titleColor = "#eaf3fb";
-    Chart.defaults.plugins.tooltip.bodyColor = "#cfe0ef";
-
     /* ========= State ========= */
     let stations = [];
     let selectedDay = "today";
-    let charts = { wind: null, dir: null, cond: null };
-    let tephState = { last: null };
+    let charts = { wind: null, dir: null, cond: null, teph: null };
+
+    /* ========= Global chart defaults (dark UI) ========= */
+    Chart.defaults.color = "#cfe0ef";
+    Chart.defaults.font.family = 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    Chart.defaults.plugins.legend.labels.boxWidth = 14;
+    Chart.defaults.plugins.legend.labels.boxHeight = 10;
 
     /* ========= UI Errors ========= */
     function showError(msg) {
@@ -586,7 +580,6 @@
     function roundUpToNextHour(d) { const x = new Date(d); x.setMinutes(0, 0, 0); x.setHours(x.getHours() + 1); return x; }
     function clampToDay(d, dayStart, dayEnd) { const t = d.getTime(); return new Date(Math.max(dayStart.getTime(), Math.min(dayEnd.getTime(), t))); }
     function iso(d) { return new Date(d).toISOString(); }
-    function timeStr(d) { return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
 
     function dayBoundsLocal(which) {
       const now = new Date();
@@ -597,6 +590,8 @@
       end.setHours(23, 59, 59, 999);
       return { start, end };
     }
+
+    function timeStr(d) { return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
 
     function degToCardinal(deg) {
       if (deg == null || isNaN(deg)) return "—";
@@ -649,15 +644,6 @@
       s = s.replace(/_/g, " ");
       s = s.replace(/\s+/g, " ").trim();
       return titleCaseSmart(s);
-    }
-
-    function baseTimeScale() {
-      return {
-        type: "time",
-        time: { unit: "hour", displayFormats: { hour: "HH:mm" } },
-        ticks: { color: "#9fb2c2" },
-        grid: { color: "rgba(255,255,255,.08)" }
-      };
     }
 
     /* ========= Supabase REST ========= */
@@ -898,36 +884,321 @@
       };
     }
 
-    /* ========= Window filtering ========= */
-    function rowsWithinWindow(rows, a, b) {
-      return (rows || []).filter(r => r.t >= a && r.t <= b);
+    /* ========= Tephigram background + wind barbs plugin ========= */
+    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+    // Saturation vapour pressure over water (hPa) - Bolton
+    function es_hpa(Tc) {
+      return 6.112 * Math.exp((17.67 * Tc) / (Tc + 243.5));
     }
 
-    /* ========= Chart helpers ========= */
+    // mixing ratio (kg/kg) from e and p
+    function w_from_e_p(e_hpa, p_hpa) {
+      const eps = 0.622;
+      return eps * e_hpa / Math.max(1e-6, (p_hpa - e_hpa));
+    }
+
+    // invert mixing ratio line: given w (kg/kg) and p -> get Tc from e then Bolton inverse
+    function Tc_from_w_p(w, p_hpa) {
+      const eps = 0.622;
+      const e = (w * p_hpa) / (eps + w);
+      const ln = Math.log(Math.max(1e-8, e / 6.112));
+      return (243.5 * ln) / (17.67 - ln);
+    }
+
+    // Moist pseudo-adiabat: integrate saturated ascent in pressure coordinates
+    // Returns array of {p, Tc}
+    function moistPseudoAdiabat(T0c, p0 = 1000, pTop = 200, dp = -5) {
+      const Rd = 287.05;
+      const Rv = 461.5;
+      const cp = 1004.0;
+      const g = 9.80665;
+      const Lv = 2.5e6;
+      const eps = 0.622;
+
+      let T = T0c + 273.15;
+      let p = p0 * 100;   // Pa
+      const out = [];
+
+      for (; p >= pTop * 100; p += dp * 100) {
+        const Tc = T - 273.15;
+        const e = es_hpa(Tc) * 100; // Pa
+        const q = eps * e / Math.max(1e-6, (p - e)); // kg/kg (approx)
+        const Tv = T * (1 + 0.61 * q);
+
+        // moist adiabatic lapse rate (K/m)
+        const num = g * (1 + (Lv * q) / (Rd * T));
+        const den = cp + (Lv * Lv * q * eps) / (Rv * T * T);
+        const Gamma_m = num / den;
+
+        // hydrostatic: dp/dz = -rho g, rho ~ p/(Rd Tv)
+        const rho = p / (Rd * Tv);
+        const dpdz = -rho * g;
+
+        // dT/dp = (dT/dz) / (dp/dz)
+        const dTdp = (-Gamma_m) / dpdz;
+
+        out.push({ p_hpa: p / 100, Tc });
+
+        // step
+        T += dTdp * (dp * 100);
+      }
+      return out;
+    }
+
+    // Draw a wind barb at (x0,y0) for speed in knots and direction "from" in degrees
+    function drawWindBarb(ctx, x0, y0, spdKt, dirFromDeg, scale = 1.0) {
+      if (!Number.isFinite(spdKt) || !Number.isFinite(dirFromDeg)) return;
+
+      const speed = Math.max(0, spdKt);
+      const rad = dirFromDeg * Math.PI / 180;
+
+      // vector pointing TOWARDS where wind comes from (meteorological "from")
+      const dx = Math.sin(rad);
+      const dy = -Math.cos(rad);
+
+      const staffLen = 26 * scale;
+      const x1 = x0 + dx * staffLen;
+      const y1 = y0 + dy * staffLen;
+
+      ctx.save();
+      ctx.lineWidth = 2 * scale;
+      ctx.strokeStyle = "rgba(234,243,251,.92)";
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+
+      // Feathers drawn near the tip (x1,y1), angled back
+      const featherAngle = Math.PI * 0.60;
+      const fx = -dx, fy = -dy; // direction back toward base
+      const px = -fy, py = fx;  // perpendicular
+
+      let s = Math.round(speed / 5) * 5;
+      let flags = Math.floor(s / 50); s -= flags * 50;
+      let tens = Math.floor(s / 10); s -= tens * 10;
+      let fives = Math.floor(s / 5);
+
+      let pos = 0;
+      const step = 6.5 * scale;
+
+      function feather(len, filled) {
+        const bx = x1 + fx * pos;
+        const by = y1 + fy * pos;
+
+        const ex = bx + (fx * Math.cos(featherAngle) + px * Math.sin(featherAngle)) * len;
+        const ey = by + (fy * Math.cos(featherAngle) + py * Math.sin(featherAngle)) * len;
+
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+
+        if (filled) {
+          // small triangular flag
+          const ex2 = bx + (fx * Math.cos(featherAngle) + px * Math.sin(featherAngle)) * (len * 0.9);
+          const ey2 = by + (fy * Math.cos(featherAngle) + py * Math.sin(featherAngle)) * (len * 0.9);
+
+          const cx = bx + fx * (step * 0.9);
+          const cy = by + fy * (step * 0.9);
+
+          ctx.fillStyle = "rgba(234,243,251,.92)";
+          ctx.beginPath();
+          ctx.moveTo(bx, by);
+          ctx.lineTo(ex2, ey2);
+          ctx.lineTo(cx, cy);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+
+      // draw flags (50kt)
+      for (let i = 0; i < flags; i++) { feather(18 * scale, true); pos += step * 1.4; }
+      for (let i = 0; i < tens; i++) { feather(16 * scale, false); pos += step; }
+      for (let i = 0; i < fives; i++) { feather(9 * scale, false); pos += step; }
+
+      ctx.restore();
+    }
+
+    const tephigramOverlay = {
+      id: "tephigramOverlay",
+      beforeDraw(chart, args, opts) {
+        if (!opts || !opts.enabled) return;
+        const { ctx, chartArea, scales } = chart;
+        if (!chartArea || !scales?.x || !scales?.y) return;
+
+        const xS = scales.x;
+        const yS = scales.y;
+
+        ctx.save();
+
+        // clip to chart area (prevents "out of bounds" lines)
+        ctx.beginPath();
+        ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+        ctx.clip();
+
+        // Background grid: isotherms (vertical-ish), isobars (horizontal-ish)
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "rgba(255,255,255,.06)";
+
+        // isotherms every 10°C across x-range
+        const xMin = xS.min ?? -60;
+        const xMax = xS.max ?? 40;
+        const tStart = Math.floor(xMin / 10) * 10;
+        const tEnd = Math.ceil(xMax / 10) * 10;
+
+        for (let T = tStart; T <= tEnd; T += 10) {
+          const x = xS.getPixelForValue(T);
+          ctx.beginPath();
+          ctx.moveTo(x, chartArea.top);
+          ctx.lineTo(x, chartArea.bottom);
+          ctx.stroke();
+        }
+
+        // isobars at common levels
+        const pLines = [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200];
+        for (const p of pLines) {
+          const y = yS.getPixelForValue(p);
+          ctx.beginPath();
+          ctx.moveTo(chartArea.left, y);
+          ctx.lineTo(chartArea.right, y);
+          ctx.stroke();
+        }
+
+        // Dry adiabats (theta lines)
+        // T(K)=theta*(p/1000)^k , k=0.286
+        const k = 0.286;
+        ctx.strokeStyle = "rgba(90,140,255,.10)";
+        ctx.lineWidth = 1;
+
+        const thetaLines = [260, 270, 280, 290, 300, 310, 320, 330, 340];
+        const pTop = 200;
+        const pBot = 1000;
+
+        for (const theta of thetaLines) {
+          ctx.beginPath();
+          let started = false;
+          for (let p = pBot; p >= pTop; p -= 10) {
+            const TK = theta * Math.pow(p / 1000, k);
+            const Tc = TK - 273.15;
+            const x = xS.getPixelForValue(Tc);
+            const y = yS.getPixelForValue(p);
+            if (!started) { ctx.moveTo(x, y); started = true; }
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+
+        // Mixing ratio lines (g/kg) — teal-ish
+        ctx.strokeStyle = "rgba(34,184,167,.12)";
+        ctx.lineWidth = 1;
+
+        const w_gkg = [0.4, 1, 2, 3, 5, 8, 12, 16]; // g/kg
+        for (const wg of w_gkg) {
+          const w = wg / 1000; // kg/kg
+          ctx.beginPath();
+          let started = false;
+          for (let p = pBot; p >= pTop; p -= 10) {
+            const Tc = Tc_from_w_p(w, p);
+            const x = xS.getPixelForValue(Tc);
+            const y = yS.getPixelForValue(p);
+            if (!started) { ctx.moveTo(x, y); started = true; }
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+
+        // Moist pseudo-adiabats (few) — faint orange
+        ctx.strokeStyle = "rgba(245,166,35,.10)";
+        ctx.lineWidth = 1;
+
+        const moistStarts = [-5, 0, 5, 10, 15, 20, 25];
+        for (const T0 of moistStarts) {
+          const curve = moistPseudoAdiabat(T0, 1000, 200, -5);
+          ctx.beginPath();
+          let started = false;
+          for (const pt of curve) {
+            const x = xS.getPixelForValue(pt.Tc);
+            const y = yS.getPixelForValue(pt.p_hpa);
+            if (!started) { ctx.moveTo(x, y); started = true; }
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+
+        // Wind barbs (shift LEFT so they don't clash with y-axis labels)
+        const barbs = opts.windBarbs || [];
+        const xBarb = chartArea.right - (opts.barbInsetPx ?? 34); // <-- shift left
+        const sizeScale = opts.barbScale ?? 1.0;
+
+        // also clip barbs to chart area
+        for (const b of barbs) {
+          const y = yS.getPixelForValue(b.p);
+          if (y < chartArea.top - 4 || y > chartArea.bottom + 4) continue;
+          drawWindBarb(ctx, xBarb, y, b.spd, b.dir, sizeScale);
+        }
+
+        ctx.restore();
+      }
+    };
+
+    Chart.register(tephigramOverlay);
+
+    /* ========= Charts ========= */
     function destroyChart(ch) { if (ch) ch.destroy(); }
 
-    function renderWind(rowsWin, a, b) {
+    // IMPORTANT FIX:
+    // Keep full-day data in the dataset BUT zoom the x-axis to the selected time window
+    // so the plots respond to Apply.
+    function renderWind(rows, highlightStart, highlightEnd) {
       const ctx = document.getElementById("windCanvas");
-      const labels = rowsWin.map(r => r.t);
-      const wind = rowsWin.map(r => r.wind_speed_kt);
-      const gust = rowsWin.map(r => r.wind_gust_kt);
+      const labels = rows.map(r => r.t);
+      const wind = rows.map(r => r.wind_speed_kt);
+      const gust = rows.map(r => r.wind_gust_kt);
 
       destroyChart(charts.wind);
       charts.wind = new Chart(ctx, {
         type: "line",
         data: {
-          labels,
-          datasets: [
-            { label: "Wind (kt)", data: wind, tension: 0.25, pointRadius: 2 },
-            { label: "Gusts (kt)", data: gust, tension: 0.25, pointRadius: 2 }
+          labels, datasets: [
+            {
+              label: "Wind (kt)",
+              data: wind,
+              tension: 0.25,
+              pointRadius: 2,
+              borderColor: "rgba(90, 170, 255, .95)",
+              backgroundColor: "rgba(90, 170, 255, .12)",
+              fill: false
+            },
+            {
+              label: "Gusts (kt)",
+              data: gust,
+              tension: 0.25,
+              pointRadius: 2,
+              borderColor: "rgba(255, 122, 156, .95)",
+              backgroundColor: "rgba(255, 122, 156, .10)",
+              fill: false
+            }
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { labels: { color: "#cfe0ef" } }, tooltip: { mode: "index", intersect: false } },
+          plugins: {
+            legend: {
+              labels: { color: "#cfe0ef" }
+            },
+            tooltip: { mode: "index", intersect: false }
+          },
           scales: {
-            x: baseTimeScale(),
+            x: {
+              type: "time",
+              min: highlightStart,
+              max: highlightEnd,
+              time: { unit: "hour", displayFormats: { hour: "HH:mm" } },
+              ticks: { color: "#9fb2c2" },
+              grid: { color: "rgba(255,255,255,.08)" }
+            },
             y: {
               ticks: { color: "#9fb2c2" },
               grid: { color: "rgba(255,255,255,.08)" },
@@ -937,48 +1208,55 @@
         }
       });
 
-      document.getElementById("windMeta").textContent = `${timeStr(a)}–${timeStr(b)} • ${TZ_LABEL}`;
+      document.getElementById("windMeta").textContent = `${timeStr(highlightStart)}–${timeStr(highlightEnd)} • ${TZ_LABEL}`;
     }
 
-    function renderDir(rowsWin, a, b) {
+    function renderDir(rows, highlightStart, highlightEnd) {
       const ctx = document.getElementById("dirCanvas");
-      const labels = rowsWin.map(r => r.t);
-      const dir = rowsWin.map(r => r.wind_dir_deg);
+      const labels = rows.map(r => r.t);
+      const dir = rows.map(r => r.wind_dir_deg);
 
       destroyChart(charts.dir);
       charts.dir = new Chart(ctx, {
         type: "line",
-        data: { labels, datasets: [{ label: "Direction (°)", data: dir, tension: 0.2, pointRadius: 1 }] },
+        data: { labels, datasets: [{ label: "Direction (°)", data: dir, tension: 0.2, pointRadius: 1, borderColor: "rgba(140, 190, 255, .95)" }] },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false } },
           scales: {
-            x: baseTimeScale(),
+            x: {
+              type: "time",
+              min: highlightStart,
+              max: highlightEnd,
+              time: { unit: "hour", displayFormats: { hour: "HH:mm" } },
+              ticks: { color: "#9fb2c2" },
+              grid: { color: "rgba(255,255,255,.08)" }
+            },
             y: { min: 0, max: 360, ticks: { color: "#9fb2c2", stepSize: 90 }, grid: { color: "rgba(255,255,255,.08)" } }
           }
         }
       });
 
-      const rowText = rowsWin.slice(0, 6).map(r => `${timeStr(r.t)} ${Math.round(r.wind_dir_deg ?? 0)}° ${degToCardinal(r.wind_dir_deg)}`).join(" • ");
-      document.getElementById("dirMeta").textContent = rowText || `${timeStr(a)}–${timeStr(b)}`;
+      const windowRows = rows.filter(r => r.t >= highlightStart && r.t <= highlightEnd);
+      const rowText = windowRows.slice(0, 6).map(r => `${timeStr(r.t)} ${Math.round(r.wind_dir_deg ?? 0)}° ${degToCardinal(r.wind_dir_deg)}`).join(" • ");
+      document.getElementById("dirMeta").textContent = rowText || `${timeStr(highlightStart)}–${timeStr(highlightEnd)}`;
     }
 
-    function renderConditions(rowsWin, a, b) {
+    function renderConditions(rows, highlightStart, highlightEnd) {
       const ctx = document.getElementById("condCanvas");
-      const labels = rowsWin.map(r => r.t);
-      const temp = rowsWin.map(r => r.temperature_c);
-      const cloud = rowsWin.map(r => r.cloud_cover_pct);
-      const rain = rowsWin.map(r => r.precip_mm);
+      const labels = rows.map(r => r.t);
+      const temp = rows.map(r => r.temperature_c);
+      const cloud = rows.map(r => r.cloud_cover_pct);
+      const rain = rows.map(r => r.precip_mm);
 
       destroyChart(charts.cond);
       charts.cond = new Chart(ctx, {
         data: {
-          labels,
-          datasets: [
-            { type: "line", label: "Temp (°C)", data: temp, tension: 0.25, pointRadius: 1 },
-            { type: "line", label: "Cloud (%)", data: cloud, tension: 0.2, pointRadius: 1 },
-            { type: "line", label: "Precip (mm)", data: rain, tension: 0.2, pointRadius: 1 }
+          labels, datasets: [
+            { type: "line", label: "Temp (°C)", data: temp, tension: 0.25, pointRadius: 1, borderColor: "rgba(90, 170, 255, .95)" },
+            { type: "line", label: "Cloud (%)", data: cloud, tension: 0.2, pointRadius: 1, borderColor: "rgba(255, 122, 156, .85)" },
+            { type: "line", label: "Precip (mm)", data: rain, tension: 0.2, pointRadius: 1, borderColor: "rgba(245, 166, 35, .90)" }
           ]
         },
         options: {
@@ -986,18 +1264,25 @@
           maintainAspectRatio: false,
           plugins: { legend: { labels: { color: "#cfe0ef" } }, tooltip: { mode: "index", intersect: false } },
           scales: {
-            x: baseTimeScale(),
+            x: {
+              type: "time",
+              min: highlightStart,
+              max: highlightEnd,
+              time: { unit: "hour", displayFormats: { hour: "HH:mm" } },
+              ticks: { color: "#9fb2c2" },
+              grid: { color: "rgba(255,255,255,.08)" }
+            },
             y: { ticks: { color: "#9fb2c2" }, grid: { color: "rgba(255,255,255,.08)" } }
           }
         }
       });
 
-      document.getElementById("condMeta").textContent = `${timeStr(a)}–${timeStr(b)} (plots use this window)`;
+      document.getElementById("condMeta").textContent = `${timeStr(highlightStart)}–${timeStr(highlightEnd)} (plots use this window)`;
     }
 
-    function bestTwoHourWindow(rowsAll) {
-      if (!rowsAll || rowsAll.length < 3) return null;
-      const r = rowsAll.slice().sort((a, b) => a.t - b.t);
+    function bestTwoHourWindow(rows) {
+      if (!rows || rows.length < 3) return null;
+      const r = rows.slice().sort((a, b) => a.t - b.t);
       let best = null;
       for (let i = 0; i < r.length - 2; i++) {
         const t0 = r[i].t;
@@ -1012,9 +1297,8 @@
       return best;
     }
 
-    function renderSummary(rowsAll, a, b, stationLabel) {
-      const w = rowsWithinWindow(rowsAll, a, b);
-
+    function renderSummary(rows, highlightStart, highlightEnd, stationLabel) {
+      const w = rows.filter(r => r.t >= highlightStart && r.t <= highlightEnd);
       const windMean = mean(w.map(r => r.wind_speed_kt));
       const gustMax = max(w.map(r => r.wind_gust_kt));
       const dirMean = circularMean(w.map(r => r.wind_dir_deg));
@@ -1022,10 +1306,10 @@
       const precipMax = max(w.map(r => r.precip_mm));
       const cloudMean = mean(w.map(r => r.cloud_cover_pct));
 
-      const best = bestTwoHourWindow(rowsAll);
+      const best = bestTwoHourWindow(rows);
       const sd = steadinessMetric(w.map(r => r.wind_dir_deg));
 
-      document.getElementById("summaryMeta").textContent = `${stationLabel} • ${selectedDay.toUpperCase()} • ${timeStr(a)}–${timeStr(b)} (${TZ_LABEL})`;
+      document.getElementById("summaryMeta").textContent = `${stationLabel} • ${selectedDay.toUpperCase()} • ${timeStr(highlightStart)}–${timeStr(highlightEnd)} (${TZ_LABEL})`;
 
       document.getElementById("kpiWind").innerHTML = `${fmt(windMean, 0)}<span class="unit">kt</span>`;
       document.getElementById("kpiDir").textContent = dirMean == null ? "—" : `${Math.round(dirMean)}° ${degToCardinal(dirMean)}`;
@@ -1042,290 +1326,88 @@
       document.getElementById("badgeSteady").textContent = sd == null ? "Steadiness: —" : `Steadiness: ±${fmt(sd, 0)}°`;
     }
 
-    /* ========= Tephigram drawing (with real wind barbs) ========= */
+    function renderTephigram(teph) {
+      const ctx = document.getElementById("tephCanvas");
+      destroyChart(charts.teph);
 
-    function tephClear(ctx, w, h) {
-      ctx.clearRect(0, 0, w, h);
-    }
+      const ptsT = teph.levels.map((p, i) => ({ x: teph.T[i], y: p })).filter(pt => pt.x != null);
+      const ptsTd = teph.levels.map((p, i) => ({ x: teph.Td[i], y: p })).filter(pt => pt.x != null);
 
-    // Log-pressure vertical coordinate
-    function yFromP(p, pMin, pMax, yTop, yBot) {
-      const lp = Math.log(p);
-      const lMin = Math.log(pMin);
-      const lMax = Math.log(pMax);
-      const t = (lp - lMin) / (lMax - lMin);
-      return yTop + t * (yBot - yTop);
-    }
+      // Determine x bounds nicely (keeps background lines within frame)
+      const allT = [...teph.T, ...teph.Td].filter(v => Number.isFinite(v));
+      const tMin = Math.min(...allT);
+      const tMax = Math.max(...allT);
+      const xMin = Math.floor((tMin - 18) / 5) * 5;
+      const xMax = Math.ceil((tMax + 18) / 5) * 5;
 
-    // Simple skew-T x transform: x = a*T + b*ln(p)
-    function xFromTP(Tc, p, xLeft, xRight, pMin, pMax, tMin, tMax, skew = 35) {
-      const tNorm = (Tc - tMin) / (tMax - tMin);
-      const baseX = xLeft + tNorm * (xRight - xLeft);
-      // skew by log-pressure: at top shift right by skew px, at bottom shift left by 0
-      const lp = Math.log(p);
-      const lMin = Math.log(pMin);
-      const lMax = Math.log(pMax);
-      const frac = (lp - lMin) / (lMax - lMin); // 0 top? actually depends; we will use pMin=100, pMax=1050 => lp increases downward
-      // frac ~0 at top, ~1 at bottom
-      const skewShift = (1 - frac) * skew; // more shift at top
-      return baseX + skewShift;
-    }
+      const barbData = teph.levels.map((p, i) => ({
+        p,
+        spd: teph.wspd[i],
+        dir: teph.wdir[i]
+      })).filter(b => Number.isFinite(b.spd) && Number.isFinite(b.dir));
 
-    function drawTephBackground(ctx, box, cfg) {
-      const { x0, y0, x1, y1 } = box;
-      const {
-        pMin, pMax, tMin, tMax, skewPx,
-      } = cfg;
-
-      // subtle panel
-      ctx.save();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "rgba(0,0,0,0)"; // transparent
-      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
-
-      // isobars
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = "rgba(255,255,255,0.10)";
-      ctx.fillStyle = "rgba(234,243,251,0.70)";
-      ctx.font = "12px system-ui";
-
-      const isobars = [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200];
-      for (const p of isobars) {
-        if (p < pMin || p > pMax) continue;
-        const y = yFromP(p, pMin, pMax, y0, y1);
-        ctx.beginPath();
-        ctx.moveTo(x0, y);
-        ctx.lineTo(x1, y);
-        ctx.stroke();
-
-        ctx.globalAlpha = 0.65;
-        ctx.fillText(`${p}`, x0 + 4, y - 3);
-        ctx.globalAlpha = 1;
-      }
-
-      // isotherms (skewed)
-      ctx.strokeStyle = "rgba(255,255,255,0.10)";
-      for (let T = Math.ceil(tMin / 5) * 5; T <= tMax; T += 5) {
-        ctx.beginPath();
-        const yTop = yFromP(pMin, pMin, pMax, y0, y1);
-        const yBot = yFromP(pMax, pMin, pMax, y0, y1);
-        const xTop = xFromTP(T, pMin, x0, x1, pMin, pMax, tMin, tMax, skewPx);
-        const xBot = xFromTP(T, pMax, x0, x1, pMin, pMax, tMin, tMax, skewPx);
-        ctx.moveTo(xTop, yTop);
-        ctx.lineTo(xBot, yBot);
-        ctx.stroke();
-      }
-
-      // dry adiabats (approx): lines of constant potential temperature theta
-      // theta = (T+273.15)*(1000/p)^(0.286)
-      // draw a few theta lines by computing T(p) for each theta
-      ctx.strokeStyle = "rgba(34,184,167,0.10)";
-      const thetas = [280, 290, 300, 310, 320];
-      for (const theta of thetas) {
-        ctx.beginPath();
-        let first = true;
-        for (let p = pMax; p >= pMin; p -= 25) {
-          const Tk = theta / Math.pow(1000 / p, 0.286);
-          const Tc = Tk - 273.15;
-          const x = xFromTP(Tc, p, x0, x1, pMin, pMax, tMin, tMax, skewPx);
-          const y = yFromP(p, pMin, pMax, y0, y1);
-          if (first) { ctx.moveTo(x, y); first = false; }
-          else ctx.lineTo(x, y);
+      charts.teph = new Chart(ctx, {
+        type: "scatter",
+        data: {
+          datasets: [
+            // T = RED
+            {
+              label: "T",
+              data: ptsT,
+              showLine: true,
+              pointRadius: 0,
+              borderWidth: 4,
+              borderColor: "rgba(255, 90, 90, .95)"
+            },
+            // Td = BLUE
+            {
+              label: "Td",
+              data: ptsTd,
+              showLine: true,
+              pointRadius: 0,
+              borderWidth: 4,
+              borderColor: "rgba(90, 170, 255, .95)"
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: "#cfe0ef" } },
+            tephigramOverlay: {
+              enabled: true,
+              windBarbs: barbData,
+              barbInsetPx: 44,   // <--- further left so no clash with right-side numbers
+              barbScale: 1.0
+            }
+          },
+          scales: {
+            x: {
+              min: xMin,
+              max: xMax,
+              title: { display: true, text: "Temperature (°C)", color: "#9fb2c2", font: { weight: "600" } },
+              ticks: { color: "#9fb2c2" },
+              grid: { color: "rgba(255,255,255,.08)" }
+            },
+            y: {
+              reverse: true,
+              min: 200,
+              max: 1000,
+              title: { display: true, text: "Pressure (hPa)", color: "#9fb2c2", font: { weight: "600" } },
+              ticks: { color: "#9fb2c2" },
+              grid: { color: "rgba(255,255,255,.08)" }
+            }
+          }
         }
-        ctx.stroke();
-      }
+      });
 
-      // border
-      ctx.strokeStyle = "rgba(255,255,255,0.14)";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
-
-      ctx.restore();
+      document.getElementById("tephMeta").textContent = `Fixed at 12:00 local • ${teph.timeLabel}`;
+      const qr = quickReadText(teph);
+      document.getElementById("tephComment").innerHTML = qr.lines.join("<br/>");
+      document.getElementById("tephCommentSub").textContent = qr.sub;
     }
 
-    function drawProfileLine(ctx, pts, style) {
-      if (!pts.length) return;
-      ctx.save();
-      ctx.strokeStyle = style.stroke;
-      ctx.lineWidth = style.width ?? 3;
-      ctx.globalAlpha = style.alpha ?? 1;
-      ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // Proper wind barb drawing (meteorological standard)
-    // - 50 kt: filled triangle
-    // - 10 kt: full barb
-    // - 5 kt: half barb
-    function drawWindBarb(ctx, x, y, spdKt, dirFromDeg, opts = {}) {
-      if (!Number.isFinite(spdKt) || !Number.isFinite(dirFromDeg)) return;
-
-      const len = opts.len ?? 26;          // staff length
-      const barbSpace = opts.space ?? 4.2; // spacing
-      const barbLen = opts.barbLen ?? 10;  // barb length
-      const halfLen = opts.halfLen ?? 6;
-
-      // Staff points to where wind is GOING to (so rotate by +180)
-      const dirTo = (dirFromDeg + 180) % 360;
-      const ang = (dirTo - 90) * Math.PI / 180; // canvas: 0 rad along +x
-
-      const x2 = x + len * Math.cos(ang);
-      const y2 = y + len * Math.sin(ang);
-
-      ctx.save();
-      ctx.strokeStyle = "rgba(234,243,251,0.92)";
-      ctx.fillStyle = "rgba(234,243,251,0.92)";
-      ctx.lineWidth = 1.6;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-
-      // draw staff
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-
-      // compute barbs from the outer end inward
-      let spd = Math.max(0, spdKt);
-      const n50 = Math.floor(spd / 50); spd -= n50 * 50;
-      const n10 = Math.floor(spd / 10); spd -= n10 * 10;
-      const n5 = spd >= 5 ? 1 : 0;
-
-      // barb angle relative to staff (60°)
-      const barbAng = ang + (Math.PI * 0.75); // points "back" from the staff
-
-      // unit normal direction for barb
-      const bx = Math.cos(barbAng);
-      const by = Math.sin(barbAng);
-
-      // step along staff from tip inward
-      let px = x2, py = y2;
-
-      // triangles (50 kt)
-      for (let i = 0; i < n50; i++) {
-        const p1x = px, p1y = py;
-        const p2x = px - barbSpace * Math.cos(ang), p2y = py - barbSpace * Math.sin(ang);
-        const p3x = p2x + (barbLen + 2) * bx, p3y = p2y + (barbLen + 2) * by;
-
-        ctx.beginPath();
-        ctx.moveTo(p1x, p1y);
-        ctx.lineTo(p2x, p2y);
-        ctx.lineTo(p3x, p3y);
-        ctx.closePath();
-        ctx.fill();
-
-        px = p2x; py = p2y;
-        px -= barbSpace * Math.cos(ang); py -= barbSpace * Math.sin(ang);
-      }
-
-      // full barbs (10 kt)
-      for (let i = 0; i < n10; i++) {
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(px + barbLen * bx, py + barbLen * by);
-        ctx.stroke();
-        px -= barbSpace * Math.cos(ang); py -= barbSpace * Math.sin(ang);
-      }
-
-      // half barb (5 kt)
-      if (n5) {
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(px + halfLen * bx, py + halfLen * by);
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    }
-
-    function renderTephigramCanvas(teph) {
-      const canvas = document.getElementById("tephCanvas");
-      const ctx = canvas.getContext("2d");
-
-      // make sure canvas is high-res (retina)
-      const cssW = canvas.clientWidth;
-      const cssH = canvas.clientHeight;
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.round(cssW * dpr);
-      canvas.height = Math.round(cssH * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      const W = cssW, H = cssH;
-      tephClear(ctx, W, H);
-
-      const pad = { l: 48, r: 64, t: 14, b: 24 };
-      const box = { x0: pad.l, y0: pad.t, x1: W - pad.r, y1: H - pad.b };
-
-      // plot config
-      const pMin = 200;  // top
-      const pMax = 1000; // bottom
-      const tMin = -30;
-      const tMax = 30;
-      const skewPx = 38;
-
-      drawTephBackground(ctx, box, { pMin, pMax, tMin, tMax, skewPx });
-
-      // Build profile points
-      const ptsT = [];
-      const ptsTd = [];
-      for (let i = 0; i < teph.levels.length; i++) {
-        const p = teph.levels[i];
-        if (!(p >= pMin && p <= pMax)) continue;
-        const T = teph.T[i];
-        const Td = teph.Td[i];
-        if (Number.isFinite(T)) {
-          ptsT.push({
-            x: xFromTP(T, p, box.x0, box.x1, pMin, pMax, tMin, tMax, skewPx),
-            y: yFromP(p, pMin, pMax, box.y0, box.y1)
-          });
-        }
-        if (Number.isFinite(Td)) {
-          ptsTd.push({
-            x: xFromTP(Td, p, box.x0, box.x1, pMin, pMax, tMin, tMax, skewPx),
-            y: yFromP(p, pMin, pMax, box.y0, box.y1)
-          });
-        }
-      }
-
-      // Lines
-      drawProfileLine(ctx, ptsT, { stroke: "rgba(90,140,255,0.95)", width: 3.5, alpha: 1 });
-      drawProfileLine(ctx, ptsTd, { stroke: "rgba(34,184,167,0.95)", width: 3.5, alpha: 1 });
-
-      // Labels (T/Td)
-      ctx.save();
-      ctx.fillStyle = "rgba(234,243,251,0.9)";
-      ctx.font = "12px system-ui";
-      ctx.fillText("T", box.x0 + 6, box.y0 + 14);
-      ctx.fillStyle = "rgba(34,184,167,0.95)";
-      ctx.fillText("Td", box.x0 + 22, box.y0 + 14);
-      ctx.restore();
-
-      // Wind barbs at the right edge
-      const barbX = box.x1 + 26;
-      for (let i = 0; i < teph.levels.length; i++) {
-        const p = teph.levels[i];
-        if (!(p >= pMin && p <= pMax)) continue;
-        const y = yFromP(p, pMin, pMax, box.y0, box.y1);
-        drawWindBarb(ctx, barbX, y, teph.wspd[i], teph.wdir[i], { len: 26 });
-      }
-
-      // Pressure labels near barbs
-      ctx.save();
-      ctx.fillStyle = "rgba(234,243,251,0.65)";
-      ctx.font = "11px system-ui";
-      const labelPs = [1000, 850, 700, 500, 300, 200];
-      for (const p of labelPs) {
-        if (p < pMin || p > pMax) continue;
-        const y = yFromP(p, pMin, pMax, box.y0, box.y1);
-        ctx.fillText(`${p}`, box.x1 + 8, y + 4);
-      }
-      ctx.restore();
-    }
-
-    /* ========= UI: window ========= */
     function setDay(which) {
       selectedDay = which;
       document.getElementById("btnToday").classList.toggle("active", which === "today");
@@ -1370,41 +1452,27 @@
         const stationLabelRaw = (st.name && st.name.trim()) ? st.name : (st.code || st.id);
         const stationLabel = prettifyLabel(stationLabelRaw);
 
-        const rowsAll = await loadForecastDay(stationId, selectedDay);
-        if (!rowsAll.length) throw new Error("No forecast rows returned for this station/day (check issue_time + valid_time).");
+        const rows = await loadForecastDay(stationId, selectedDay);
+        if (!rows.length) throw new Error("No forecast rows returned for this station/day (check issue_time + valid_time).");
 
         const { a, b } = parseWindowTimes();
-        const rowsWin = rowsWithinWindow(rowsAll, a, b);
 
-        if (!rowsWin.length) throw new Error("No forecast points inside your chosen window (try widening it).");
+        renderSummary(rows, a, b, stationLabel);
+        renderWind(rows, a, b);
+        renderDir(rows, a, b);
+        renderConditions(rows, a, b);
 
-        // Summary uses chosen window, but best-window search uses full day
-        renderSummary(rowsAll, a, b, stationLabel);
-
-        // Charts now use ONLY the selected window
-        renderWind(rowsWin, a, b);
-        renderDir(rowsWin, a, b);
-        renderConditions(rowsWin, a, b);
-
-        // Tephigram: draw proper background + wind barbs
         document.getElementById("tephComment").textContent = "Loading upper-air…";
         document.getElementById("tephCommentSub").textContent = "";
         try {
           const teph = await loadTephigramAtNoon(st.latitude, st.longitude, selectedDay);
-          tephState.last = teph;
-          renderTephigramCanvas(teph);
-
-          document.getElementById("tephMeta").textContent = `Fixed at 12:00 local • ${teph.timeLabel}`;
-          const qr = quickReadText(teph);
-          document.getElementById("tephComment").innerHTML = qr.lines.join("<br/>");
-          document.getElementById("tephCommentSub").textContent = qr.sub;
+          renderTephigram(teph);
         } catch (e) {
           console.warn("Upper-air failed:", e);
           document.getElementById("tephMeta").textContent = "Fixed at 12:00 local • (no data)";
           document.getElementById("tephComment").textContent = "Upper-air unavailable for this run.";
           document.getElementById("tephCommentSub").textContent = "This can happen if pressure-level variables aren’t returned for the selected point/time.";
-          const c = document.getElementById("tephCanvas").getContext("2d");
-          c.clearRect(0, 0, c.canvas.width, c.canvas.height);
+          if (charts.teph) { charts.teph.destroy(); charts.teph = null; }
         }
 
       } catch (e) {
@@ -1412,13 +1480,6 @@
         showError(String(e.message || e));
       }
     }
-
-    // redraw teph on resize (keeps it crisp)
-    window.addEventListener("resize", () => {
-      if (tephState.last) {
-        try { renderTephigramCanvas(tephState.last); } catch { }
-      }
-    });
 
     document.getElementById("btnToday").addEventListener("click", () => setDay("today"));
     document.getElementById("btnTomorrow").addEventListener("click", () => setDay("tomorrow"));
