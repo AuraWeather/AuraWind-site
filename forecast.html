@@ -19,7 +19,6 @@
       --warn: #f5a623;
       --radius: 18px;
 
-      /* NEW: lighter blue for Live Map */
       --lightBtnBg: rgba(90, 140, 255, .22);
       --lightBtnBorder: rgba(90, 140, 255, .55);
     }
@@ -39,37 +38,52 @@
     }
 
     .wrap {
-      max-width: 1120px;
+      max-width: 1180px;
       margin: 0 auto;
       padding: 18px 16px 40px;
     }
 
     .top {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr;
       gap: 14px;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
       margin-bottom: 14px;
+    }
+
+    @media (min-width: 980px) {
+      .top {
+        grid-template-columns: 1.1fr 1.9fr 0.7fr;
+        align-items: center;
+        gap: 14px;
+      }
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
       min-width: 320px;
     }
 
+    #logo {
+      width: 116px;
+      height: auto;
+      filter: drop-shadow(0 12px 26px rgba(0, 0, 0, .38));
+      border-radius: 16px;
+    }
+
     .brand h1 {
-      font-size: 30px;
+      font-size: 34px;
       margin: 0;
       letter-spacing: .2px;
+      line-height: 1.05;
     }
 
     .brand .sub {
       color: var(--muted);
       font-size: 13px;
-      margin-top: 3px;
+      margin-top: 6px;
+      font-weight: 700;
     }
 
     .controls {
@@ -77,7 +91,7 @@
       gap: 10px;
       align-items: center;
       flex-wrap: wrap;
-      justify-content: flex-end;
+      justify-content: flex-start;
     }
 
     .ctrl {
@@ -117,7 +131,7 @@
       color: var(--muted);
       padding: 9px 14px;
       cursor: pointer;
-      font-weight: 700;
+      font-weight: 800;
       letter-spacing: .2px;
     }
 
@@ -133,41 +147,42 @@
       padding: 10px 14px;
       border-radius: 12px;
       cursor: pointer;
-      font-weight: 800;
+      font-weight: 900;
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
     }
 
     .btn.ghost {
       background: rgba(255, 255, 255, .04);
       border: 1px solid rgba(255, 255, 255, .10);
       color: var(--muted);
-      font-weight: 700;
+      font-weight: 800;
     }
 
-    /* NEW: light Live Map button */
     .btn.light {
       background: var(--lightBtnBg);
       border: 1px solid var(--lightBtnBorder);
       color: var(--text);
-      font-weight: 900;
+      font-weight: 950;
+      padding: 12px 14px;
+      border-radius: 14px;
     }
 
-    /* NEW: stack Live Map above Apply */
-    .apply-stack {
+    .cta {
       display: flex;
       flex-direction: column;
       gap: 10px;
       align-items: stretch;
+      justify-content: flex-start;
     }
 
-    .apply-stack .btn {
-      width: 140px;
-    }
-
-    .apply-stack .btn.light {
-      width: 140px;
-      padding: 12px 14px;
-      /* bigger */
-      border-radius: 14px;
+    @media (min-width: 980px) {
+      .cta {
+        justify-content: flex-start;
+      }
     }
 
     .grid {
@@ -223,7 +238,7 @@
 
     .card h2 small {
       color: var(--muted);
-      font-weight: 700;
+      font-weight: 800;
       font-size: 13px;
     }
 
@@ -240,7 +255,7 @@
 
     .kpi .label {
       color: var(--muted);
-      font-weight: 800;
+      font-weight: 900;
       letter-spacing: .2px;
       font-size: 13px;
       display: flex;
@@ -266,7 +281,7 @@
     .kpi .subv {
       margin-top: 6px;
       color: var(--muted);
-      font-weight: 700;
+      font-weight: 800;
     }
 
     .kpi .value.small {
@@ -298,7 +313,7 @@
       padding-top: 10px;
       border-top: 1px solid rgba(255, 255, 255, .10);
       color: var(--muted);
-      font-weight: 750;
+      font-weight: 800;
     }
 
     .badge {
@@ -314,7 +329,7 @@
     }
 
     #tephCanvas {
-      height: 380px !important;
+      height: 400px !important;
     }
 
     .footer {
@@ -333,10 +348,9 @@
       border: 1px solid rgba(255, 0, 0, .22);
       padding: 10px 12px;
       border-radius: 12px;
-      font-weight: 750;
+      font-weight: 800;
     }
 
-    /* Teph + Quick Read layout */
     .teph-grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -359,7 +373,7 @@
 
     .quickread .title {
       color: var(--muted);
-      font-weight: 900;
+      font-weight: 950;
       letter-spacing: .3px;
       margin-bottom: 10px;
       font-size: 13px;
@@ -367,7 +381,7 @@
 
     .quickread .line {
       margin: 6px 0;
-      font-weight: 750;
+      font-weight: 800;
       color: rgba(234, 243, 251, .88);
     }
 
@@ -377,18 +391,34 @@
 
     .quickread .dim {
       color: rgba(234, 243, 251, .68);
-      font-weight: 700;
+      font-weight: 750;
       margin-top: 10px;
     }
 
-    /* Make controls feel nicer on smaller widths */
     @media (max-width: 720px) {
-      .apply-stack .btn {
+      #logo {
+        width: 98px;
+      }
+
+      .cta .btn {
         width: 100%;
       }
 
-      .apply-stack {
+      .controls {
+        justify-content: stretch;
+      }
+
+      .ctrl {
         width: 100%;
+      }
+
+      .pill {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .top {
+        gap: 10px;
       }
     }
   </style>
@@ -398,18 +428,19 @@
   <div class="wrap">
 
     <div class="top">
+      <!-- Brand -->
       <div class="brand">
-        <img id="logo" src="aura-logo.png" alt="Aura Weather"
-          style="width:84px;height:auto;filter:drop-shadow(0 10px 22px rgba(0,0,0,.35));border-radius:14px;" />
+        <img id="logo" src="aura-logo.png" alt="Aura Weather" />
         <div>
           <h1>Forecast</h1>
           <div class="sub">Today + Tomorrow only • Solent stations</div>
         </div>
       </div>
 
+      <!-- Main controls -->
       <div class="controls">
         <div class="ctrl">
-          <span class="muted" style="font-weight:900;">Location</span>
+          <span class="muted" style="font-weight:950;">Location</span>
           <select id="stationSelect"></select>
         </div>
 
@@ -419,21 +450,30 @@
         </div>
 
         <div class="ctrl">
-          <span class="muted" style="font-weight:900;">Window</span>
+          <span class="muted" style="font-weight:950;">Window</span>
           <input id="startTime" type="time" step="3600" />
           <span class="muted">→</span>
           <input id="endTime" type="time" step="3600" />
         </div>
+      </div>
 
-        <!-- NEW STACK: Live Map above Apply -->
-        <div class="apply-stack">
-          <button class="btn light" type="button" onclick="location.href='index.html'">Live Map</button>
-          <button id="btnApply" class="btn" type="button">Apply</button>
-        </div>
+      <!-- CTAs (moved higher / clearer) -->
+      <div class="cta">
+        <button class="btn light" type="button" onclick="location.href='index.html'">
+          <!-- simple inline icon -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M3 11.5L12 4l9 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <path d="M6.5 10.5V20h11V10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+          Live Map
+        </button>
+
+        <button id="btnApply" class="btn" type="button">Apply</button>
 
         <button class="btn ghost" type="button" title="Premium coming soon"
-          onclick="alert('Premium (7–10 days, model compare, tides, full soundings) — coming soon 🙂')">Unlock Premium
-          🔒</button>
+          onclick="alert('Premium (7–10 days, model compare, tides, full soundings) — coming soon 🙂')">
+          Unlock Premium 🔒
+        </button>
       </div>
     </div>
 
@@ -547,7 +587,6 @@
     </div>
   </div>
 
-  <!-- Your existing JS can remain exactly the same below this line -->
   <script>
     /* ========= CONFIG ========= */
     const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
@@ -700,7 +739,6 @@
         `&order=valid_time.asc`;
 
       const rows = await sbGet(q);
-
       return (rows || []).map(r => ({ ...r, t: new Date(r.valid_time) })).filter(r => r.t.toString() !== "Invalid Date");
     }
 
@@ -881,22 +919,235 @@
       };
     }
 
+    /* ========= Teph background + wind barbs plugins ========= */
+    const Rd = 287.05, Cp = 1004.0, kappa = Rd / Cp;
+    function TfromTheta(thetaK, p_hPa) {
+      const Tk = thetaK * Math.pow(p_hPa / 1000, kappa);
+      return Tk - 273.15;
+    }
+
+    function drawWindBarb(ctx, x, y, spdKt, dirDegFrom, opts = {}) {
+      ctx.save();
+      ctx.lineWidth = opts.lineWidth ?? 1.4;
+      ctx.strokeStyle = opts.strokeStyle ?? "rgba(234,243,251,.88)";
+      ctx.fillStyle = opts.fillStyle ?? "rgba(234,243,251,.88)";
+
+      if (!Number.isFinite(spdKt) || spdKt < 1) {
+        ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore(); return;
+      }
+
+      const L = opts.length ?? 26;
+      const barbSpacing = 4;
+      const barbLenFull = 10;
+      const barbLenHalf = 6;
+      const barbAngle = (opts.barbAngleDeg ?? 60) * Math.PI / 180;
+
+      const rad = ((dirDegFrom % 360) * Math.PI) / 180;
+      const dx = Math.sin(rad);
+      const dy = -Math.cos(rad);
+
+      const x2 = x + dx * L;
+      const y2 = y + dy * L;
+
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      let spd = Math.round(spdKt / 5) * 5;
+      const n50 = Math.floor(spd / 50); spd -= n50 * 50;
+      const n10 = Math.floor(spd / 10); spd -= n10 * 10;
+      const n5 = Math.floor(spd / 5);
+
+      const px = Math.sin(rad + Math.PI / 2);
+      const py = -Math.cos(rad + Math.PI / 2);
+
+      function featherVec(len) {
+        const fx = (px * Math.cos(barbAngle) + dx * Math.sin(barbAngle)) * len;
+        const fy = (py * Math.cos(barbAngle) + dy * Math.sin(barbAngle)) * len;
+        return { fx, fy };
+      }
+
+      let offset = 0;
+
+      for (let i = 0; i < n50; i++) {
+        const t = offset + 2;
+        const bx = x2 - dx * t;
+        const by = y2 - dy * t;
+        const { fx, fy } = featherVec(12);
+
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx - dx * 10, by - dy * 10);
+        ctx.lineTo(bx - dx * 10 + fx, by - dy * 10 + fy);
+        ctx.closePath();
+        ctx.fill();
+        offset += barbSpacing + 8;
+      }
+
+      for (let i = 0; i < n10; i++) {
+        const t = offset + 2;
+        const bx = x2 - dx * t;
+        const by = y2 - dy * t;
+        const { fx, fy } = featherVec(barbLenFull);
+
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx + fx, by + fy);
+        ctx.stroke();
+        offset += barbSpacing;
+      }
+
+      if (n5 > 0) {
+        const t = offset + 2;
+        const bx = x2 - dx * t;
+        const by = y2 - dy * t;
+        const { fx, fy } = featherVec(barbLenHalf);
+
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx + fx, by + fy);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    const tephBackgroundPlugin = {
+      id: "tephBackground",
+      beforeDraw(chart, args, pluginOpts) {
+        const { ctx, chartArea, scales } = chart;
+        const xS = scales.x, yS = scales.y;
+        if (!xS || !yS) return;
+
+        const left = chartArea.left;
+        const right = chartArea.right;
+        const top = chartArea.top;
+        const bottom = chartArea.bottom;
+
+        const xMin = xS.min, xMax = xS.max;
+        const yMin = yS.min, yMax = yS.max;
+
+        ctx.save();
+        ctx.lineWidth = 1;
+
+        const colMajor = pluginOpts?.majorColor ?? "rgba(255,255,255,.12)";
+        const colMinor = pluginOpts?.minorColor ?? "rgba(255,255,255,.06)";
+
+        // Isotherms (vertical)
+        const stepT = pluginOpts?.isoStepC ?? 5;
+        const t0 = Math.floor(xMin / stepT) * stepT;
+        for (let T = t0; T <= xMax; T += stepT) {
+          const x = xS.getPixelForValue(T);
+          if (x < left || x > right) continue;
+          ctx.strokeStyle = (T % 10 === 0) ? colMajor : colMinor;
+          ctx.beginPath();
+          ctx.moveTo(x, top);
+          ctx.lineTo(x, bottom);
+          ctx.stroke();
+        }
+
+        // Dry adiabats (theta lines)
+        const thetaStep = pluginOpts?.thetaStepK ?? 10;
+        const thetaMin = pluginOpts?.thetaMinK ?? 270;
+        const thetaMax = pluginOpts?.thetaMaxK ?? 360;
+
+        const pVals = [1000, 950, 900, 850, 800, 750, 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200];
+        for (let theta = thetaMin; theta <= thetaMax; theta += thetaStep) {
+          const pts = [];
+          for (const p of pVals) {
+            const pLo = Math.min(yMin, yMax);
+            const pHi = Math.max(yMin, yMax);
+            if (p < pLo || p > pHi) continue;
+
+            const Tc = TfromTheta(theta, p);
+            const x = xS.getPixelForValue(Tc);
+            const y = yS.getPixelForValue(p);
+            if (x >= left - 40 && x <= right + 40 && y >= top && y <= bottom) pts.push({ x, y });
+          }
+          if (pts.length < 2) continue;
+
+          ctx.strokeStyle = (theta % 20 === 0) ? colMajor : colMinor;
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+    };
+
+    const windBarbsPlugin = {
+      id: "windBarbs",
+      afterDatasetsDraw(chart, args, pluginOpts) {
+        const teph = pluginOpts?.teph;
+        if (!teph) return;
+
+        const { ctx, chartArea, scales } = chart;
+        const yS = scales.y;
+        if (!yS) return;
+
+        // draw into the reserved right padding area
+        const x = chartArea.right + (pluginOpts?.xOffset ?? 28);
+        const top = chartArea.top;
+        const bottom = chartArea.bottom;
+
+        ctx.save();
+        ctx.strokeStyle = pluginOpts?.strokeStyle ?? "rgba(234,243,251,.88)";
+        ctx.fillStyle = pluginOpts?.fillStyle ?? "rgba(234,243,251,.88)";
+        ctx.lineWidth = 1.4;
+
+        // small header
+        ctx.font = "12px system-ui";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(234,243,251,.70)";
+        ctx.fillText("Wind", x, top - 8);
+
+        // barbs at each pressure level in teph.levels
+        for (let i = 0; i < teph.levels.length; i++) {
+          const p = teph.levels[i];
+          const spd = teph.wspd[i];
+          const dir = teph.wdir[i];
+          if (!Number.isFinite(p)) continue;
+
+          const y = yS.getPixelForValue(p);
+          if (y < top || y > bottom) continue;
+
+          drawWindBarb(ctx, x, y, spd, dir, { length: 22, lineWidth: 1.4 });
+
+          // small pressure labels
+          ctx.font = "11px system-ui";
+          ctx.textAlign = "left";
+          ctx.fillStyle = "rgba(234,243,251,.55)";
+          ctx.fillText(`${p}`, x + 14, y + 4);
+        }
+
+        ctx.restore();
+      }
+    };
+
+    // register once
+    Chart.register(tephBackgroundPlugin, windBarbsPlugin);
+
     /* ========= Charts ========= */
     function destroyChart(ch) { if (ch) ch.destroy(); }
 
-    function renderWind(rows, highlightStart, highlightEnd) {
+    // (NEW) Use ONLY the selected window rows for plots (so Apply actually changes the graphs)
+    function renderWind(rowsWin, highlightStart, highlightEnd) {
       const ctx = document.getElementById("windCanvas");
-      const labels = rows.map(r => r.t);
-      const wind = rows.map(r => r.wind_speed_kt);
-      const gust = rows.map(r => r.wind_gust_kt);
+      const labels = rowsWin.map(r => r.t);
+      const wind = rowsWin.map(r => r.wind_speed_kt);
+      const gust = rowsWin.map(r => r.wind_gust_kt);
 
       destroyChart(charts.wind);
       charts.wind = new Chart(ctx, {
         type: "line",
         data: {
           labels, datasets: [
-            { label: "Wind (kt)", data: wind, tension: 0.25, pointRadius: 2 },
-            { label: "Gusts (kt)", data: gust, tension: 0.25, pointRadius: 2 }
+            { label: "Wind (kt)", data: wind, tension: 0.25, pointRadius: 2, borderWidth: 3 },
+            { label: "Gusts (kt)", data: gust, tension: 0.25, pointRadius: 2, borderWidth: 3 }
           ]
         },
         options: {
@@ -913,15 +1164,15 @@
       document.getElementById("windMeta").textContent = `${timeStr(highlightStart)}–${timeStr(highlightEnd)} • ${TZ_LABEL}`;
     }
 
-    function renderDir(rows, highlightStart, highlightEnd) {
+    function renderDir(rowsWin, highlightStart, highlightEnd) {
       const ctx = document.getElementById("dirCanvas");
-      const labels = rows.map(r => r.t);
-      const dir = rows.map(r => r.wind_dir_deg);
+      const labels = rowsWin.map(r => r.t);
+      const dir = rowsWin.map(r => r.wind_dir_deg);
 
       destroyChart(charts.dir);
       charts.dir = new Chart(ctx, {
         type: "line",
-        data: { labels, datasets: [{ label: "Direction (°)", data: dir, tension: 0.2, pointRadius: 1 }] },
+        data: { labels, datasets: [{ label: "Direction (°)", data: dir, tension: 0.2, pointRadius: 1, borderWidth: 2 }] },
         options: {
           responsive: true,
           maintainAspectRatio: false,
@@ -933,25 +1184,24 @@
         }
       });
 
-      const windowRows = rows.filter(r => r.t >= highlightStart && r.t <= highlightEnd);
-      const rowText = windowRows.slice(0, 6).map(r => `${timeStr(r.t)} ${Math.round(r.wind_dir_deg ?? 0)}° ${degToCardinal(r.wind_dir_deg)}`).join(" • ");
+      const rowText = rowsWin.slice(0, 6).map(r => `${timeStr(r.t)} ${Math.round(r.wind_dir_deg ?? 0)}° ${degToCardinal(r.wind_dir_deg)}`).join(" • ");
       document.getElementById("dirMeta").textContent = rowText || `${timeStr(highlightStart)}–${timeStr(highlightEnd)}`;
     }
 
-    function renderConditions(rows, highlightStart, highlightEnd) {
+    function renderConditions(rowsWin, highlightStart, highlightEnd) {
       const ctx = document.getElementById("condCanvas");
-      const labels = rows.map(r => r.t);
-      const temp = rows.map(r => r.temperature_c);
-      const cloud = rows.map(r => r.cloud_cover_pct);
-      const rain = rows.map(r => r.precip_mm);
+      const labels = rowsWin.map(r => r.t);
+      const temp = rowsWin.map(r => r.temperature_c);
+      const cloud = rowsWin.map(r => r.cloud_cover_pct);
+      const rain = rowsWin.map(r => r.precip_mm);
 
       destroyChart(charts.cond);
       charts.cond = new Chart(ctx, {
         data: {
           labels, datasets: [
-            { type: "line", label: "Temp (°C)", data: temp, tension: 0.25, pointRadius: 1 },
-            { type: "line", label: "Cloud (%)", data: cloud, tension: 0.2, pointRadius: 1 },
-            { type: "line", label: "Precip (mm)", data: rain, tension: 0.2, pointRadius: 1 }
+            { type: "line", label: "Temp (°C)", data: temp, tension: 0.25, pointRadius: 1, borderWidth: 2 },
+            { type: "line", label: "Cloud (%)", data: cloud, tension: 0.2, pointRadius: 1, borderWidth: 2 },
+            { type: "line", label: "Precip (mm)", data: rain, tension: 0.2, pointRadius: 1, borderWidth: 2 }
           ]
         },
         options: {
@@ -965,7 +1215,7 @@
         }
       });
 
-      document.getElementById("condMeta").textContent = `${timeStr(highlightStart)}–${timeStr(highlightEnd)} (summary uses this window)`;
+      document.getElementById("condMeta").textContent = `${timeStr(highlightStart)}–${timeStr(highlightEnd)} (plots use this window)`;
     }
 
     function bestTwoHourWindow(rows) {
@@ -985,19 +1235,19 @@
       return best;
     }
 
-    function renderSummary(rows, highlightStart, highlightEnd, stationLabel) {
-      const w = rows.filter(r => r.t >= highlightStart && r.t <= highlightEnd);
-      const windMean = mean(w.map(r => r.wind_speed_kt));
-      const gustMax = max(w.map(r => r.wind_gust_kt));
-      const dirMean = circularMean(w.map(r => r.wind_dir_deg));
-      const tempMean = mean(w.map(r => r.temperature_c));
-      const precipMax = max(w.map(r => r.precip_mm));
-      const cloudMean = mean(w.map(r => r.cloud_cover_pct));
+    function renderSummary(rowsAllDay, rowsWin, highlightStart, highlightEnd, stationLabel) {
+      const windMean = mean(rowsWin.map(r => r.wind_speed_kt));
+      const gustMax = max(rowsWin.map(r => r.wind_gust_kt));
+      const dirMean = circularMean(rowsWin.map(r => r.wind_dir_deg));
+      const tempMean = mean(rowsWin.map(r => r.temperature_c));
+      const precipMax = max(rowsWin.map(r => r.precip_mm));
+      const cloudMean = mean(rowsWin.map(r => r.cloud_cover_pct));
 
-      const best = bestTwoHourWindow(rows);
-      const sd = steadinessMetric(w.map(r => r.wind_dir_deg));
+      const best = bestTwoHourWindow(rowsAllDay);
+      const sd = steadinessMetric(rowsWin.map(r => r.wind_dir_deg));
 
-      document.getElementById("summaryMeta").textContent = `${stationLabel} • ${selectedDay.toUpperCase()} • ${timeStr(highlightStart)}–${timeStr(highlightEnd)} (${TZ_LABEL})`;
+      document.getElementById("summaryMeta").textContent =
+        `${stationLabel} • ${selectedDay.toUpperCase()} • ${timeStr(highlightStart)}–${timeStr(highlightEnd)} (${TZ_LABEL})`;
 
       document.getElementById("kpiWind").innerHTML = `${fmt(windMean, 0)}<span class="unit">kt</span>`;
       document.getElementById("kpiDir").textContent = dirMean == null ? "—" : `${Math.round(dirMean)}° ${degToCardinal(dirMean)}`;
@@ -1021,6 +1271,10 @@
       const ptsT = teph.levels.map((p, i) => ({ x: teph.T[i], y: p })).filter(pt => pt.x != null);
       const ptsTd = teph.levels.map((p, i) => ({ x: teph.Td[i], y: p })).filter(pt => pt.x != null);
 
+      const allX = [...ptsT, ...ptsTd].map(p => p.x).filter(Number.isFinite);
+      const xMin = (allX.length ? Math.min(...allX) : -20) - 10;
+      const xMax = (allX.length ? Math.max(...allX) : 20) + 10;
+
       charts.teph = new Chart(ctx, {
         type: "scatter",
         data: {
@@ -1032,10 +1286,35 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { labels: { color: "#cfe0ef" } } },
+          layout: { padding: { right: 78 } }, // reserve space for wind barbs
+          plugins: {
+            legend: { labels: { color: "#cfe0ef" } },
+            tephBackground: {
+              isoStepC: 5,
+              thetaStepK: 10,
+              thetaMinK: 270,
+              thetaMaxK: 360,
+              majorColor: "rgba(255,255,255,.12)",
+              minorColor: "rgba(255,255,255,.06)"
+            },
+            windBarbs: { teph }
+          },
           scales: {
-            x: { title: { display: true, text: "Temperature (°C)", color: "#9fb2c2", font: { weight: "600" } }, ticks: { color: "#9fb2c2" }, grid: { color: "rgba(255,255,255,.08)" } },
-            y: { reverse: true, title: { display: true, text: "Pressure (hPa)", color: "#9fb2c2", font: { weight: "600" } }, ticks: { color: "#9fb2c2" }, grid: { color: "rgba(255,255,255,.08)" } }
+            x: {
+              min: xMin,
+              max: xMax,
+              title: { display: true, text: "Temperature (°C)", color: "#9fb2c2", font: { weight: "600" } },
+              ticks: { color: "#9fb2c2" },
+              grid: { color: "rgba(255,255,255,.08)" }
+            },
+            y: {
+              reverse: true,
+              min: 200,
+              max: 1000,
+              title: { display: true, text: "Pressure (hPa)", color: "#9fb2c2", font: { weight: "600" } },
+              ticks: { color: "#9fb2c2" },
+              grid: { color: "rgba(255,255,255,.08)" }
+            }
           }
         }
       });
@@ -1080,6 +1359,18 @@
       return { a, b };
     }
 
+    function filterRowsToWindow(rows, a, b) {
+      const w = rows.filter(r => r.t >= a && r.t <= b);
+      // If the window is very short / aligns between hours, fallback to nearest 2 points
+      if (w.length >= 2) return w;
+
+      // fallback: nearest points around a/b
+      const sorted = rows.slice().sort((x, y) => x.t - y.t);
+      const near = sorted.filter(r => r.t >= a).slice(0, 4);
+      if (near.length >= 2) return near;
+      return sorted.slice(Math.max(0, sorted.length - 4));
+    }
+
     async function apply() {
       clearError();
       try {
@@ -1094,11 +1385,15 @@
         if (!rows.length) throw new Error("No forecast rows returned for this station/day (check issue_time + valid_time).");
 
         const { a, b } = parseWindowTimes();
+        const rowsWin = filterRowsToWindow(rows, a, b);
 
-        renderSummary(rows, a, b, stationLabel);
-        renderWind(rows, a, b);
-        renderDir(rows, a, b);
-        renderConditions(rows, a, b);
+        // Summary uses window; "Best window" still scans all day
+        renderSummary(rows, rowsWin, a, b, stationLabel);
+
+        // Plots now respond to the chosen window
+        renderWind(rowsWin, a, b);
+        renderDir(rowsWin, a, b);
+        renderConditions(rowsWin, a, b);
 
         document.getElementById("tephComment").textContent = "Loading upper-air…";
         document.getElementById("tephCommentSub").textContent = "";
