@@ -300,22 +300,22 @@
         const OBS_URL = "./solent_obs.json";
         const AUTO_REFRESH_MS = 10 * 60 * 1000;
 
-        // Desktop defaults (mobile auto scales down below)
-        let ARROW_SIZE_PX = 96;
-        let ARROW_FONT_PX = 20;
+        // ↓↓↓ CHANGED: smaller arrows (desktop/tablet/mobile)
+        let ARROW_SIZE_PX = 84;
+        let ARROW_FONT_PX = 18;
 
-        // Flow visual tuning (slower + shorter, but not tiny)
+        // Flow visual tuning
         const FLOW_SETTINGS = {
             enabled: false,
-            particleCount: 850,     // density
-            speedFactor: 0.32,      // lower = slower
-            maxStepPx: 1.25,        // cap speed per frame
-            particleLife: 52,       // lower = shorter streaks
+            particleCount: 850,
+            speedFactor: 0.32,
+            maxStepPx: 1.25,
+            particleLife: 52,
             lineWidth: 2.2,
             alpha: 0.85,
-            fadeAlpha: 0.08,        // higher = quicker fade (shorter trails)
-            idwPower: 1.7,          // interpolation sharpness
-            maxInfluenceKm: 55,     // ignore stations farther than this
+            fadeAlpha: 0.08,
+            idwPower: 1.7,
+            maxInfluenceKm: 55,
             minStations: 3
         };
 
@@ -333,18 +333,18 @@
             "#800080",
         ];
 
-        // Responsive arrow sizes
+        // Responsive arrow sizes (smaller than before)
         function applyMobileSizing() {
             const w = Math.min(window.innerWidth || 9999, window.screen?.width || 9999);
             if (w <= 560) {
-                ARROW_SIZE_PX = 70;
-                ARROW_FONT_PX = 16;
+                ARROW_SIZE_PX = 58;   // was 70
+                ARROW_FONT_PX = 14;  // was 16
             } else if (w <= 900) {
-                ARROW_SIZE_PX = 84;
-                ARROW_FONT_PX = 18;
+                ARROW_SIZE_PX = 72;   // was 84
+                ARROW_FONT_PX = 16;   // was 18
             } else {
-                ARROW_SIZE_PX = 96;
-                ARROW_FONT_PX = 20;
+                ARROW_SIZE_PX = 84;   // was 96
+                ARROW_FONT_PX = 18;   // was 20
             }
         }
         applyMobileSizing();
@@ -450,15 +450,15 @@
                 L.DomEvent.stop(e);
 
                 const mount = document.createElement("div");
-                // Responsive popup width
-                mount.style.width = "min(420px, 86vw)";
+                // ↓↓↓ CHANGED: smaller popup
+                mount.style.width = "min(340px, 82vw)";
 
                 const popup = L.popup({
-                    maxWidth: 560,
+                    maxWidth: 420,       // ↓↓↓ smaller
                     autoClose: true,
                     closeOnClick: true,
                     closeButton: false,
-                    offset: [0, -12],
+                    offset: [0, -10],    // slightly tighter
                 })
                     .setLatLng([st.lat, st.lon])
                     .setContent(mount)
@@ -567,13 +567,9 @@
 
         /* ============================================================
           FLOW OVERLAY (interpolated particle field on a canvas layer)
-          - IDW interpolation of u/v using station winds
-          - Particle colours match arrow scale (interpolated smoothly)
-          - Safe init: only runs after map is ready
         ============================================================ */
 
         function kmBetween(lat1, lon1, lat2, lon2) {
-            // fast haversine-ish
             const R = 6371;
             const toRad = (x) => x * Math.PI / 180;
             const dLat = toRad(lat2 - lat1);
@@ -620,7 +616,7 @@
                 this._canvas.style.top = "0";
                 this._canvas.style.left = "0";
                 this._canvas.style.pointerEvents = "none";
-                this._canvas.style.zIndex = "450"; // above tiles, below markers (markers are in panes)
+                this._canvas.style.zIndex = "450";
                 this._ctx = this._canvas.getContext("2d");
 
                 const pane = this._map.getPanes().overlayPane;
@@ -648,7 +644,6 @@
 
             setStations(stations) {
                 this._stations = Array.isArray(stations) ? stations.slice() : [];
-                // refresh particles so they don't get "stuck" if field changes a lot
                 if (this._ready) this._initParticles(true);
             }
 
@@ -672,7 +667,6 @@
                         this._particles.push(this._spawnParticle(w, h));
                     }
                 } else {
-                    // keep but re-randomize positions slightly
                     for (const p of this._particles) {
                         if (Math.random() < 0.35) {
                             p.x = Math.random() * w;
@@ -728,12 +722,10 @@
                 const w = this._canvas.width;
                 const h = this._canvas.height;
 
-                // Convert px -> lat/lon
                 const ll = mapRef.containerPointToLatLng([p.x, p.y]);
                 const f = this._fieldAt(ll.lat, ll.lng);
 
                 if (!f) {
-                    // respawn if no field
                     p.x = Math.random() * w;
                     p.y = Math.random() * h;
                     p.age = 0;
@@ -743,9 +735,7 @@
                 const speedFactor = this.opts.speedFactor ?? 0.35;
                 const maxStep = this.opts.maxStepPx ?? 1.25;
 
-                // Direction: u east, v north -> convert to pixel motion
-                // Approx using two nearby points to get px delta for a small lat/lon step:
-                const d = 0.02; // degrees "probe" (small)
+                const d = 0.02;
                 const ll2 = L.latLng(ll.lat + (f.v >= 0 ? d : -d), ll.lng + (f.u >= 0 ? d : -d));
                 const a = mapRef.latLngToContainerPoint(ll);
                 const b = mapRef.latLngToContainerPoint(ll2);
@@ -757,16 +747,14 @@
                 dx /= mag;
                 dy /= mag;
 
-                // Scale by wind speed
-                const spd = Math.max(0, Math.min(60, f.spd ?? 0)); // clamp for sanity
-                let step = spd * speedFactor / 10; // tune
+                const spd = Math.max(0, Math.min(60, f.spd ?? 0));
+                let step = spd * speedFactor / 10;
                 step = Math.min(maxStep, Math.max(0.1, step));
 
                 const x0 = p.x, y0 = p.y;
                 p.x += dx * step;
                 p.y += dy * step;
 
-                // Draw segment coloured by speed (smooth interpolation)
                 const col = colorForSpeed(spd);
                 ctx.strokeStyle = col;
                 ctx.globalAlpha = this.opts.alpha ?? 0.55;
@@ -780,7 +768,6 @@
                 const life = this.opts.particleLife ?? 50;
 
                 if (p.age > life || p.x < -10 || p.y < -10 || p.x > w + 10 || p.y > h + 10) {
-                    // respawn
                     const np = this._spawnParticle(w, h);
                     p.x = np.x; p.y = np.y; p.age = np.age;
                 }
@@ -790,15 +777,12 @@
                 const ctx = this._ctx;
                 if (!ctx || !this._canvas) return;
 
-                // Fade previous frame WITHOUT whitening the map.
-                // This keeps the canvas transparent and just reduces existing trail alpha.
-                const fade = this.opts.fadeAlpha ?? 0.08;          // 0.05–0.15 typical
+                const fade = this.opts.fadeAlpha ?? 0.08;
                 ctx.globalCompositeOperation = "destination-in";
-                ctx.globalAlpha = 1 - fade;                        // multiply alpha down
+                ctx.globalAlpha = 1 - fade;
                 ctx.fillStyle = "rgba(0,0,0,1)";
                 ctx.fillRect(0, 0, this._canvas.width, this._canvas.height);
 
-                // Back to normal drawing
                 ctx.globalCompositeOperation = "source-over";
                 ctx.globalAlpha = 1;
 
@@ -815,7 +799,6 @@
             _stop() {
                 if (this._anim) cancelAnimationFrame(this._anim);
                 this._anim = null;
-                // clear canvas on stop
                 if (this._ctx && this._canvas) {
                     this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
                 }
@@ -832,7 +815,6 @@
                 if (!flowOverlay) {
                     flowOverlay = new WindFlowOverlay(FLOW_SETTINGS);
                 }
-                // Ensure map is ready before adding
                 map.whenReady(() => {
                     if (!map.hasLayer(flowOverlay)) {
                         flowOverlay.addTo(map);
@@ -862,7 +844,7 @@
         const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     </script>
 
-    <!-- Time-series + Forecast overlay + Source toggle (unchanged, but popup width is responsive above) -->
+    <!-- Time-series + Forecast overlay -->
     <script>
         const stationIdCache = new Map();
         const seriesCache = new Map();
@@ -882,7 +864,6 @@
         async function getStationId(idOrCode) {
             if (idOrCode == null) return null;
 
-            // Accept UUIDs directly
             const raw = String(idOrCode);
             const key = raw.trim();
             if (!key) return null;
@@ -891,11 +872,9 @@
             const cached = stationIdCache.get(key);
             if (cached && now() - cached.ts < STATION_CACHE_MS) return cached.id;
 
-            // 1) Try exact match on code
             let q = sb.from("stations").select("id").eq("code", key).limit(1).maybeSingle();
             let { data, error } = await q;
 
-            // 2) Fallback: sometimes we pass station_name / site_id style
             if (!data?.id && !error) {
                 ({ data, error } = await sb
                     .from("stations")
@@ -905,7 +884,6 @@
                     .maybeSingle());
             }
 
-            // 3) Fallback: try case-insensitive match (handles accidental case differences)
             if (!data?.id && !error) {
                 ({ data, error } = await sb
                     .from("stations")
@@ -1012,12 +990,13 @@
                 abort: null,
                 speedChart: null,
                 dirChart: null,
-                mslpRainChart: null,
-                mode: "wind",
             };
 
+            // ↓↓↓ CHANGED:
+            // - popup content block smaller
+            // - remove Source selector (no MSLP/Rain UI)
             containerEl.innerHTML = `
-        <div style="width:min(400px, 86vw);">
+        <div style="width:min(340px, 82vw);">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
             <span style="font-size:12px;opacity:.7;">Window:</span>
             <select class="ts-window" style="font-size:12px;padding:2px 6px;border-radius:10px;">
@@ -1026,25 +1005,14 @@
               <option value="12">12h</option>
               <option value="24">24h</option>
             </select>
-            <span style="font-size:12px;opacity:.7;margin-left:10px;">Source:</span>
-            <select class="ts-source" style="font-size:12px;padding:2px 6px;border-radius:10px;">
-              <option value="wind" selected>Wind</option>
-              <option value="mslp">MSLP/Rain</option>
-            </select>
           </div>
 
           <div class="panel-wind">
-            <div style="width:100%;height:180px;position:relative;margin-bottom:10px;">
-              <canvas class="ts-canvas-speed" style="width:100%;height:180px;"></canvas>
+            <div style="width:100%;height:170px;position:relative;margin-bottom:10px;">
+              <canvas class="ts-canvas-speed" style="width:100%;height:170px;"></canvas>
             </div>
-            <div style="width:100%;height:140px;position:relative;">
-              <canvas class="ts-canvas-dir" style="width:100%;height:140px;"></canvas>
-            </div>
-          </div>
-
-          <div class="panel-mslp" style="display:none;">
-            <div style="width:100%;height:200px;position:relative;">
-              <canvas class="ts-canvas-mslp" style="width:100%;height:200px;"></canvas>
+            <div style="width:100%;height:130px;position:relative;">
+              <canvas class="ts-canvas-dir" style="width:100%;height:130px;"></canvas>
             </div>
           </div>
 
@@ -1053,34 +1021,72 @@
       `;
 
             const selWindow = containerEl.querySelector(".ts-window");
-            const selSource = containerEl.querySelector(".ts-source");
-            const panelWind = containerEl.querySelector(".panel-wind");
-            const panelMSLP = containerEl.querySelector(".panel-mslp");
 
             const speedCtx = containerEl.querySelector(".ts-canvas-speed").getContext("2d");
             const dirCtx = containerEl.querySelector(".ts-canvas-dir").getContext("2d");
-            const mslpCtx = containerEl.querySelector(".ts-canvas-mslp").getContext("2d");
 
             const statusEl = containerEl.querySelector(".ts-status");
             const setDisabled = (d) => {
                 selWindow.disabled = d;
-                selSource.disabled = d;
             };
 
-            function showMode(mode) {
-                containerEl.__tsState.mode = mode;
-                panelWind.style.display = mode === "wind" ? "" : "none";
-                panelMSLP.style.display = mode === "mslp" ? "" : "none";
-            }
+            // ↓↓↓ CHANGED: clearer forecast colours (purple/aqua) + keep obs wind blue, obs gust pink
+            const TS_COLORS = {
+                obsWind: "#3DA5FF",
+                obsGust: "#FF4DA6",
+                fcstWind: "#8A5CFF",
+                fcstGust: "#2DE2E6",
+                obsDir: "rgba(0,0,0,0.65)",
+                fcstDir: "#8A5CFF",
+            };
 
             function upsertWindCharts(labels, ts_obs, wspd, gust, wdir, ts_fcst, wspd_fc, gust_fc, wdir_fc) {
                 const speedData = {
                     labels,
                     datasets: [
-                        { label: "Wind (kt)", data: align(labels, ts_obs, wspd), borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true },
-                        { label: "Gust (kt)", data: align(labels, ts_obs, gust), borderWidth: 1, borderDash: [4, 3], pointRadius: 0, tension: 0.25, spanGaps: true },
-                        { label: "Fcst Wind (kt)", data: align(labels, ts_fcst, wspd_fc), borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [6, 4] },
-                        { label: "Fcst Gust (kt)", data: align(labels, ts_fcst, gust_fc), borderWidth: 1, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [2, 2] },
+                        {
+                            label: "Wind (kt)",
+                            data: align(labels, ts_obs, wspd),
+                            borderColor: TS_COLORS.obsWind,
+                            backgroundColor: "transparent",
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true
+                        },
+                        {
+                            label: "Gust (kt)",
+                            data: align(labels, ts_obs, gust),
+                            borderColor: TS_COLORS.obsGust,
+                            backgroundColor: "transparent",
+                            borderWidth: 2,
+                            borderDash: [6, 4],
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true
+                        },
+                        {
+                            label: "Fcst Wind (kt)",
+                            data: align(labels, ts_fcst, wspd_fc),
+                            borderColor: TS_COLORS.fcstWind,
+                            backgroundColor: "transparent",
+                            borderWidth: 2,
+                            borderDash: [4, 3],
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true
+                        },
+                        {
+                            label: "Fcst Gust (kt)",
+                            data: align(labels, ts_fcst, gust_fc),
+                            borderColor: TS_COLORS.fcstGust,
+                            backgroundColor: "transparent",
+                            borderWidth: 2,
+                            borderDash: [2, 3],
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true
+                        },
                     ],
                 };
 
@@ -1090,23 +1096,53 @@
                 const speedOpts = {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: { x: { type: "time" }, y: { suggestedMax: maxSpeed, title: { text: "kt", display: true } } },
-                    plugins: { legend: { position: "bottom" } },
+                    scales: {
+                        x: { type: "time" },
+                        y: { suggestedMax: maxSpeed, title: { text: "kt", display: true } }
+                    },
+                    plugins: {
+                        legend: {
+                            position: "bottom",
+                            labels: { boxWidth: 10, boxHeight: 10 }
+                        }
+                    },
                     animation: { duration: 120 },
                 };
 
                 const dirData = {
                     labels,
                     datasets: [
-                        { label: "Direction (°)", data: align(labels, ts_obs, wdir), borderWidth: 1, pointRadius: 0, tension: 0.25, spanGaps: true },
-                        { label: "Fcst Dir (°)", data: align(labels, ts_fcst, wdir_fc), borderWidth: 1, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [6, 4] },
+                        {
+                            label: "Direction (°)",
+                            data: align(labels, ts_obs, wdir),
+                            borderColor: TS_COLORS.obsDir,
+                            backgroundColor: "transparent",
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true
+                        },
+                        {
+                            label: "Fcst Dir (°)",
+                            data: align(labels, ts_fcst, wdir_fc),
+                            borderColor: TS_COLORS.fcstDir,
+                            backgroundColor: "transparent",
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            tension: 0.25,
+                            spanGaps: true,
+                            borderDash: [4, 3]
+                        },
                     ],
                 };
 
                 const dirOpts = {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: { x: { type: "time" }, y: { min: 0, max: 360, ticks: { stepSize: 90 }, title: { text: "°", display: true } } },
+                    scales: {
+                        x: { type: "time" },
+                        y: { min: 0, max: 360, ticks: { stepSize: 90 }, title: { text: "°", display: true } }
+                    },
                     plugins: { legend: { display: false } },
                     animation: { duration: 120 },
                 };
@@ -1130,42 +1166,6 @@
                 }
             }
 
-            function upsertMSLPChart(labels, ts_obs, mslp_obs, rain_obs, ts_fcst, mslp_fc, rain_fc) {
-                const data = {
-                    labels,
-                    datasets: [
-                        { label: "MSLP (hPa)", data: align(labels, ts_obs, mslp_obs), type: "line", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true },
-                        { label: "Fcst MSLP (hPa)", data: align(labels, ts_fcst, mslp_fc), type: "line", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [6, 4] },
-                        { label: "Rain (mm)", data: align(labels, ts_obs, rain_obs), type: "bar", yAxisID: "y1" },
-                        { label: "Fcst Rain (mm)", data: align(labels, ts_fcst, rain_fc), type: "bar", yAxisID: "y1" },
-                    ],
-                };
-
-                const nonNullMSLP = data.datasets[0].data.concat(data.datasets[1].data).filter((v) => v != null);
-                const yLeftMax = Math.max(1010, ...(nonNullMSLP.length ? nonNullMSLP : [1010]));
-
-                const opts = {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { type: "time" },
-                        y: { position: "left", suggestedMin: yLeftMax - 20, suggestedMax: yLeftMax + 20, title: { text: "hPa", display: true } },
-                        y1: { position: "right", grid: { drawOnChartArea: false }, title: { text: "mm", display: true } },
-                    },
-                    plugins: { legend: { position: "bottom" } },
-                    animation: { duration: 120 },
-                };
-
-                if (!containerEl.__tsState.mslpRainChart) {
-                    containerEl.__tsState.mslpRainChart = new Chart(mslpCtx, { data, options: opts });
-                } else {
-                    const c = containerEl.__tsState.mslpRainChart;
-                    c.data = data;
-                    c.options = opts;
-                    c.update();
-                }
-            }
-
             async function load(hours) {
                 const state = containerEl.__tsState;
                 const seq = ++state.req;
@@ -1183,7 +1183,6 @@
                     statusEl.textContent = "No data";
                     state.speedChart?.destroy(); state.speedChart = null;
                     state.dirChart?.destroy(); state.dirChart = null;
-                    state.mslpRainChart?.destroy(); state.mslpRainChart = null;
                     setDisabled(false);
                     return;
                 }
@@ -1192,8 +1191,6 @@
                 const wspd = obsRows.map((r) => r.wspd);
                 const gust = obsRows.map((r) => r.gust);
                 const wdir = obsRows.map((r) => r.wdir);
-                const mslp = obsRows.map((r) => r.mslp);
-                const rain = obsRows.map((r) => r.rain);
 
                 const stationUuid = await getStationId(stationCodeOrId);
                 const fcRows = stationUuid ? await fetchForecastLatestSeries(stationUuid, hours, 48, state.abort.signal) : [];
@@ -1202,16 +1199,10 @@
                 const f_wspd = fcRows.map((r) => r.wind_speed_kt);
                 const f_gust = fcRows.map((r) => r.wind_gust_kt);
                 const f_wdir = fcRows.map((r) => r.wind_dir_deg);
-                const f_mslp = fcRows.map((r) => r.mslp_hpa);
-                const f_rain = fcRows.map((r) => r.precip_mm);
 
                 const labels = Array.from(new Set([...ts, ...f_ts])).sort();
 
-                if (state.mode === "wind") {
-                    upsertWindCharts(labels, ts, wspd, gust, wdir, f_ts, f_wspd, f_gust, f_wdir);
-                } else {
-                    upsertMSLPChart(labels, ts, mslp, rain, f_ts, f_mslp, f_rain);
-                }
+                upsertWindCharts(labels, ts, wspd, gust, wdir, f_ts, f_wspd, f_gust, f_wdir);
 
                 if (leafletPopup?.update) {
                     leafletPopup.update();
@@ -1219,7 +1210,6 @@
                         leafletPopup.update();
                         state.speedChart?.resize();
                         state.dirChart?.resize();
-                        state.mslpRainChart?.resize();
                     }, 80);
                 }
 
@@ -1228,20 +1218,13 @@
                     gust.filter((v) => v != null).length,
                     wdir.filter((v) => v != null).length
                 );
-                const nonNullMSLP = Math.max(mslp.filter((v) => v != null).length, rain.filter((v) => v != null).length);
 
-                statusEl.textContent = `${state.mode === "wind" ? nonNullWind : nonNullMSLP} pts`;
+                statusEl.textContent = `${nonNullWind} pts`;
                 setDisabled(false);
             }
 
             selWindow.addEventListener("change", () => load(parseInt(selWindow.value, 10)));
-            selSource.addEventListener("change", () => {
-                state = containerEl.__tsState;
-                showMode(selSource.value);
-                load(parseInt(selWindow.value, 10));
-            });
 
-            showMode("wind");
             selWindow.value = String(defaultHours);
             load(defaultHours);
         }
