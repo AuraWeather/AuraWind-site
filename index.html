@@ -316,8 +316,8 @@
 
             // bigger / more visible (as requested)
             particleCount: 1400,
-            speedFactor: 0.42,
-            maxStepPx: 2.0,
+            speedFactor: 0.55,
+            maxStepPx: 3.0,
             particleLife: 62,
             lineWidth: 3.0,
             alpha: 0.90,
@@ -434,7 +434,28 @@
             map.setMinZoom(minZ);
         }
         clampZoomToBounds();
-        window.addEventListener("resize", clampZoomToBounds);
+
+        // After clampZoomToBounds();
+        map.on("zoomend", () => {
+            if (flowOverlay && map.hasLayer(flowOverlay)) {
+                flowOverlay.redraw();
+                flowOverlay._initParticles?.(true); // soft re-seed
+            }
+        });
+
+        map.on("moveend", () => {
+            if (flowOverlay && map.hasLayer(flowOverlay)) {
+                flowOverlay.redraw();
+            }
+        });
+        // window.addEventListener("resize", clampZoomToBounds);
+        window.addEventListener("resize", () => {
+            clampZoomToBounds();
+            if (flowOverlay && map.hasLayer(flowOverlay)) {
+                flowOverlay.redraw();
+                flowOverlay._initParticles?.(true);
+            }
+        });
 
         const layerStations = L.layerGroup().addTo(map);
 
