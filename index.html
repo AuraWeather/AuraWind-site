@@ -298,28 +298,38 @@
         const OBS_URL = "./solent_obs.json";
         const AUTO_REFRESH_MS = 10 * 60 * 1000;
 
-        // Smaller arrows
-        let ARROW_SIZE_PX = 84;
-        let ARROW_FONT_PX = 18;
-
-        // === SOLENT BOUNDS (map lock + flow lock) ===
-        const SOLENT_BOUNDS = L.latLngBounds(
-            [50.65, -1.75],  // SW
-            [50.95, -0.95]   // NE
+        // --- Solent bounds (tweak if you want tighter/looser) ---
+        // SW corner, NE corner
+        const SOLENT_MAX_BOUNDS = L.latLngBounds(
+            [50.55, -2.25],  // SW (a bit west of Bournemouth)
+            [51.25, -0.75]   // NE (a bit east/north of Portsmouth)
         );
 
-        // Flow visual tuning — BIGGER PARTICLES / STREAKS (plus tighter influence)
+        // Optional: nice default framing
+        const SOLENT_START_VIEW = {
+            center: [50.85, -1.28],
+            zoom: 9
+        };
+
+        // Stop auto-recentering once the user touches the map
+        let userHasInteracted = false;
+
+        // Desktop defaults (mobile auto scales down below)
+        let ARROW_SIZE_PX = 96;
+        let ARROW_FONT_PX = 20;
+
+        // Flow visual tuning (you can tweak these later)
         const FLOW_SETTINGS = {
             enabled: false,
-            particleCount: 900,
+            particleCount: 850,
             speedFactor: 0.32,
-            maxStepPx: 1.35,
-            particleLife: 68,
-            lineWidth: 3.4,
-            alpha: 0.92,
-            fadeAlpha: 0.06,
+            maxStepPx: 1.25,
+            particleLife: 52,
+            lineWidth: 2.2,
+            alpha: 0.85,
+            fadeAlpha: 0.08,
             idwPower: 1.7,
-            maxInfluenceKm: 25,   // tighter than before to stop "escaping"
+            maxInfluenceKm: 55,
             minStations: 3
         };
 
@@ -337,24 +347,26 @@
             "#800080",
         ];
 
-        // Responsive arrow sizes (smaller than before)
+        // Responsive arrow sizes
         function applyMobileSizing() {
             const w = Math.min(window.innerWidth || 9999, window.screen?.width || 9999);
             if (w <= 560) {
-                ARROW_SIZE_PX = 58;
-                ARROW_FONT_PX = 14;
-            } else if (w <= 900) {
-                ARROW_SIZE_PX = 72;
+                ARROW_SIZE_PX = 70;
                 ARROW_FONT_PX = 16;
-            } else {
+            } else if (w <= 900) {
                 ARROW_SIZE_PX = 84;
                 ARROW_FONT_PX = 18;
+            } else {
+                ARROW_SIZE_PX = 96;
+                ARROW_FONT_PX = 20;
             }
         }
         applyMobileSizing();
         window.addEventListener("resize", () => {
             applyMobileSizing();
             flowOverlay?.redraw?.();
+            // keep view inside Solent bounds after a resize
+            map?.panInsideBounds?.(SOLENT_MAX_BOUNDS, { animate: false });
         });
 
         const lerp = (a, b, t) => a + (b - a) * t;
@@ -402,16 +414,19 @@
       `;
         }
 
-        // === MAP (locked to Solent bounds) ===
+        // map + layers (WITH BOUNDS + non-sticky panning)
         const map = L.map("map", {
             zoomControl: true,
-            maxBounds: SOLENT_BOUNDS,
-            maxBoundsViscosity: 1.0
-        });
+            maxBounds: SOLENT_MAX_BOUNDS,
+            maxBoundsViscosity: 0.75, // IMPORTANT: not 1.0 (feels less "stuck")
+            minZoom: 7,
+            maxZoom: 14,
+            worldCopyJump: true
+        }).setView(SOLENT_START_VIEW.center, SOLENT_START_VIEW.zoom);
 
-        // Optional: stop zooming out too far
-        map.setMinZoom(9);
-        map.setMaxZoom(13);
+        // If the user drags/zooms, never auto-fit again (prevents snap-back)
+        map.on("dragstart zoomstart", () => { userHasInteracted = true; });
+        map.on("resize", () => map.panInsideBounds(SOLENT_MAX_BOUNDS, { animate: false }));
 
         L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
             attribution: "&copy; OpenStreetMap, &copy; CARTO",
@@ -463,14 +478,14 @@
                 L.DomEvent.stop(e);
 
                 const mount = document.createElement("div");
-                mount.style.width = "min(340px, 82vw)";
+                mount.style.width = "min(420px, 86vw)";
 
                 const popup = L.popup({
-                    maxWidth: 420,
+                    maxWidth: 560,
                     autoClose: true,
                     closeOnClick: true,
                     closeButton: false,
-                    offset: [0, -10],
+                    offset: [0, -12],
                 })
                     .setLatLng([st.lat, st.lon])
                     .setContent(mount)
@@ -482,12 +497,33 @@
             });
         }
 
-        // Fit once to Solent bounds (instead of fitting to data)
-        function fitToSolent() {
-            map.fitBounds(SOLENT_BOUNDS, { padding: [20, 20] });
+        function fitToDataBounds(points) {
+            if (!points.length) return;
+
+            let latMin = 90, latMax = -90, lonMin = 180, lonMax = -180;
+
+            for (const p of points) {
+                if (p.lat != null && p.lon != null) {
+                    latMin = Math.min(latMin, p.lat);
+                    latMax = Math.max(latMax, p.lat);
+                    lonMin = Math.min(lonMin, p.lon);
+                    lonMax = Math.max(lonMax, p.lon);
+                }
+            }
+
+            const b = L.latLngBounds(
+                [latMin - 0.06, lonMin - 0.10],
+                [latMax + 0.06, lonMax + 0.10]
+            );
+
+            map.fitBounds(b, { padding: [20, 20] });
+            // Ensure we remain inside the Solent bounding box
+            map.panInsideBounds(SOLENT_MAX_BOUNDS, { animate: false });
         }
 
         let autoTimer = null;
+
+        // Keep latest stations for flow interpolation
         let latestStations = [];
 
         async function loadObs(fromButton = false) {
@@ -529,17 +565,18 @@
                 clearStations();
                 for (const r of ok) addStationMarker(r);
 
-                // keep latest for flow (OPTIONAL: filter to Solent bounds only)
-                latestStations = ok.filter(s => SOLENT_BOUNDS.contains([s.lat, s.lon]));
+                latestStations = ok.slice();
 
+                // update flow stations if enabled
                 flowOverlay?.setStations?.(latestStations);
 
-                if (!map._fitDone || fromButton) {
-                    fitToSolent();
-                    map._fitDone = true;
-                }
-
                 if (ok.length) {
+                    // Only auto-fit if user hasn't interacted (prevents zoom/pan feeling "locked")
+                    if (!userHasInteracted && (!map._fitDone || fromButton)) {
+                        fitToDataBounds(ok);
+                        map._fitDone = true;
+                    }
+
                     const gen = data?.meta?.generated_at || new Date().toISOString();
                     const genStr = (() => { try { return new Date(gen).toLocaleString(undefined, { hour12: false }); } catch { return String(gen); } })();
                     setStatus(`Stations: ${ok.length} • Updated: ${genStr}`);
@@ -559,7 +596,7 @@
         }
 
         /* ============================================================
-          FLOW OVERLAY (bounded to Solent)
+          FLOW OVERLAY (interpolated particle field on a canvas layer)
         ============================================================ */
 
         function kmBetween(lat1, lon1, lat2, lon2) {
@@ -575,6 +612,7 @@
         function uvFromSpdDir(spdKt, dirDegFrom) {
             if (!Number.isFinite(spdKt) || !Number.isFinite(dirDegFrom)) return { u: 0, v: 0 };
             const rad = dirDegFrom * Math.PI / 180;
+            // meteorological: FROM
             const u = -spdKt * Math.sin(rad);
             const v = -spdKt * Math.cos(rad);
             return { u, v };
@@ -624,7 +662,9 @@
 
             onRemove() {
                 this._stop();
-                if (this._map) this._map.off("move zoom resize", this._redrawBound);
+                if (this._map) {
+                    this._map.off("move zoom resize", this._redrawBound);
+                }
                 if (this._canvas?.parentNode) this._canvas.parentNode.removeChild(this._canvas);
                 this._canvas = null;
                 this._ctx = null;
@@ -633,9 +673,7 @@
             }
 
             setStations(stations) {
-                // Keep only stations inside Solent bounds
-                const inBounds = Array.isArray(stations) ? stations.filter(s => SOLENT_BOUNDS.contains([s.lat, s.lon])) : [];
-                this._stations = inBounds.slice();
+                this._stations = Array.isArray(stations) ? stations.slice() : [];
                 if (this._ready) this._initParticles(true);
             }
 
@@ -648,13 +686,16 @@
 
             _initParticles(soft = false) {
                 if (!this._canvas) return;
+
                 const n = this.opts.particleCount ?? 700;
                 const w = this._canvas.width;
                 const h = this._canvas.height;
 
                 if (!soft || this._particles.length !== n) {
                     this._particles = [];
-                    for (let i = 0; i < n; i++) this._particles.push(this._spawnParticle(w, h));
+                    for (let i = 0; i < n; i++) {
+                        this._particles.push(this._spawnParticle(w, h));
+                    }
                 } else {
                     for (const p of this._particles) {
                         if (Math.random() < 0.35) {
@@ -675,15 +716,12 @@
             }
 
             _fieldAt(lat, lon) {
-                // HARD FLOW CLIP: outside Solent => no field
-                if (!SOLENT_BOUNDS.contains([lat, lon])) return null;
-
                 const st = this._stations;
                 const minStations = this.opts.minStations ?? 3;
                 if (!st || st.length < minStations) return null;
 
                 const p = this.opts.idwPower ?? 1.6;
-                const maxKm = this.opts.maxInfluenceKm ?? 25;
+                const maxKm = this.opts.maxInfluenceKm ?? 55;
 
                 let sw = 0, su = 0, sv = 0, used = 0;
 
@@ -715,16 +753,8 @@
                 const h = this._canvas.height;
 
                 const ll = mapRef.containerPointToLatLng([p.x, p.y]);
-
-                // If particle is outside Solent (lat/lon), respawn
-                if (!SOLENT_BOUNDS.contains([ll.lat, ll.lng])) {
-                    p.x = Math.random() * w;
-                    p.y = Math.random() * h;
-                    p.age = 0;
-                    return;
-                }
-
                 const f = this._fieldAt(ll.lat, ll.lng);
+
                 if (!f) {
                     p.x = Math.random() * w;
                     p.y = Math.random() * h;
@@ -749,7 +779,7 @@
 
                 const spd = Math.max(0, Math.min(60, f.spd ?? 0));
                 let step = spd * speedFactor / 10;
-                step = Math.min(maxStep, Math.max(0.12, step));
+                step = Math.min(maxStep, Math.max(0.1, step));
 
                 const x0 = p.x, y0 = p.y;
                 p.x += dx * step;
@@ -787,6 +817,7 @@
                 ctx.globalAlpha = 1;
 
                 for (const p of this._particles) this._stepParticle(p);
+
                 this._anim = requestAnimationFrame(() => this._tick());
             }
 
@@ -798,7 +829,9 @@
             _stop() {
                 if (this._anim) cancelAnimationFrame(this._anim);
                 this._anim = null;
-                if (this._ctx && this._canvas) this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+                if (this._ctx && this._canvas) {
+                    this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+                }
             }
         }
 
@@ -809,7 +842,9 @@
             flowBtn.classList.toggle("active", FLOW_SETTINGS.enabled);
 
             if (FLOW_SETTINGS.enabled) {
-                if (!flowOverlay) flowOverlay = new WindFlowOverlay(FLOW_SETTINGS);
+                if (!flowOverlay) {
+                    flowOverlay = new WindFlowOverlay(FLOW_SETTINGS);
+                }
                 map.whenReady(() => {
                     if (!map.hasLayer(flowOverlay)) {
                         flowOverlay.addTo(map);
@@ -825,7 +860,9 @@
 
         /* Boot */
         document.addEventListener("DOMContentLoaded", () => loadObs(false));
-        map.whenReady(() => { if (!map._fitDone) loadObs(false); });
+        map.whenReady(() => {
+            if (!map._fitDone) loadObs(false);
+        });
     </script>
 
     <!-- Supabase -->
@@ -833,10 +870,11 @@
     <script>
         const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";
+        // IMPORTANT: name this `sb` to avoid colliding with window.supabase
         const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     </script>
 
-    <!-- Time-series + Forecast overlay -->
+    <!-- Time-series + Forecast overlay + Source toggle -->
     <script>
         const stationIdCache = new Map();
         const seriesCache = new Map();
@@ -973,27 +1011,6 @@
             return labels.map((t) => (m.has(t) ? m.get(t) : null));
         }
 
-        function withAlpha(col, a = 0.22) {
-            if (typeof col !== "string") return col;
-            const c = col.trim();
-
-            const rgbaMatch = c.match(/^rgba?\(([^)]+)\)$/i);
-            if (rgbaMatch) {
-                const parts = rgbaMatch[1].split(",").map(s => s.trim());
-                const [r, g, b] = parts;
-                return `rgba(${r}, ${g}, ${b}, ${a})`;
-            }
-
-            const hex = c.startsWith("#") ? c.slice(1) : c;
-            if (hex.length === 6) {
-                const r = parseInt(hex.slice(0, 2), 16);
-                const g = parseInt(hex.slice(2, 4), 16);
-                const b = parseInt(hex.slice(4, 6), 16);
-                return `rgba(${r}, ${g}, ${b}, ${a})`;
-            }
-            return c;
-        }
-
         async function attachTimeseriesTo(containerEl, stationCodeOrId, defaultHours = 6, leafletPopup = null) {
             if (containerEl.dataset.bound === "1") return;
             containerEl.dataset.bound = "1";
@@ -1003,10 +1020,12 @@
                 abort: null,
                 speedChart: null,
                 dirChart: null,
+                mslpRainChart: null,
+                mode: "wind",
             };
 
             containerEl.innerHTML = `
-        <div style="width:min(340px, 82vw);">
+        <div style="width:min(400px, 86vw);">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
             <span style="font-size:12px;opacity:.7;">Window:</span>
             <select class="ts-window" style="font-size:12px;padding:2px 6px;border-radius:10px;">
@@ -1015,14 +1034,25 @@
               <option value="12">12h</option>
               <option value="24">24h</option>
             </select>
+            <span style="font-size:12px;opacity:.7;margin-left:10px;">Source:</span>
+            <select class="ts-source" style="font-size:12px;padding:2px 6px;border-radius:10px;">
+              <option value="wind" selected>Wind</option>
+              <option value="mslp">MSLP/Rain</option>
+            </select>
           </div>
 
           <div class="panel-wind">
-            <div style="width:100%;height:170px;position:relative;margin-bottom:10px;">
-              <canvas class="ts-canvas-speed" style="width:100%;height:170px;"></canvas>
+            <div style="width:100%;height:180px;position:relative;margin-bottom:10px;">
+              <canvas class="ts-canvas-speed" style="width:100%;height:180px;"></canvas>
             </div>
-            <div style="width:100%;height:130px;position:relative;">
-              <canvas class="ts-canvas-dir" style="width:100%;height:130px;"></canvas>
+            <div style="width:100%;height:140px;position:relative;">
+              <canvas class="ts-canvas-dir" style="width:100%;height:140px;"></canvas>
+            </div>
+          </div>
+
+          <div class="panel-mslp" style="display:none;">
+            <div style="width:100%;height:200px;position:relative;">
+              <canvas class="ts-canvas-mslp" style="width:100%;height:200px;"></canvas>
             </div>
           </div>
 
@@ -1031,29 +1061,34 @@
       `;
 
             const selWindow = containerEl.querySelector(".ts-window");
+            const selSource = containerEl.querySelector(".ts-source");
+            const panelWind = containerEl.querySelector(".panel-wind");
+            const panelMSLP = containerEl.querySelector(".panel-mslp");
+
             const speedCtx = containerEl.querySelector(".ts-canvas-speed").getContext("2d");
             const dirCtx = containerEl.querySelector(".ts-canvas-dir").getContext("2d");
+            const mslpCtx = containerEl.querySelector(".ts-canvas-mslp").getContext("2d");
 
             const statusEl = containerEl.querySelector(".ts-status");
-            const setDisabled = (d) => { selWindow.disabled = d; };
-
-            const TS_COLORS = {
-                obsWind: "#3DA5FF",
-                obsGust: "#FF4DA6",
-                fcstWind: "#14B8A6",
-                fcstGust: "#8A5CFF",
-                obsDir: "rgba(0,0,0,0.65)",
-                fcstDir: "#14B8A6",
+            const setDisabled = (d) => {
+                selWindow.disabled = d;
+                selSource.disabled = d;
             };
+
+            function showMode(mode) {
+                containerEl.__tsState.mode = mode;
+                panelWind.style.display = mode === "wind" ? "" : "none";
+                panelMSLP.style.display = mode === "mslp" ? "" : "none";
+            }
 
             function upsertWindCharts(labels, ts_obs, wspd, gust, wdir, ts_fcst, wspd_fc, gust_fc, wdir_fc) {
                 const speedData = {
                     labels,
                     datasets: [
-                        { label: "Wind (kt)", data: align(labels, ts_obs, wspd), borderColor: TS_COLORS.obsWind, backgroundColor: "transparent", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true },
-                        { label: "Gust (kt)", data: align(labels, ts_obs, gust), borderColor: TS_COLORS.obsGust, backgroundColor: "transparent", borderWidth: 2, borderDash: [6, 4], pointRadius: 0, tension: 0.25, spanGaps: true },
-                        { label: "Fcst Wind (kt)", data: align(labels, ts_fcst, wspd_fc), borderColor: TS_COLORS.fcstWind, backgroundColor: "transparent", borderWidth: 2, borderDash: [4, 3], pointRadius: 0, tension: 0.25, spanGaps: true },
-                        { label: "Fcst Gust (kt)", data: align(labels, ts_fcst, gust_fc), borderColor: TS_COLORS.fcstGust, backgroundColor: "transparent", borderWidth: 2, borderDash: [2, 3], pointRadius: 0, tension: 0.25, spanGaps: true },
+                        { label: "Wind (kt)", data: align(labels, ts_obs, wspd), borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true },
+                        { label: "Gust (kt)", data: align(labels, ts_obs, gust), borderWidth: 1, borderDash: [4, 3], pointRadius: 0, tension: 0.25, spanGaps: true },
+                        { label: "Fcst Wind (kt)", data: align(labels, ts_fcst, wspd_fc), borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [6, 4] },
+                        { label: "Fcst Gust (kt)", data: align(labels, ts_fcst, gust_fc), borderWidth: 1, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [2, 2] },
                     ],
                 };
 
@@ -1064,35 +1099,15 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: { x: { type: "time" }, y: { suggestedMax: maxSpeed, title: { text: "kt", display: true } } },
-                    plugins: {
-                        legend: {
-                            position: "bottom",
-                            labels: {
-                                boxWidth: 16,
-                                boxHeight: 10,
-                                padding: 12,
-                                generateLabels: (chart) => {
-                                    const base = Chart.defaults.plugins.legend.labels.generateLabels(chart);
-                                    base.forEach((item) => {
-                                        const ds = chart.data.datasets[item.datasetIndex];
-                                        const col = ds?.borderColor || "#000";
-                                        item.fillStyle = withAlpha(col, 0.22);
-                                        item.strokeStyle = col;
-                                        item.lineWidth = 2;
-                                    });
-                                    return base;
-                                },
-                            },
-                        },
-                    },
+                    plugins: { legend: { position: "bottom" } },
                     animation: { duration: 120 },
                 };
 
                 const dirData = {
                     labels,
                     datasets: [
-                        { label: "Direction (°)", data: align(labels, ts_obs, wdir), borderColor: TS_COLORS.obsDir, backgroundColor: "transparent", borderWidth: 1.5, pointRadius: 0, tension: 0.25, spanGaps: true },
-                        { label: "Fcst Dir (°)", data: align(labels, ts_fcst, wdir_fc), borderColor: TS_COLORS.fcstDir, backgroundColor: "transparent", borderWidth: 1.5, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [4, 3] },
+                        { label: "Direction (°)", data: align(labels, ts_obs, wdir), borderWidth: 1, pointRadius: 0, tension: 0.25, spanGaps: true },
+                        { label: "Fcst Dir (°)", data: align(labels, ts_fcst, wdir_fc), borderWidth: 1, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [6, 4] },
                     ],
                 };
 
@@ -1123,6 +1138,42 @@
                 }
             }
 
+            function upsertMSLPChart(labels, ts_obs, mslp_obs, rain_obs, ts_fcst, mslp_fc, rain_fc) {
+                const data = {
+                    labels,
+                    datasets: [
+                        { label: "MSLP (hPa)", data: align(labels, ts_obs, mslp_obs), type: "line", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true },
+                        { label: "Fcst MSLP (hPa)", data: align(labels, ts_fcst, mslp_fc), type: "line", borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, borderDash: [6, 4] },
+                        { label: "Rain (mm)", data: align(labels, ts_obs, rain_obs), type: "bar", yAxisID: "y1" },
+                        { label: "Fcst Rain (mm)", data: align(labels, ts_fcst, rain_fc), type: "bar", yAxisID: "y1" },
+                    ],
+                };
+
+                const nonNullMSLP = data.datasets[0].data.concat(data.datasets[1].data).filter((v) => v != null);
+                const yLeftMax = Math.max(1010, ...(nonNullMSLP.length ? nonNullMSLP : [1010]));
+
+                const opts = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { type: "time" },
+                        y: { position: "left", suggestedMin: yLeftMax - 20, suggestedMax: yLeftMax + 20, title: { text: "hPa", display: true } },
+                        y1: { position: "right", grid: { drawOnChartArea: false }, title: { text: "mm", display: true } },
+                    },
+                    plugins: { legend: { position: "bottom" } },
+                    animation: { duration: 120 },
+                };
+
+                if (!containerEl.__tsState.mslpRainChart) {
+                    containerEl.__tsState.mslpRainChart = new Chart(mslpCtx, { data, options: opts });
+                } else {
+                    const c = containerEl.__tsState.mslpRainChart;
+                    c.data = data;
+                    c.options = opts;
+                    c.update();
+                }
+            }
+
             async function load(hours) {
                 const state = containerEl.__tsState;
                 const seq = ++state.req;
@@ -1140,6 +1191,7 @@
                     statusEl.textContent = "No data";
                     state.speedChart?.destroy(); state.speedChart = null;
                     state.dirChart?.destroy(); state.dirChart = null;
+                    state.mslpRainChart?.destroy(); state.mslpRainChart = null;
                     setDisabled(false);
                     return;
                 }
@@ -1148,6 +1200,8 @@
                 const wspd = obsRows.map((r) => r.wspd);
                 const gust = obsRows.map((r) => r.gust);
                 const wdir = obsRows.map((r) => r.wdir);
+                const mslp = obsRows.map((r) => r.mslp);
+                const rain = obsRows.map((r) => r.rain);
 
                 const stationUuid = await getStationId(stationCodeOrId);
                 const fcRows = stationUuid ? await fetchForecastLatestSeries(stationUuid, hours, 48, state.abort.signal) : [];
@@ -1156,10 +1210,16 @@
                 const f_wspd = fcRows.map((r) => r.wind_speed_kt);
                 const f_gust = fcRows.map((r) => r.wind_gust_kt);
                 const f_wdir = fcRows.map((r) => r.wind_dir_deg);
+                const f_mslp = fcRows.map((r) => r.mslp_hpa);
+                const f_rain = fcRows.map((r) => r.precip_mm);
 
                 const labels = Array.from(new Set([...ts, ...f_ts])).sort();
 
-                upsertWindCharts(labels, ts, wspd, gust, wdir, f_ts, f_wspd, f_gust, f_wdir);
+                if (state.mode === "wind") {
+                    upsertWindCharts(labels, ts, wspd, gust, wdir, f_ts, f_wspd, f_gust, f_wdir);
+                } else {
+                    upsertMSLPChart(labels, ts, mslp, rain, f_ts, f_mslp, f_rain);
+                }
 
                 if (leafletPopup?.update) {
                     leafletPopup.update();
@@ -1167,6 +1227,7 @@
                         leafletPopup.update();
                         state.speedChart?.resize();
                         state.dirChart?.resize();
+                        state.mslpRainChart?.resize();
                     }, 80);
                 }
 
@@ -1175,12 +1236,20 @@
                     gust.filter((v) => v != null).length,
                     wdir.filter((v) => v != null).length
                 );
+                const nonNullMSLP = Math.max(mslp.filter((v) => v != null).length, rain.filter((v) => v != null).length);
 
-                statusEl.textContent = `${nonNullWind} pts`;
+                statusEl.textContent = `${state.mode === "wind" ? nonNullWind : nonNullMSLP} pts`;
                 setDisabled(false);
             }
 
             selWindow.addEventListener("change", () => load(parseInt(selWindow.value, 10)));
+            selSource.addEventListener("change", () => {
+                const state = containerEl.__tsState;
+                showMode(selSource.value);
+                load(parseInt(selWindow.value, 10));
+            });
+
+            showMode("wind");
             selWindow.value = String(defaultHours);
             load(defaultHours);
         }
