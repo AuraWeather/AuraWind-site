@@ -141,7 +141,6 @@
             align-items: center;
             gap: 8px;
             color: #ffffff;
-            /* white text */
         }
 
         .hud-btn:hover {
@@ -182,7 +181,6 @@
             background: var(--accent);
             border: 1px solid rgba(20, 184, 166, 0.55);
             color: #ffffff;
-            /* white text */
             font-weight: 950;
             box-shadow: 0 10px 22px rgba(20, 184, 166, 0.18);
         }
@@ -300,20 +298,20 @@
         const OBS_URL = "./solent_obs.json";
         const AUTO_REFRESH_MS = 10 * 60 * 1000;
 
-        // ↓↓↓ CHANGED: smaller arrows (desktop/tablet/mobile)
+        // Smaller arrows
         let ARROW_SIZE_PX = 84;
         let ARROW_FONT_PX = 18;
 
-        // Flow visual tuning
+        // Flow visual tuning — BIGGER PARTICLES / STREAKS
         const FLOW_SETTINGS = {
             enabled: false,
-            particleCount: 850,
+            particleCount: 900,     // a touch denser
             speedFactor: 0.32,
-            maxStepPx: 1.25,
-            particleLife: 52,
-            lineWidth: 2.2,
-            alpha: 0.85,
-            fadeAlpha: 0.08,
+            maxStepPx: 1.35,
+            particleLife: 68,       // longer streaks (feels "bigger")
+            lineWidth: 3.4,         // thicker lines (main "bigger" knob)
+            alpha: 0.92,            // slightly more visible
+            fadeAlpha: 0.06,        // slower fade so trails feel larger
             idwPower: 1.7,
             maxInfluenceKm: 55,
             minStations: 3
@@ -337,14 +335,14 @@
         function applyMobileSizing() {
             const w = Math.min(window.innerWidth || 9999, window.screen?.width || 9999);
             if (w <= 560) {
-                ARROW_SIZE_PX = 58;   // was 70
-                ARROW_FONT_PX = 14;  // was 16
+                ARROW_SIZE_PX = 58;
+                ARROW_FONT_PX = 14;
             } else if (w <= 900) {
-                ARROW_SIZE_PX = 72;   // was 84
-                ARROW_FONT_PX = 16;   // was 18
+                ARROW_SIZE_PX = 72;
+                ARROW_FONT_PX = 16;
             } else {
-                ARROW_SIZE_PX = 84;   // was 96
-                ARROW_FONT_PX = 18;   // was 20
+                ARROW_SIZE_PX = 84;
+                ARROW_FONT_PX = 18;
             }
         }
         applyMobileSizing();
@@ -450,15 +448,14 @@
                 L.DomEvent.stop(e);
 
                 const mount = document.createElement("div");
-                // ↓↓↓ CHANGED: smaller popup
                 mount.style.width = "min(340px, 82vw)";
 
                 const popup = L.popup({
-                    maxWidth: 420,       // ↓↓↓ smaller
+                    maxWidth: 420,
                     autoClose: true,
                     closeOnClick: true,
                     closeButton: false,
-                    offset: [0, -10],    // slightly tighter
+                    offset: [0, -10],
                 })
                     .setLatLng([st.lat, st.lon])
                     .setContent(mount)
@@ -494,8 +491,6 @@
         }
 
         let autoTimer = null;
-
-        // Keep latest stations for flow interpolation
         let latestStations = [];
 
         async function loadObs(fromButton = false) {
@@ -538,8 +533,6 @@
                 for (const r of ok) addStationMarker(r);
 
                 latestStations = ok.slice();
-
-                // update flow stations if enabled
                 flowOverlay?.setStations?.(latestStations);
 
                 if (ok.length) {
@@ -582,7 +575,6 @@
         function uvFromSpdDir(spdKt, dirDegFrom) {
             if (!Number.isFinite(spdKt) || !Number.isFinite(dirDegFrom)) return { u: 0, v: 0 };
             const rad = dirDegFrom * Math.PI / 180;
-            // meteorological: FROM
             const u = -spdKt * Math.sin(rad);
             const v = -spdKt * Math.cos(rad);
             return { u, v };
@@ -632,9 +624,7 @@
 
             onRemove() {
                 this._stop();
-                if (this._map) {
-                    this._map.off("move zoom resize", this._redrawBound);
-                }
+                if (this._map) this._map.off("move zoom resize", this._redrawBound);
                 if (this._canvas?.parentNode) this._canvas.parentNode.removeChild(this._canvas);
                 this._canvas = null;
                 this._ctx = null;
@@ -656,16 +646,13 @@
 
             _initParticles(soft = false) {
                 if (!this._canvas) return;
-
                 const n = this.opts.particleCount ?? 700;
                 const w = this._canvas.width;
                 const h = this._canvas.height;
 
                 if (!soft || this._particles.length !== n) {
                     this._particles = [];
-                    for (let i = 0; i < n; i++) {
-                        this._particles.push(this._spawnParticle(w, h));
-                    }
+                    for (let i = 0; i < n; i++) this._particles.push(this._spawnParticle(w, h));
                 } else {
                     for (const p of this._particles) {
                         if (Math.random() < 0.35) {
@@ -749,7 +736,7 @@
 
                 const spd = Math.max(0, Math.min(60, f.spd ?? 0));
                 let step = spd * speedFactor / 10;
-                step = Math.min(maxStep, Math.max(0.1, step));
+                step = Math.min(maxStep, Math.max(0.12, step));
 
                 const x0 = p.x, y0 = p.y;
                 p.x += dx * step;
@@ -787,7 +774,6 @@
                 ctx.globalAlpha = 1;
 
                 for (const p of this._particles) this._stepParticle(p);
-
                 this._anim = requestAnimationFrame(() => this._tick());
             }
 
@@ -799,9 +785,7 @@
             _stop() {
                 if (this._anim) cancelAnimationFrame(this._anim);
                 this._anim = null;
-                if (this._ctx && this._canvas) {
-                    this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
-                }
+                if (this._ctx && this._canvas) this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
             }
         }
 
@@ -812,9 +796,7 @@
             flowBtn.classList.toggle("active", FLOW_SETTINGS.enabled);
 
             if (FLOW_SETTINGS.enabled) {
-                if (!flowOverlay) {
-                    flowOverlay = new WindFlowOverlay(FLOW_SETTINGS);
-                }
+                if (!flowOverlay) flowOverlay = new WindFlowOverlay(FLOW_SETTINGS);
                 map.whenReady(() => {
                     if (!map.hasLayer(flowOverlay)) {
                         flowOverlay.addTo(map);
@@ -830,9 +812,7 @@
 
         /* Boot */
         document.addEventListener("DOMContentLoaded", () => loadObs(false));
-        map.whenReady(() => {
-            if (!map._fitDone) loadObs(false);
-        });
+        map.whenReady(() => { if (!map._fitDone) loadObs(false); });
     </script>
 
     <!-- Supabase -->
@@ -840,7 +820,6 @@
     <script>
         const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";
-        // IMPORTANT: name this `sb` to avoid colliding with window.supabase
         const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     </script>
 
@@ -981,6 +960,27 @@
             return labels.map((t) => (m.has(t) ? m.get(t) : null));
         }
 
+        function withAlpha(col, a = 0.22) {
+            if (typeof col !== "string") return col;
+            const c = col.trim();
+
+            const rgbaMatch = c.match(/^rgba?\(([^)]+)\)$/i);
+            if (rgbaMatch) {
+                const parts = rgbaMatch[1].split(",").map(s => s.trim());
+                const [r, g, b] = parts;
+                return `rgba(${r}, ${g}, ${b}, ${a})`;
+            }
+
+            const hex = c.startsWith("#") ? c.slice(1) : c;
+            if (hex.length === 6) {
+                const r = parseInt(hex.slice(0, 2), 16);
+                const g = parseInt(hex.slice(2, 4), 16);
+                const b = parseInt(hex.slice(4, 6), 16);
+                return `rgba(${r}, ${g}, ${b}, ${a})`;
+            }
+            return c;
+        }
+
         async function attachTimeseriesTo(containerEl, stationCodeOrId, defaultHours = 6, leafletPopup = null) {
             if (containerEl.dataset.bound === "1") return;
             containerEl.dataset.bound = "1";
@@ -992,9 +992,7 @@
                 dirChart: null,
             };
 
-            // ↓↓↓ CHANGED:
-            // - popup content block smaller
-            // - remove Source selector (no MSLP/Rain UI)
+            // Popup content (wind only)
             containerEl.innerHTML = `
         <div style="width:min(340px, 82vw);">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
@@ -1021,23 +1019,20 @@
       `;
 
             const selWindow = containerEl.querySelector(".ts-window");
-
             const speedCtx = containerEl.querySelector(".ts-canvas-speed").getContext("2d");
             const dirCtx = containerEl.querySelector(".ts-canvas-dir").getContext("2d");
 
             const statusEl = containerEl.querySelector(".ts-status");
-            const setDisabled = (d) => {
-                selWindow.disabled = d;
-            };
+            const setDisabled = (d) => { selWindow.disabled = d; };
 
-            // ↓↓↓ CHANGED: clearer forecast colours (purple/aqua) + keep obs wind blue, obs gust pink
+            // Colour scheme (readable + Aura vibes)
             const TS_COLORS = {
-                obsWind: "#3DA5FF",
-                obsGust: "#FF4DA6",
-                fcstWind: "#8A5CFF",
-                fcstGust: "#2DE2E6",
+                obsWind: "#3DA5FF",  // blue
+                obsGust: "#FF4DA6",  // pink
+                fcstWind: "#14B8A6", // Aura teal
+                fcstGust: "#8A5CFF", // purple
                 obsDir: "rgba(0,0,0,0.65)",
-                fcstDir: "#8A5CFF",
+                fcstDir: "#14B8A6",
             };
 
             function upsertWindCharts(labels, ts_obs, wspd, gust, wdir, ts_fcst, wspd_fc, gust_fc, wdir_fc) {
@@ -1103,8 +1098,24 @@
                     plugins: {
                         legend: {
                             position: "bottom",
-                            labels: { boxWidth: 10, boxHeight: 10 }
-                        }
+                            labels: {
+                                boxWidth: 16,
+                                boxHeight: 10,
+                                padding: 12,
+                                // Semi-translucent rectangles in the right colours
+                                generateLabels: (chart) => {
+                                    const base = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                                    base.forEach((item) => {
+                                        const ds = chart.data.datasets[item.datasetIndex];
+                                        const col = ds?.borderColor || "#000";
+                                        item.fillStyle = withAlpha(col, 0.22);
+                                        item.strokeStyle = col;
+                                        item.lineWidth = 2;
+                                    });
+                                    return base;
+                                },
+                            },
+                        },
                     },
                     animation: { duration: 120 },
                 };
@@ -1224,7 +1235,6 @@
             }
 
             selWindow.addEventListener("change", () => load(parseInt(selWindow.value, 10)));
-
             selWindow.value = String(defaultHours);
             load(defaultHours);
         }
