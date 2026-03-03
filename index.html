@@ -413,11 +413,11 @@
         }
 
         /* ---------------- Map ---------------- */
+        /* ---------------- Map ---------------- */
         const map = L.map("map", {
             zoomControl: true,
             maxBounds: SOLENT_BOUNDS,
             maxBoundsViscosity: 1.0,   // keeps panning inside bounds
-            minZoom: 8,
             maxZoom: 13
         });
 
@@ -425,8 +425,16 @@
             attribution: "&copy; OpenStreetMap, &copy; CARTO",
         }).addTo(map);
 
-        // Start inside bounds (and not “too far away”)
+        // Start inside bounds
         map.fitBounds(SOLENT_BOUNDS, { padding: [30, 30] });
+
+        // ✅ Clamp zoom-out so you cannot zoom out beyond your Solent box
+        function clampZoomToBounds() {
+            const minZ = map.getBoundsZoom(SOLENT_BOUNDS, false, [30, 30]);
+            map.setMinZoom(minZ);
+        }
+        clampZoomToBounds();
+        window.addEventListener("resize", clampZoomToBounds);
 
         const layerStations = L.layerGroup().addTo(map);
 
