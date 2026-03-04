@@ -60,7 +60,7 @@
             background: var(--bg);
         }
 
-        /* Ensure popup is LIGHT (you said it unexpectedly went dark) */
+        /* Ensure popup is LIGHT */
         .leaflet-popup-content-wrapper {
             background: var(--popup-bg) !important;
             color: var(--popup-text) !important;
@@ -270,9 +270,7 @@
         </div>
 
         <div class="hud-right">
-            <button id="flowBtn" class="hud-btn" type="button" title="Toggle interpolated flow">
-                Flow
-            </button>
+            <button id="flowBtn" class="hud-btn" type="button" title="Toggle interpolated flow">Flow</button>
             <a id="forecastBtn" class="hud-btn" href="./forecast.html" title="Free forecast dashboard">Forecast</a>
             <button id="refreshBtn" class="hud-btn" type="button" title="Refresh now">Refresh</button>
         </div>
@@ -307,14 +305,17 @@
         });
 
         /* ---------------- Config ---------------- */
-        const OBS_URL = "./solent_obs.json";
+        const OBS_URL = "/api/observations";
+        const STATIONS_URL = "/api/stations";
         const AUTO_REFRESH_MS = 10 * 60 * 1000;
 
-        // FLOW default OFF (as requested)
+        // ✅ This is the one you asked for:
+        // Map markers built from last 24h
+        const MAP_OBS_HOURS = 24;
+
+        // FLOW default OFF
         const FLOW_SETTINGS = {
             enabled: false,
-
-            // bigger / more visible (as requested)
             particleCount: 1400,
             speedFactor: 0.55,
             maxStepPx: 3.0,
@@ -322,7 +323,6 @@
             lineWidth: 3.0,
             alpha: 0.90,
             fadeAlpha: 0.06,
-
             idwPower: 1.7,
             maxInfluenceKm: 55,
             minStations: 3
@@ -334,7 +334,7 @@
             L.latLng(51.20, -0.80)   // NE
         );
 
-        // Arrow sizes (smaller on laptop + phone)
+        // Arrow sizes
         let ARROW_SIZE_PX = 84;
         let ARROW_FONT_PX = 18;
 
@@ -372,10 +372,8 @@
         function mixHex(a, b, t) {
             const pa = parseInt(a.slice(1), 16);
             const pb = parseInt(b.slice(1), 16);
-
             const ar = (pa >> 16) & 255, ag = (pa >> 8) & 255, ab = pa & 255;
             const br = (pb >> 16) & 255, bg = (pb >> 8) & 255, bb = pb & 255;
-
             const r = Math.round(lerp(ar, br, t));
             const g = Math.round(lerp(ag, bg, t));
             const b2 = Math.round(lerp(ab, bb, t));
@@ -400,24 +398,22 @@
         function svgStationArrow(color, size = ARROW_SIZE_PX) {
             const stroke = Math.max(4, size / 12).toFixed(1);
             return `
-        <svg width="${size}" height="${size}" viewBox="0 0 64 64"
-          xmlns="http://www.w3.org/2000/svg"
-          style="filter:drop-shadow(0 0 3px rgba(0,0,0,.35));">
-          <g transform="translate(32,32)">
-            <line x1="0" y1="20" x2="0" y2="-16"
-              stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"/>
-            <polygon points="0,-26 -10,-8 10,-8" fill="${color}"/>
-          </g>
-        </svg>
-      `;
+      <svg width="${size}" height="${size}" viewBox="0 0 64 64"
+        xmlns="http://www.w3.org/2000/svg"
+        style="filter:drop-shadow(0 0 3px rgba(0,0,0,.35));">
+        <g transform="translate(32,32)">
+          <line x1="0" y1="20" x2="0" y2="-16"
+            stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"/>
+          <polygon points="0,-26 -10,-8 10,-8" fill="${color}"/>
+        </g>
+      </svg>`;
         }
 
-        /* ---------------- Map ---------------- */
         /* ---------------- Map ---------------- */
         const map = L.map("map", {
             zoomControl: true,
             maxBounds: SOLENT_BOUNDS,
-            maxBoundsViscosity: 1.0,   // keeps panning inside bounds
+            maxBoundsViscosity: 1.0,
             maxZoom: 13
         });
 
@@ -425,40 +421,15 @@
             attribution: "&copy; OpenStreetMap, &copy; CARTO",
         }).addTo(map);
 
-        // Start inside bounds
         map.fitBounds(SOLENT_BOUNDS, { padding: [30, 30] });
 
-        // ✅ Clamp zoom-out so you cannot zoom out beyond your Solent box
         function clampZoomToBounds() {
             const minZ = map.getBoundsZoom(SOLENT_BOUNDS, false, [30, 30]);
             map.setMinZoom(minZ);
         }
         clampZoomToBounds();
 
-        // After clampZoomToBounds();
-        map.on("zoomend", () => {
-            if (flowOverlay && map.hasLayer(flowOverlay)) {
-                flowOverlay.redraw();
-                flowOverlay._initParticles?.(true); // soft re-seed
-            }
-        });
-
-        map.on("moveend", () => {
-            if (flowOverlay && map.hasLayer(flowOverlay)) {
-                flowOverlay.redraw();
-            }
-        });
-        // window.addEventListener("resize", clampZoomToBounds);
-        window.addEventListener("resize", () => {
-            clampZoomToBounds();
-            if (flowOverlay && map.hasLayer(flowOverlay)) {
-                flowOverlay.redraw();
-                flowOverlay._initParticles?.(true);
-            }
-        });
-
         const layerStations = L.layerGroup().addTo(map);
-
         const refreshBtn = document.getElementById("refreshBtn");
         const flowBtn = document.getElementById("flowBtn");
 
@@ -503,7 +474,6 @@
                 L.DomEvent.stop(e);
 
                 const mount = document.createElement("div");
-                // smaller popup (as requested)
                 mount.style.width = "min(360px, 80vw)";
 
                 const popup = L.popup({
@@ -518,6 +488,7 @@
                     .openOn(map);
 
                 if (window.attachTimeseriesTo) {
+                    // ✅ default chart window 24h
                     window.attachTimeseriesTo(mount, st.station_id, 24, popup);
                 }
             });
@@ -541,45 +512,88 @@
                 L.latLng(latMax + 0.06, lonMax + 0.10)
             );
 
-            // Keep within SOLENT_BOUNDS
             const target = SOLENT_BOUNDS.contains(dataBounds) ? dataBounds : SOLENT_BOUNDS;
             map.fitBounds(target, { padding: [22, 22] });
         }
 
         let autoTimer = null;
         let latestStations = [];
+        let stationsById = new Map();
+
+        async function loadStationsOnce() {
+            if (stationsById.size) return;
+
+            const r = await fetch(`${STATIONS_URL}?ts=${Date.now()}`, { cache: "no-store" });
+            if (!r.ok) throw new Error(`Stations HTTP ${r.status}`);
+            const stations = await r.json();
+
+            stationsById = new Map(
+                (stations || [])
+                    .filter(s => s.id && s.latitude != null && s.longitude != null)
+                    .map(s => [s.id, {
+                        id: s.id,
+                        code: s.code,
+                        name: s.name,
+                        lat: s.latitude,
+                        lon: s.longitude
+                    }])
+            );
+        }
+
+        // helper: choose newest obs per station_id (works for time-series endpoints)
+        function pickLatestPerStation(rows) {
+            const best = new Map(); // station_id -> row
+            for (const r of rows) {
+                const sid = r.station_id;
+                if (!sid) continue;
+                const t = r.observed_at ? new Date(r.observed_at).getTime() : NaN;
+                if (!Number.isFinite(t)) continue;
+
+                const prev = best.get(sid);
+                const pt = prev?.observed_at ? new Date(prev.observed_at).getTime() : NaN;
+                if (!prev || (Number.isFinite(pt) ? t > pt : true)) best.set(sid, r);
+            }
+            return Array.from(best.values());
+        }
 
         async function loadObs(fromButton = false) {
             try {
                 refreshBtn.disabled = true;
                 setStatus(fromButton ? "Refreshing…" : "Loading…");
 
-                const res = await fetch(`${OBS_URL}?ts=${Date.now()}`, { cache: "no-store" });
+                // ✅ make sure stations cache exists before using it
+                await loadStationsOnce();
+
+                // ✅ fetch 24h of obs (as requested)
+                const res = await fetch(`${OBS_URL}?hours=${MAP_OBS_HOURS}&ts=${Date.now()}`, { cache: "no-store" });
                 if (!res.ok) {
                     setStatus(`Fetch ${res.status}`);
                     throw new Error(`HTTP ${res.status}`);
                 }
 
-                let data;
-                try {
-                    data = await res.json();
-                } catch (e) {
-                    const txt = await res.text();
-                    console.error("JSON parse failed:", txt.slice(0, 200));
-                    setStatus("Invalid JSON");
-                    throw e;
-                }
+                const data = await res.json();
+                const rows = Array.isArray(data) ? data : [];
 
-                const rows = Array.isArray(data?.obs) ? data.obs : Array.isArray(data) ? data : [];
-                const obs = rows.map((r) => ({
-                    lat: r.lat ?? r.latitude ?? r.Latitude,
-                    lon: r.lon ?? r.longitude ?? r.Longitude,
-                    wspd_kn: r.wspd_kn ?? r.wind_speed_kt ?? r.wspd ?? r.wind_knots ?? r.wind_speed,
-                    gust_kn: r.gust_kn ?? r.wind_gust_kt ?? r.wind_gust ?? r.gust ?? null,
-                    wdir_degT: r.wdir_degT ?? r.wind_dir_deg ?? r.wdir ?? r.direction ?? r.wind_direction,
-                    station_name: r.station_name ?? r.name ?? r.Site ?? r.station_id ?? r.site_id ?? r.id,
-                    station_id: r.station_id ?? r.site_id ?? r.id,
-                }));
+                // If API returns time-series, reduce to latest-per-station.
+                // If API already returns latest-per-station, this is harmless.
+                const latestRows = pickLatestPerStation(rows);
+
+                const obs = latestRows.map((r) => {
+                    const st = stationsById.get(r.station_id);
+                    if (!st) return null;
+
+                    return {
+                        lat: st.lat,
+                        lon: st.lon,
+                        station_id: r.station_id,
+                        station_name: st.name || st.code || r.station_id,
+
+                        wspd_kn: r.wind_speed,
+                        gust_kn: r.wind_gust ?? null,
+                        wdir_degT: r.wind_direction,
+                        observed_at: r.observed_at,
+                    };
+                }).filter(Boolean);
 
                 const ok = obs.filter((r) =>
                     r.lat != null && r.lon != null && r.wspd_kn != null && r.wdir_degT != null
@@ -596,8 +610,16 @@
                         fitToDataBounds(ok);
                         map._fitDone = true;
                     }
-                    const gen = data?.meta?.generated_at || new Date().toISOString();
-                    const genStr = (() => { try { return new Date(gen).toLocaleString(undefined, { hour12: false }); } catch { return String(gen); } })();
+
+                    const newest = ok
+                        .map(o => o.observed_at ? new Date(o.observed_at).getTime() : NaN)
+                        .filter(Number.isFinite)
+                        .sort((a, b) => b - a)[0];
+
+                    const genStr = newest
+                        ? new Date(newest).toLocaleString(undefined, { hour12: false })
+                        : new Date().toLocaleString(undefined, { hour12: false });
+
                     setStatus(`Stations: ${ok.length} • Updated: ${genStr}`);
                 } else {
                     setStatus("No stations in data");
@@ -813,7 +835,6 @@
                 const ctx = this._ctx;
                 if (!ctx || !this._canvas) return;
 
-                // Fade without whitening the map
                 const fade = this.opts.fadeAlpha ?? 0.06;
                 ctx.globalCompositeOperation = "destination-in";
                 ctx.globalAlpha = 1 - fade;
@@ -862,28 +883,35 @@
 
         flowBtn.addEventListener("click", () => setFlowEnabled(!FLOW_SETTINGS.enabled));
 
+        map.on("zoomend", () => {
+            if (flowOverlay && map.hasLayer(flowOverlay)) {
+                flowOverlay.redraw();
+                flowOverlay._initParticles?.(true);
+            }
+        });
+
+        map.on("moveend", () => {
+            if (flowOverlay && map.hasLayer(flowOverlay)) {
+                flowOverlay.redraw();
+            }
+        });
+
         window.addEventListener("resize", () => {
             applyResponsiveArrowSizing();
-            flowOverlay?.redraw?.();
+            clampZoomToBounds();
+            if (flowOverlay && map.hasLayer(flowOverlay)) {
+                flowOverlay.redraw();
+                flowOverlay._initParticles?.(true);
+            }
         });
 
         document.addEventListener("DOMContentLoaded", () => {
-            // ensure OFF by default
-            setFlowEnabled(false);
+            setFlowEnabled(false); // OFF by default
             loadObs(false);
         });
     </script>
 
-    <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c"
-            ;
-        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    </script>
-
-    <!-- Popup timeseries (WIND ONLY: no MSLP/Rain in UI) -->
+    <!-- Popup timeseries (WIND ONLY) -->
     <script>
         const stationIdCache = new Map();
         const seriesCache = new Map();
@@ -894,39 +922,26 @@
         const UUID_RE =
             /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-        function windowISO(hours, ref = new Date()) {
-            const end = new Date(ref);
-            const start = new Date(end.getTime() - hours * 3600 * 1000);
-            return { startISO: start.toISOString(), endISO: end.toISOString() };
-        }
-
         async function getStationId(idOrCode) {
             if (idOrCode == null) return null;
-            const raw = String(idOrCode);
-            const key = raw.trim();
-            if (!key) return null;
-            if (UUID_RE.test(key)) return key;
+            const raw = String(idOrCode).trim();
+            if (!raw) return null;
+            if (UUID_RE.test(raw)) return raw;
 
-            const cached = stationIdCache.get(key);
+            const cached = stationIdCache.get(raw);
             if (cached && now() - cached.ts < STATION_CACHE_MS) return cached.id;
 
-            let q = sb.from("stations").select("id").eq("code", key).limit(1).maybeSingle();
-            let { data, error } = await q;
+            // Use same stations cache as the map
+            await loadStationsOnce();
+            const stations = Array.from(stationsById.values());
 
-            if (!data?.id && !error) {
-                ({ data, error } = await sb.from("stations").select("id").eq("name", key).limit(1).maybeSingle());
-            }
-            if (!data?.id && !error) {
-                ({ data, error } = await sb.from("stations").select("id").ilike("code", key).limit(1).maybeSingle());
-            }
+            const hit =
+                stations.find(s => String(s.code || "").trim() === raw) ||
+                stations.find(s => String(s.name || "").trim() === raw) ||
+                stations.find(s => String(s.code || "").toLowerCase() === raw.toLowerCase());
 
-            if (error) {
-                console.error("[stations lookup]", { key, error });
-                return null;
-            }
-
-            const id = data?.id || null;
-            stationIdCache.set(key, { id, ts: now() });
+            const id = hit?.id || null;
+            stationIdCache.set(raw, { id, ts: now() });
             return id;
         }
 
@@ -949,55 +964,53 @@
             const stationId = await getStationId(idOrCode);
             if (!stationId) return [];
 
-            const { startISO, endISO } = windowISO(hours);
+            // Try a station-filtered API if you add it later; fallback to current
+            let res = await fetch(`/api/observations?hours=${hours}&station=${encodeURIComponent(stationId)}&limit=5000&ts=${Date.now()}`, {
+                cache: "no-store",
+                signal
+            });
 
-            let query = sb
-                .from("observations")
-                .select("*")
-                .eq("station_id", stationId)
-                .gte("observed_at", startISO)
-                .lte("observed_at", endISO)
-                .order("observed_at", { ascending: true });
+            if (!res.ok) {
+                // fallback: endpoint without station param
+                res = await fetch(`/api/observations?hours=${hours}&limit=5000&ts=${Date.now()}`, {
+                    cache: "no-store",
+                    signal
+                });
+            }
 
-            if (typeof query.abortSignal === "function" && signal) query = query.abortSignal(signal);
-
-            const { data, error } = await query;
-            if (signal?.aborted) return [];
-            if (error) {
-                console.error("[observations select]", error);
+            if (!res.ok) {
+                console.error("[observations api]", res.status);
                 return [];
             }
 
-            const rows = (data || []).map(normalizeRow).filter((r) => r.ts);
-            seriesCache.set(cacheKey, { data: rows, ts: now() });
-            return rows;
+            const rows = await res.json();
+
+            const out = (rows || [])
+                .filter(r => (r.station_id || r.site_id || r.id) === stationId)
+                .map(normalizeRow)
+                .filter(r => r.ts);
+
+            out.sort((a, b) => new Date(a.ts) - new Date(b.ts));
+
+            seriesCache.set(cacheKey, { data: out, ts: now() });
+            return out;
         }
 
-        async function fetchForecastLatestSeries(idOrCodeOrId, hoursBack = 24, hoursFwd = 48, signal) {
-            const stationId = await getStationId(idOrCodeOrId);
+        async function fetchForecastLatestSeries(stationIdOrCode, hoursBack = 24, hoursFwd = 48, signal) {
+            const stationId = await getStationId(stationIdOrCode);
             if (!stationId) return [];
 
             const nowMs = Date.now();
             const startISO = new Date(nowMs - hoursBack * 3600 * 1000).toISOString();
             const endISO = new Date(nowMs + hoursFwd * 3600 * 1000).toISOString();
 
-            let q = sb
-                .from("forecast_hourly_latest")
-                .select("*")
-                .eq("station_id", stationId)
-                .gte("valid_time", startISO)
-                .lte("valid_time", endISO)
-                .order("valid_time", { ascending: true });
-
-            if (typeof q.abortSignal === "function" && signal) q = q.abortSignal(signal);
-
-            const { data, error } = await q;
-            if (signal?.aborted) return [];
-            if (error) {
-                console.error("[forecast_latest select]", error);
+            const url = `/api/forecast?station=${encodeURIComponent(stationId)}&start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}&ts=${Date.now()}`;
+            const res = await fetch(url, { cache: "no-store", signal });
+            if (!res.ok) {
+                console.error("[forecast api]", res.status);
                 return [];
             }
-            return data || [];
+            return await res.json();
         }
 
         function align(labels, xs, ys) {
@@ -1025,27 +1038,27 @@
             };
 
             containerEl.innerHTML = `
-        <div style="width:min(340px, 80vw);">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-            <span style="font-size:12px;opacity:.7;">Window:</span>
-            <select class="ts-window" style="font-size:12px;padding:2px 6px;border-radius:10px;">
-              <option value="3">3h</option>
-              <option value="6">6h</option>
-              <option value="12">12h</option>
-              <option value="24" selected>24h</option>
-            </select>
-          </div>
-
-          <div style="width:100%;height:170px;position:relative;margin-bottom:8px;">
-            <canvas class="ts-canvas-speed" style="width:100%;height:170px;"></canvas>
-          </div>
-          <div style="width:100%;height:130px;position:relative;">
-            <canvas class="ts-canvas-dir" style="width:100%;height:130px;"></canvas>
-          </div>
-
-          <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
+      <div style="width:min(340px, 80vw);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <span style="font-size:12px;opacity:.7;">Window:</span>
+          <select class="ts-window" style="font-size:12px;padding:2px 6px;border-radius:10px;">
+            <option value="3">3h</option>
+            <option value="6">6h</option>
+            <option value="12">12h</option>
+            <option value="24" selected>24h</option>
+          </select>
         </div>
-      `;
+
+        <div style="width:100%;height:170px;position:relative;margin-bottom:8px;">
+          <canvas class="ts-canvas-speed" style="width:100%;height:170px;"></canvas>
+        </div>
+        <div style="width:100%;height:130px;position:relative;">
+          <canvas class="ts-canvas-dir" style="width:100%;height:130px;"></canvas>
+        </div>
+
+        <div class="ts-status" style="font-size:12px;opacity:.75;margin-top:6px;"></div>
+      </div>
+    `;
 
             const selWindow = containerEl.querySelector(".ts-window");
             const speedCtx = containerEl.querySelector(".ts-canvas-speed").getContext("2d");
@@ -1054,11 +1067,10 @@
 
             const setDisabled = (d) => { selWindow.disabled = d; };
 
-            // Palette (readable + legend as semi-translucent squares)
-            const C_WIND = "#14b8a6";     // teal
-            const C_GUST = "#ff4d7d";     // pink/magenta
-            const C_FC_WIND = "#6a5cff";  // purple
-            const C_FC_GUST = "#f5b000";  // amber
+            const C_WIND = "#14b8a6";
+            const C_GUST = "#ff4d7d";
+            const C_FC_WIND = "#6a5cff";
+            const C_FC_GUST = "#f5b000";
 
             function upsertWindCharts(labels, ts_obs, wspd, gust, wdir, ts_fcst, wspd_fc, gust_fc, wdir_fc) {
                 const speedData = {
@@ -1120,7 +1132,6 @@
                         legend: {
                             position: "bottom",
                             labels: {
-                                // make the legend keys nice boxes
                                 boxWidth: 14,
                                 boxHeight: 10,
                                 usePointStyle: false,
@@ -1266,6 +1277,7 @@
 
         window.attachTimeseriesTo = attachTimeseriesTo;
     </script>
+
 </body>
 
 </html>

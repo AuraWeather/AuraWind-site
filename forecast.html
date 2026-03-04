@@ -1,1498 +1,562 @@
+<!-- /forecast.html -->
 <!doctype html>
 <html lang="en">
 
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Aura — Forecast (Solent)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Chart.js -->
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js + time adapter -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
 
   <style>
     :root {
       --bg: #061b28;
-      --text: #eaf3fb;
-      --muted: #9fb2c2;
-      --accent: #22b8a7;
-      --warn: #f5a623;
-      --radius: 18px;
-
-      --lightBtnBg: rgba(90, 140, 255, .22);
-      --lightBtnBorder: rgba(90, 140, 255, .55);
+      --panel: rgba(255, 255, 255, 0.88);
+      --panel2: rgba(255, 255, 255, 0.92);
+      --text: #0b0f1a;
+      --muted: rgba(0, 0, 0, 0.62);
+      --accent: #14b8a6;
+      --shadow: 0 14px 34px rgba(0, 0, 0, 0.16);
+      --border: rgba(0, 0, 0, 0.10);
     }
 
-    * {
-      box-sizing: border-box
-    }
-
+    html,
     body {
+      height: 100%;
       margin: 0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      background:
-        radial-gradient(1200px 600px at 20% -10%, rgba(34, 184, 167, .18), transparent 60%),
-        radial-gradient(900px 500px at 90% 10%, rgba(90, 140, 255, .10), transparent 55%),
-        var(--bg);
-      color: var(--text);
+      background: var(--bg);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
     }
 
-    .wrap {
-      max-width: 1120px;
-      margin: 0 auto;
-      padding: 18px 16px 40px;
+    #map {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
     }
 
-    .top {
-      display: flex;
-      gap: 14px;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      margin-bottom: 14px;
+    .leaflet-container {
+      background: var(--bg);
     }
 
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      min-width: 320px;
+    /* Top bar */
+    .hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1000;
     }
 
-    .brand h1 {
-      font-size: 30px;
-      margin: 0;
-      letter-spacing: .2px;
-    }
-
-    .brand .sub {
-      color: var(--muted);
-      font-size: 13px;
-      margin-top: 3px;
-    }
-
-    .controls {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-
-    .ctrl {
-      background: rgba(255, 255, 255, .04);
-      border: 1px solid rgba(255, 255, 255, .10);
-      border-radius: 12px;
-      padding: 10px 12px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      min-height: 42px;
-    }
-
-    select,
-    input {
-      background: transparent;
-      border: none;
-      color: var(--text);
-      outline: none;
-      font-size: 14px;
-    }
-
-    select option {
-      color: #000;
-    }
-
-    .pill {
-      display: flex;
-      border: 1px solid rgba(255, 255, 255, .12);
-      border-radius: 999px;
-      overflow: hidden;
-    }
-
-    .pill button {
-      background: transparent;
-      border: none;
-      color: var(--muted);
-      padding: 9px 14px;
-      cursor: pointer;
-      font-weight: 700;
-      letter-spacing: .2px;
-    }
-
-    .pill button.active {
-      background: rgba(34, 184, 167, .22);
-      color: var(--text);
-    }
-
-    .btn {
-      background: rgba(34, 184, 167, .18);
-      border: 1px solid rgba(34, 184, 167, .40);
-      color: var(--text);
-      padding: 10px 14px;
-      border-radius: 12px;
-      cursor: pointer;
-      font-weight: 800;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn.ghost {
-      background: rgba(255, 255, 255, .04);
-      border: 1px solid rgba(255, 255, 255, .10);
-      color: var(--muted);
-      font-weight: 700;
-    }
-
-    .btn.light {
-      background: var(--lightBtnBg);
-      border: 1px solid var(--lightBtnBorder);
-      color: var(--text);
-      font-weight: 900;
-    }
-
-    .apply-stack {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      align-items: stretch;
-    }
-
-    .apply-stack .btn {
-      width: 140px;
-    }
-
-    .apply-stack .btn.light {
-      width: 140px;
-      padding: 12px 14px;
-      border-radius: 14px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 14px;
-    }
-
-    @media (min-width: 960px) {
-      .grid {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .span2 {
-        grid-column: 1 / -1;
-      }
-    }
-
-    .card {
-      background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .03));
-      border: 1px solid rgba(255, 255, 255, .09);
-      border-radius: var(--radius);
-      padding: 16px 16px 14px;
-      box-shadow: 0 18px 50px rgba(0, 0, 0, .25);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .card::before {
-      content: "";
+    .hud-left {
       position: absolute;
-      inset: -1px;
-      background:
-        radial-gradient(520px 120px at 18% 0%, rgba(34, 184, 167, .20), transparent 55%),
-        radial-gradient(420px 120px at 88% 10%, rgba(90, 140, 255, .12), transparent 60%);
+      left: 12px;
+      top: 6px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
       pointer-events: none;
     }
 
-    .card>* {
-      position: relative;
+    #logo {
+      height: clamp(120px, 11vw, 170px);
+      width: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.18));
     }
 
-    .card h2 {
-      margin: 0 0 10px;
-      font-size: 18px;
-      letter-spacing: .2px;
-      color: var(--text);
+    .hud-title {
       display: flex;
-      gap: 10px;
-      align-items: baseline;
-      justify-content: space-between;
+      flex-direction: column;
+      gap: 2px;
+      color: rgba(255, 255, 255, 0.95);
+      text-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
     }
 
-    .card h2 small {
-      color: var(--muted);
-      font-weight: 700;
-      font-size: 13px;
-    }
-
-    .summary {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px 14px;
-      align-items: end;
-    }
-
-    .kpi {
-      padding: 8px 0 2px;
-    }
-
-    .kpi .label {
-      color: var(--muted);
-      font-weight: 800;
-      letter-spacing: .2px;
-      font-size: 13px;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .kpi .value {
-      font-size: 56px;
+    .hud-title .h1 {
+      font-size: clamp(22px, 2.1vw, 34px);
       font-weight: 950;
-      letter-spacing: .5px;
-      line-height: .95;
-      margin-top: 4px;
+      letter-spacing: 0.2px;
+      line-height: 1.05;
     }
 
-    .kpi .unit {
-      font-size: 22px;
-      color: var(--muted);
-      font-weight: 900;
-      margin-left: 8px;
+    .hud-title .sub {
+      font-size: clamp(14px, 1.2vw, 18px);
+      font-weight: 750;
+      opacity: 0.85;
+      line-height: 1.05;
     }
 
-    .kpi .subv {
-      margin-top: 6px;
-      color: var(--muted);
-      font-weight: 700;
+    .hud-right {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      pointer-events: auto;
     }
 
-    .kpi .value.small {
-      font-size: 44px;
+    .btn {
+      border: 0;
+      border-radius: 12px;
+      padding: 0.58rem 0.95rem;
+      font-weight: 950;
+      cursor: pointer;
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+      transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
+      text-decoration: none;
+      user-select: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #ffffff;
+      background: rgba(20, 184, 166, 0.88);
+      border: 1px solid rgba(20, 184, 166, 0.55);
     }
 
-    .kpi .value.med {
-      font-size: 48px;
+    .btn.secondary {
+      background: rgba(6, 27, 40, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.20);
     }
 
-    .accent {
-      color: var(--accent);
+    .btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.03);
     }
 
-    .warn {
-      color: #ff9f2f;
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: default;
+      transform: none;
     }
 
-    .muted {
-      color: var(--muted);
+    /* Control card */
+    .card {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      width: min(420px, calc(100vw - 24px));
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      pointer-events: auto;
+      padding: 12px 12px;
+      z-index: 900;
     }
 
     .row {
       display: flex;
       gap: 10px;
-      flex-wrap: wrap;
       align-items: center;
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid rgba(255, 255, 255, .10);
-      color: var(--muted);
-      font-weight: 750;
-    }
-
-    .badge {
-      padding: 7px 11px;
-      border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, .12);
-      background: rgba(0, 0, 0, .18);
-    }
-
-    /* Important: keep canvases transparent so no "white boxes" */
-    canvas {
-      width: 100% !important;
-      height: 300px !important;
-      background: transparent !important;
-    }
-
-    #tephCanvas {
-      height: 380px !important;
-    }
-
-    .footer {
-      margin-top: 14px;
-      color: rgba(234, 243, 251, .70);
-      font-size: 12px;
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
       flex-wrap: wrap;
     }
 
-    .error {
-      color: #ffd1d1;
-      background: rgba(255, 0, 0, .08);
-      border: 1px solid rgba(255, 0, 0, .22);
-      padding: 10px 12px;
+    label {
+      font-size: 12px;
+      font-weight: 800;
+      color: rgba(0, 0, 0, 0.70);
+    }
+
+    select {
+      font-size: 14px;
+      padding: 8px 10px;
       border-radius: 12px;
-      font-weight: 750;
+      border: 1px solid rgba(0, 0, 0, 0.16);
+      background: var(--panel2);
+      outline: none;
+      min-width: 240px;
     }
 
-    .teph-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-      align-items: start;
+    .seg {
+      display: inline-flex;
+      border: 1px solid rgba(0, 0, 0, 0.14);
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.70);
     }
 
-    @media (min-width: 960px) {
-      .teph-grid {
-        grid-template-columns: 1.25fr 0.75fr;
-      }
-    }
-
-    .quickread {
-      background: rgba(255, 255, 255, .04);
-      border: 1px solid rgba(255, 255, 255, .10);
-      border-radius: 16px;
-      padding: 14px 14px 12px;
-    }
-
-    .quickread .title {
-      color: var(--muted);
+    .seg button {
+      border: 0;
+      padding: 8px 10px;
+      cursor: pointer;
       font-weight: 900;
-      letter-spacing: .3px;
-      margin-bottom: 10px;
-      font-size: 13px;
+      background: transparent;
+      color: rgba(0, 0, 0, 0.72);
     }
 
-    .quickread .line {
-      margin: 6px 0;
-      font-weight: 750;
-      color: rgba(234, 243, 251, .88);
+    .seg button.active {
+      background: rgba(20, 184, 166, 0.20);
+      color: rgba(0, 0, 0, 0.85);
     }
 
-    .quickread .line b {
-      color: rgba(234, 243, 251, .95);
-    }
-
-    .quickread .dim {
-      color: rgba(234, 243, 251, .68);
+    .status {
+      margin-top: 8px;
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.66);
       font-weight: 700;
+    }
+
+    /* Chart panel */
+    .chart {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      width: min(640px, calc(100vw - 24px));
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      pointer-events: auto;
+      padding: 12px 12px;
+      z-index: 900;
+    }
+
+    .chart h3 {
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      font-weight: 950;
+      color: rgba(0, 0, 0, 0.80);
+    }
+
+    .chart .wrap {
+      width: 100%;
+      height: 260px;
+      position: relative;
+    }
+
+    .chart .wrap.small {
+      height: 170px;
       margin-top: 10px;
     }
 
-    @media (max-width: 720px) {
-      .apply-stack .btn {
-        width: 100%;
-      }
-
-      .apply-stack {
-        width: 100%;
+    @media (max-width: 980px) {
+      .chart {
+        left: 12px;
+        right: 12px;
+        bottom: 190px;
+        width: auto;
       }
     }
   </style>
 </head>
 
 <body>
-  <div class="wrap">
+  <div id="map"></div>
 
-    <div class="top">
-      <div class="brand">
-        <img id="logo" src="aura-logo.png" alt="Aura Weather"
-          style="width:96px;height:auto;filter:drop-shadow(0 10px 22px rgba(0,0,0,.35));border-radius:14px;" />
-        <div>
-          <h1>Forecast</h1>
-          <div class="sub">Today + Tomorrow only • Solent stations</div>
-        </div>
-      </div>
-
-      <div class="controls">
-        <div class="ctrl">
-          <span class="muted" style="font-weight:900;">Location</span>
-          <select id="stationSelect"></select>
-        </div>
-
-        <div class="pill" role="tablist" aria-label="Day">
-          <button id="btnToday" class="active" type="button">Today</button>
-          <button id="btnTomorrow" type="button">Tomorrow</button>
-        </div>
-
-        <div class="ctrl">
-          <span class="muted" style="font-weight:900;">Window</span>
-          <input id="startTime" type="time" step="3600" />
-          <span class="muted">→</span>
-          <input id="endTime" type="time" step="3600" />
-        </div>
-
-        <div class="apply-stack">
-          <!-- simple icon (no SVG needed) -->
-          <button class="btn light" type="button" onclick="location.href='index.html'">🗺️ Live Map</button>
-          <button id="btnApply" class="btn" type="button">Apply</button>
-        </div>
-
-        <button class="btn ghost" type="button" title="Premium coming soon"
-          onclick="alert('Premium (7–10 days, model compare, tides, full soundings) — coming soon 🙂')">Unlock Premium
-          🔒</button>
+  <div class="hud">
+    <div class="hud-left">
+      <img id="logo" src="aura-logo.png" alt="Aura" />
+      <div class="hud-title">
+        <div class="h1">Forecast</div>
+        <div class="sub">Station wind • gust • direction</div>
       </div>
     </div>
 
-    <div id="errorBox" class="error" style="display:none;"></div>
+    <div class="hud-right">
+      <a class="btn secondary" href="./index.html">Live map</a>
+      <button id="refreshBtn" class="btn">Refresh</button>
+    </div>
+  </div>
 
-    <div class="grid">
-      <div class="card span2">
-        <h2>
-          <span>Summary</span>
-          <small id="summaryMeta">—</small>
-        </h2>
-
-        <div class="summary">
-          <div class="kpi">
-            <div class="label">≡ WIND</div>
-            <div class="value" id="kpiWind">—</div>
-            <div class="subv" id="kpiDir">—</div>
-          </div>
-
-          <div class="kpi">
-            <div class="label">🌬 GUSTS</div>
-            <div class="value warn" id="kpiGust">—</div>
-          </div>
-
-          <div class="kpi">
-            <div class="label">🌡 TEMP</div>
-            <div class="value med" id="kpiTemp">—</div>
-          </div>
-
-          <div class="kpi">
-            <div class="label">☔ PRECIP • ☁ CLOUD</div>
-            <div class="value small" id="kpiRainCloud">—</div>
-          </div>
-        </div>
-
-        <div class="row">
-          <span class="badge" id="badgeBest">Best window: —</span>
-          <span class="badge" id="badgeSteady">Steadiness: —</span>
-          <span class="badge" id="badgeNote">Free: today + tomorrow only</span>
-        </div>
-
-        <div class="footer">
-          <div><strong>NISKUS • AURA</strong> — Independent analysis.</div>
-          <div></div>
-        </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between;">
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <label for="stationSel">Station</label>
+        <select id="stationSel"></select>
       </div>
 
-      <div class="card span2">
-        <h2>
-          <span>Wind &amp; Gusts</span>
-          <small id="windMeta">—</small>
-        </h2>
-        <canvas id="windCanvas"></canvas>
-      </div>
-
-      <div class="card">
-        <h2>
-          <span>Direction</span>
-          <small id="dirMeta">—</small>
-        </h2>
-        <canvas id="dirCanvas"></canvas>
-      </div>
-
-      <div class="card">
-        <h2>
-          <span>Conditions</span>
-          <small id="condMeta">—</small>
-        </h2>
-        <canvas id="condCanvas"></canvas>
-      </div>
-
-      <div class="card span2">
-        <h2>
-          <span>Upper Air • Tephigram</span>
-          <small id="tephMeta">Fixed at 12:00 local</small>
-        </h2>
-
-        <div class="teph-grid">
-          <div>
-            <canvas id="tephCanvas"></canvas>
-            <div class="footer" style="margin-top:10px;">
-              <div class="muted">Free version: always 12:00. Premium: selectable time + diagnostics.</div>
-              <div class="muted" id="upperAirSource">Upper-air: Open-Meteo pressure-levels</div>
-            </div>
-          </div>
-
-          <div class="quickread">
-            <div class="title">QUICK READ</div>
-            <div id="tephComment" class="line">Loading upper-air…</div>
-            <div class="dim" id="tephCommentSub"></div>
-          </div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;">
+        <label>Window</label>
+        <div class="seg" id="windowSeg">
+          <button data-h="24" class="active">24h</button>
+          <button data-h="48">48h</button>
+          <button data-h="72">72h</button>
         </div>
       </div>
+    </div>
 
-      <div class="card span2" style="opacity:.55;filter:grayscale(.25);">
-        <h2>
-          <span>Days 3–7 (Premium)</span>
-          <small>Locked</small>
-        </h2>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <span class="badge">Day 3 🔒</span><span class="badge">Day 4 🔒</span><span class="badge">Day 5 🔒</span>
-          <span class="badge">Day 6 🔒</span><span class="badge">Day 7 🔒</span>
-        </div>
-        <div class="footer" style="margin-top:10px;">
-          <div class="muted">Unlock: 7–10 days, model compare, tides/current overlays, full soundings, exports.</div>
-          <div><button class="btn" type="button" onclick="alert('Premium coming soon 🙂')">Unlock Premium 🔒</button>
-          </div>
-        </div>
-      </div>
+    <div class="status" id="status">Loading…</div>
+  </div>
 
+  <div class="chart">
+    <h3>Wind & Gust (kt)</h3>
+    <div class="wrap">
+      <canvas id="chartSpeed"></canvas>
+    </div>
+    <div class="wrap small">
+      <canvas id="chartDir"></canvas>
     </div>
   </div>
 
   <script>
-    /* ========= CONFIG ========= */
-    const SUPABASE_URL = "https://bfcavqulacjbwogbjxhm.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmY2F2cXVsYWNqYndvZ2JqeGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzc3NzUsImV4cCI6MjA3MjA1Mzc3NX0.XCraHYMFzgnLfeHl1RUjDjnkDm6tYpzgtOQTMNVbr6c";
-    const FORECAST_TABLE = "forecast_hourly";
-    const TZ_LABEL = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
+    /* ---------------- Config ---------------- */
+    const STATIONS_URL = "/api/stations";
+    const FORECAST_URL = "/api/forecast";
 
-    /* ========= State ========= */
+    // Solent-ish bounds (keep it consistent)
+    const SOLENT_BOUNDS = L.latLngBounds(
+      L.latLng(50.65, -2.20),
+      L.latLng(51.20, -0.80)
+    );
+
+    const statusEl = document.getElementById("status");
+    const setStatus = (s) => statusEl.textContent = s;
+
+    const stationSel = document.getElementById("stationSel");
+    const refreshBtn = document.getElementById("refreshBtn");
+    const windowSeg = document.getElementById("windowSeg");
+
     let stations = [];
-    let selectedDay = "today";
-    let charts = { wind: null, dir: null, cond: null, teph: null };
+    let selectedHours = 24;
 
-    /* ========= Global chart defaults (dark UI) ========= */
-    Chart.defaults.color = "#cfe0ef";
-    Chart.defaults.font.family = 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial';
-    Chart.defaults.plugins.legend.labels.boxWidth = 14;
-    Chart.defaults.plugins.legend.labels.boxHeight = 10;
+    /* ---------------- Map ---------------- */
+    const map = L.map("map", {
+      zoomControl: true,
+      maxBounds: SOLENT_BOUNDS,
+      maxBoundsViscosity: 1.0,
+      maxZoom: 13
+    });
 
-    /* ========= UI Errors ========= */
-    function showError(msg) {
-      const el = document.getElementById("errorBox");
-      el.style.display = "block";
-      el.textContent = msg;
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      attribution: "&copy; OpenStreetMap, &copy; CARTO",
+    }).addTo(map);
+
+    map.fitBounds(SOLENT_BOUNDS, { padding: [30, 30] });
+
+    function clampZoomToBounds() {
+      const minZ = map.getBoundsZoom(SOLENT_BOUNDS, false, [30, 30]);
+      map.setMinZoom(minZ);
     }
-    function clearError() {
-      const el = document.getElementById("errorBox");
-      el.style.display = "none";
-      el.textContent = "";
-    }
+    clampZoomToBounds();
+    window.addEventListener("resize", clampZoomToBounds);
 
-    /* ========= Helpers ========= */
-    function roundUpToNextHour(d) { const x = new Date(d); x.setMinutes(0, 0, 0); x.setHours(x.getHours() + 1); return x; }
-    function clampToDay(d, dayStart, dayEnd) { const t = d.getTime(); return new Date(Math.max(dayStart.getTime(), Math.min(dayEnd.getTime(), t))); }
-    function iso(d) { return new Date(d).toISOString(); }
+    const layerMarkers = L.layerGroup().addTo(map);
 
-    function dayBoundsLocal(which) {
-      const now = new Date();
-      const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const start = new Date(base);
-      if (which === "tomorrow") start.setDate(start.getDate() + 1);
-      const end = new Date(start);
-      end.setHours(23, 59, 59, 999);
-      return { start, end };
-    }
+    function addStationPin(st) {
+      const m = L.circleMarker([st.latitude, st.longitude], {
+        radius: 7,
+        weight: 2,
+        color: "rgba(20,184,166,0.95)",
+        fillColor: "rgba(20,184,166,0.35)",
+        fillOpacity: 1
+      }).addTo(layerMarkers);
 
-    function timeStr(d) { return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+      m.bindTooltip(st.name || st.code || st.id);
 
-    function degToCardinal(deg) {
-      if (deg == null || isNaN(deg)) return "—";
-      const dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
-      const i = Math.round((((deg % 360) + 360) % 360) / 22.5) % 16;
-      return dirs[i];
-    }
-
-    function circularMean(degs) {
-      const vals = degs.filter(v => v != null && !isNaN(v));
-      if (!vals.length) return null;
-      const rad = vals.map(v => v * Math.PI / 180);
-      const s = rad.reduce((a, r) => a + Math.sin(r), 0) / rad.length;
-      const c = rad.reduce((a, r) => a + Math.cos(r), 0) / rad.length;
-      let ang = Math.atan2(s, c) * 180 / Math.PI;
-      if (ang < 0) ang += 360;
-      return ang;
-    }
-
-    function fmt(n, digits = 0) { if (n == null || isNaN(n)) return "—"; return Number(n).toFixed(digits); }
-    function mean(arr) { const v = arr.filter(x => x != null && !isNaN(x)); if (!v.length) return null; return v.reduce((a, b) => a + b, 0) / v.length; }
-    function max(arr) { const v = arr.filter(x => x != null && !isNaN(x)); if (!v.length) return null; return Math.max(...v); }
-
-    function steadinessMetric(windDirArr) {
-      const v = windDirArr.filter(x => x != null && !isNaN(x));
-      if (v.length < 2) return null;
-      const mu = circularMean(v);
-      const rad = v.map(d => ((d - mu + 540) % 360 - 180) * Math.PI / 180);
-      const s2 = rad.reduce((a, r) => a + r * r, 0) / rad.length;
-      const sd = Math.sqrt(s2) * 180 / Math.PI;
-      return sd;
-    }
-
-    function titleCaseSmart(s) {
-      return String(s)
-        .split(" ")
-        .filter(Boolean)
-        .map(w => {
-          if (/^(YC|SC|NCI|RMYC|RYA|HR|HMS)$/i.test(w)) return w.toUpperCase();
-          if (w.length <= 3 && w.toUpperCase() === w) return w;
-          return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
-        })
-        .join(" ");
-    }
-
-    function prettifyLabel(raw) {
-      if (!raw) return "—";
-      let s = String(raw).trim();
-      s = s.replace(/^(WF_|WL_)/, "");
-      s = s.replace(/_/g, " ");
-      s = s.replace(/\s+/g, " ").trim();
-      return titleCaseSmart(s);
-    }
-
-    /* ========= Supabase REST ========= */
-    async function sbGet(path) {
-      const url = `${SUPABASE_URL}/rest/v1/${path}`;
-      const res = await fetch(url, {
-        headers: {
-          "apikey": SUPABASE_ANON_KEY,
-          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-          "Accept": "application/json"
-        }
+      m.on("click", () => {
+        stationSel.value = st.id;
+        loadForecast();
       });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`${res.status} ${res.statusText}: ${txt}`);
-      }
-      return res.json();
     }
 
-    async function latestIssueTime() {
-      const rows = await sbGet(`${FORECAST_TABLE}?select=issue_time&order=issue_time.desc&limit=1`);
-      const it = rows?.[0]?.issue_time;
-      if (!it) throw new Error(`Could not find issue_time in ${FORECAST_TABLE}`);
-      return it;
+    /* ---------------- Charts ---------------- */
+    const C_WIND = "#14b8a6";
+    const C_GUST = "#ff4d7d";
+    const C_FC_DIR = "#6a5cff";
+
+    function rgba(hex, a) {
+      const h = String(hex).replace("#", "");
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      return `rgba(${r},${g},${b},${a})`;
+    }
+
+    let chartSpeed = null;
+    let chartDir = null;
+
+    function upsertCharts(rows) {
+      // Expect rows like:
+      // { valid_time, wind_speed_kt, wind_gust_kt, wind_dir_deg }
+      const labels = rows.map(r => new Date(r.valid_time).toISOString());
+      const wspd = rows.map(r => r.wind_speed_kt ?? null);
+      const gust = rows.map(r => r.wind_gust_kt ?? null);
+      const wdir = rows.map(r => r.wind_dir_deg ?? null);
+
+      const speedData = {
+        labels,
+        datasets: [
+          {
+            label: "Wind (kt)",
+            data: wspd,
+            borderColor: C_WIND,
+            backgroundColor: rgba(C_WIND, 0.18),
+            borderWidth: 2.5,
+            pointRadius: 0,
+            tension: 0.25
+          },
+          {
+            label: "Gust (kt)",
+            data: gust,
+            borderColor: C_GUST,
+            backgroundColor: rgba(C_GUST, 0.14),
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.25,
+            borderDash: [6, 4]
+          }
+        ]
+      };
+
+      const nonNull = [...wspd, ...gust].filter(v => v != null);
+      const maxY = Math.max(10, ...(nonNull.length ? nonNull : [0]));
+
+      const speedOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: { boxWidth: 14, boxHeight: 10, color: "rgba(0,0,0,0.75)" }
+          },
+          tooltip: { mode: "index", intersect: false }
+        },
+        scales: {
+          x: { type: "time", ticks: { color: "rgba(0,0,0,0.65)" }, grid: { color: "rgba(0,0,0,0.08)" } },
+          y: { suggestedMax: maxY, ticks: { color: "rgba(0,0,0,0.65)" }, grid: { color: "rgba(0,0,0,0.08)" }, title: { display: true, text: "kt", color: "rgba(0,0,0,0.6)" } }
+        },
+        animation: { duration: 120 }
+      };
+
+      const dirData = {
+        labels,
+        datasets: [
+          {
+            label: "Direction (°)",
+            data: wdir,
+            borderColor: C_FC_DIR,
+            backgroundColor: rgba(C_FC_DIR, 0.10),
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.25
+          }
+        ]
+      };
+
+      const dirOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false } },
+        scales: {
+          x: { type: "time", ticks: { color: "rgba(0,0,0,0.65)" }, grid: { color: "rgba(0,0,0,0.08)" } },
+          y: { min: 0, max: 360, ticks: { stepSize: 90, color: "rgba(0,0,0,0.65)" }, grid: { color: "rgba(0,0,0,0.08)" } }
+        },
+        animation: { duration: 120 }
+      };
+
+      const ctxS = document.getElementById("chartSpeed").getContext("2d");
+      const ctxD = document.getElementById("chartDir").getContext("2d");
+
+      if (!chartSpeed) chartSpeed = new Chart(ctxS, { type: "line", data: speedData, options: speedOpts });
+      else { chartSpeed.data = speedData; chartSpeed.options = speedOpts; chartSpeed.update(); }
+
+      if (!chartDir) chartDir = new Chart(ctxD, { type: "line", data: dirData, options: dirOpts });
+      else { chartDir.data = dirData; chartDir.options = dirOpts; chartDir.update(); }
+    }
+
+    /* ---------------- Data loading ---------------- */
+    function isoWindow(hoursForward) {
+      const start = new Date();
+      const end = new Date(start.getTime() + hoursForward * 3600 * 1000);
+      return { startISO: start.toISOString(), endISO: end.toISOString() };
     }
 
     async function loadStations() {
-      const rows = await sbGet(`stations?select=id,code,name,latitude,longitude&order=code.asc`);
-      const all = rows || [];
-      stations = all.filter(s => s.latitude != null && s.longitude != null);
+      setStatus("Loading stations…");
+      const res = await fetch(`${STATIONS_URL}?ts=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) throw new Error(`Stations HTTP ${res.status}`);
+      stations = await res.json();
 
-      const sel = document.getElementById("stationSelect");
-      sel.innerHTML = "";
-      stations.forEach(s => {
-        const opt = document.createElement("option");
-        opt.value = s.id;
-        const raw = (s.name && s.name.trim()) ? s.name : (s.code || s.id);
-        opt.textContent = prettifyLabel(raw);
-        sel.appendChild(opt);
-      });
+      // dropdown
+      stationSel.innerHTML = "";
+      stations
+        .filter(s => s?.id && s.latitude != null && s.longitude != null)
+        .sort((a, b) => String(a.name || a.code || "").localeCompare(String(b.name || b.code || "")))
+        .forEach(s => {
+          const opt = document.createElement("option");
+          opt.value = s.id;
+          opt.textContent = s.name || s.code || s.id;
+          stationSel.appendChild(opt);
+        });
 
-      if (!stations.length) throw new Error("No stations found with lat/lon in stations table.");
-      sel.value = stations[0].id;
+      // map pins
+      layerMarkers.clearLayers();
+      stations
+        .filter(s => s?.id && s.latitude != null && s.longitude != null)
+        .forEach(addStationPin);
+
+      // default selection
+      if (stationSel.options.length) stationSel.value = stationSel.options[0].value;
+
+      setStatus(`Stations loaded: ${stations.length}`);
     }
 
-    async function loadForecastDay(stationId, which) {
-      const { start, end } = dayBoundsLocal(which);
-      const startISO = iso(start);
-      const endISO = iso(end);
-      const issue = await latestIssueTime();
-
-      const q =
-        `${FORECAST_TABLE}?select=valid_time,wind_speed_kt,wind_gust_kt,wind_dir_deg,temperature_c,cloud_cover_pct,precip_mm,issue_time` +
-        `&station_id=eq.${stationId}` +
-        `&issue_time=eq.${encodeURIComponent(issue)}` +
-        `&valid_time=gte.${encodeURIComponent(startISO)}` +
-        `&valid_time=lte.${encodeURIComponent(endISO)}` +
-        `&order=valid_time.asc`;
-
-      const rows = await sbGet(q);
-      return (rows || []).map(r => ({ ...r, t: new Date(r.valid_time) })).filter(r => r.t.toString() !== "Invalid Date");
-    }
-
-    /* ========= Upper-air (Open-Meteo) ========= */
-    function dewPointC(Tc, RH) {
-      if (!Number.isFinite(Tc) || !Number.isFinite(RH) || RH <= 2) return null;
-      const rh = Math.min(100, Math.max(2, RH));
-      const a = 17.27, b = 237.7;
-      const alpha = ((a * Tc) / (b + Tc)) + Math.log(rh / 100);
-      const Td = (b * alpha) / (a - alpha);
-      return Number.isFinite(Td) ? Td : null;
-    }
-
-    function nearestIndexByTime(timesIso, targetDate) {
-      let bestI = -1, bestDt = Infinity;
-      const target = targetDate.getTime();
-      for (let i = 0; i < timesIso.length; i++) {
-        const t = new Date(timesIso[i]).getTime();
-        if (!Number.isFinite(t)) continue;
-        const dt = Math.abs(t - target);
-        if (dt < bestDt) { bestDt = dt; bestI = i; }
-      }
-      return bestI;
-    }
-
-    function profileLooksInvalid(arr) {
-      const finite = arr.filter(v => Number.isFinite(v));
-      if (finite.length < 2) return true;
-      const nonZero = finite.filter(v => Math.abs(v) > 0.001);
-      return nonZero.length < 2;
-    }
-
-    async function loadTephigramAtNoon(lat, lon, which) {
-      const { start } = dayBoundsLocal(which);
-      const targetLocal = new Date(start);
-      targetLocal.setHours(12, 0, 0, 0);
-
-      const dateStr = targetLocal.toISOString().slice(0, 10);
-      const levels = [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200];
-
-      const vars = [];
-      for (const p of levels) {
-        vars.push(`temperature_${p}hPa`);
-        vars.push(`relative_humidity_${p}hPa`);
-        vars.push(`wind_speed_${p}hPa`);
-        vars.push(`wind_direction_${p}hPa`);
-      }
-
-      const url =
-        `https://api.open-meteo.com/v1/forecast` +
-        `?latitude=${encodeURIComponent(lat)}` +
-        `&longitude=${encodeURIComponent(lon)}` +
-        `&timezone=${encodeURIComponent(TZ_LABEL)}` +
-        `&start_date=${encodeURIComponent(dateStr)}` +
-        `&end_date=${encodeURIComponent(dateStr)}` +
-        `&hourly=${encodeURIComponent(vars.join(","))}` +
-        `&temperature_unit=celsius&wind_speed_unit=kn`;
-
-      const res = await fetch(url);
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Open-Meteo ${res.status}: ${txt}`);
-      }
-      const j = await res.json();
-      const times = j?.hourly?.time || [];
-      if (!times.length) throw new Error("Open-Meteo: no hourly.time in upper-air response");
-
-      const idx = nearestIndexByTime(times, targetLocal);
-      if (idx === -1) throw new Error("Open-Meteo: cannot find time near 12:00 local");
-
-      const toNum = (v) => {
-        const n = Number(v);
-        return Number.isFinite(n) ? n : null;
-      };
-
-      const T = levels.map(p => toNum(j.hourly[`temperature_${p}hPa`]?.[idx]));
-      const RH = levels.map(p => toNum(j.hourly[`relative_humidity_${p}hPa`]?.[idx]));
-      const wspd = levels.map(p => toNum(j.hourly[`wind_speed_${p}hPa`]?.[idx]));
-      const wdir = levels.map(p => toNum(j.hourly[`wind_direction_${p}hPa`]?.[idx]));
-      const Td = levels.map((p, i) => dewPointC(T[i], RH[i]));
-
-      if (profileLooksInvalid(T) || profileLooksInvalid(Td)) {
-        throw new Error("Upper-air pressure-level profile looks invalid (mostly 0/empty).");
-      }
-
-      return { levels, T, Td, RH, wspd, wdir, timeLabel: times[idx] };
-    }
-
-    function windUVFromSpdDir(spdKt, dirDeg) {
-      if (!Number.isFinite(spdKt) || !Number.isFinite(dirDeg)) return { u: null, v: null };
-      const rad = dirDeg * Math.PI / 180;
-      const u = -spdKt * Math.sin(rad);
-      const v = -spdKt * Math.cos(rad);
-      return { u, v };
-    }
-
-    function vectorShearKt(teph, pTop = 700, pBot = 1000) {
-      const iTop = teph.levels.indexOf(pTop);
-      const iBot = teph.levels.indexOf(pBot);
-      if (iTop === -1 || iBot === -1) return null;
-
-      const a = windUVFromSpdDir(teph.wspd[iBot], teph.wdir[iBot]);
-      const b = windUVFromSpdDir(teph.wspd[iTop], teph.wdir[iTop]);
-      if (a.u == null || a.v == null || b.u == null || b.v == null) return null;
-      const du = b.u - a.u;
-      const dv = b.v - a.v;
-      return Math.sqrt(du * du + dv * dv);
-    }
-
-    function veerBackBetween(teph, pTop = 700, pBot = 1000) {
-      const iTop = teph.levels.indexOf(pTop);
-      const iBot = teph.levels.indexOf(pBot);
-      if (iTop === -1 || iBot === -1) return null;
-      const d0 = teph.wdir[iBot], d1 = teph.wdir[iTop];
-      if (!Number.isFinite(d0) || !Number.isFinite(d1)) return null;
-      let diff = ((d1 - d0 + 540) % 360) - 180;
-      return diff;
-    }
-
-    function stabilityDeltaT(teph, pTop = 700, pBot = 1000) {
-      const iTop = teph.levels.indexOf(pTop);
-      const iBot = teph.levels.indexOf(pBot);
-      if (iTop === -1 || iBot === -1) return null;
-      const Ttop = teph.T[iTop], Tbot = teph.T[iBot];
-      if (!Number.isFinite(Ttop) || !Number.isFinite(Tbot)) return null;
-      return Ttop - Tbot;
-    }
-
-    function moistureRH(teph, p = 850) {
-      const i = teph.levels.indexOf(p);
-      if (i === -1) return null;
-      const rh = teph.RH[i];
-      return Number.isFinite(rh) ? rh : null;
-    }
-
-    function quickReadText(teph) {
-      const shear = vectorShearKt(teph, 700, 1000);
-      const dvb = veerBackBetween(teph, 700, 1000);
-      const dT = stabilityDeltaT(teph, 700, 1000);
-      const rh850 = moistureRH(teph, 850);
-
-      let shearTxt = "—";
-      if (Number.isFinite(shear)) {
-        shearTxt = shear < 8 ? `weak (~${fmt(shear, 0)} kt)` :
-          shear < 15 ? `moderate (~${fmt(shear, 0)} kt)` :
-            `strong (~${fmt(shear, 0)} kt)`;
-      }
-
-      let stabTxt = "—";
-      if (Number.isFinite(dT)) {
-        stabTxt = dT > -2 ? `stable (ΔT700–1000 ≈ ${fmt(dT, 1)}°C)` :
-          dT > -8 ? `neutral-ish (ΔT700–1000 ≈ ${fmt(dT, 1)}°C)` :
-            `less stable (ΔT700–1000 ≈ ${fmt(dT, 1)}°C)`;
-      }
-
-      let vbTxt = "—";
-      if (Number.isFinite(dvb)) {
-        const abs = Math.abs(dvb);
-        if (abs < 15) vbTxt = `little veer/back (~${fmt(dvb, 0)}°)`;
-        else vbTxt = dvb > 0 ? `veer with height (~+${fmt(abs, 0)}°)` : `back with height (~-${fmt(abs, 0)}°)`;
-      }
-
-      let moistTxt = "—";
-      if (Number.isFinite(rh850)) {
-        moistTxt = rh850 < 30 ? `dry aloft (RH850 ~${fmt(rh850, 0)}%)` :
-          rh850 < 60 ? `some moisture (RH850 ~${fmt(rh850, 0)}%)` :
-            `moist (RH850 ~${fmt(rh850, 0)}%)`;
-      }
-
-      return {
-        lines: [
-          `<b>Wind shear (1000–700):</b> ${shearTxt}`,
-          `<b>Stability:</b> ${stabTxt}`,
-          `<b>Veer/back (1000→700):</b> ${vbTxt}`,
-          `<b>Moisture:</b> ${moistTxt}`
-        ],
-        sub: `Quick read based on 1000/850/700 hPa from Open-Meteo at the closest hour to 12:00 local.`
-      };
-    }
-
-    /* ========= Tephigram background + wind barbs plugin ========= */
-    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-
-    // Saturation vapour pressure over water (hPa) - Bolton
-    function es_hpa(Tc) {
-      return 6.112 * Math.exp((17.67 * Tc) / (Tc + 243.5));
-    }
-
-    // mixing ratio (kg/kg) from e and p
-    function w_from_e_p(e_hpa, p_hpa) {
-      const eps = 0.622;
-      return eps * e_hpa / Math.max(1e-6, (p_hpa - e_hpa));
-    }
-
-    // invert mixing ratio line: given w (kg/kg) and p -> get Tc from e then Bolton inverse
-    function Tc_from_w_p(w, p_hpa) {
-      const eps = 0.622;
-      const e = (w * p_hpa) / (eps + w);
-      const ln = Math.log(Math.max(1e-8, e / 6.112));
-      return (243.5 * ln) / (17.67 - ln);
-    }
-
-    // Moist pseudo-adiabat: integrate saturated ascent in pressure coordinates
-    // Returns array of {p, Tc}
-    function moistPseudoAdiabat(T0c, p0 = 1000, pTop = 200, dp = -5) {
-      const Rd = 287.05;
-      const Rv = 461.5;
-      const cp = 1004.0;
-      const g = 9.80665;
-      const Lv = 2.5e6;
-      const eps = 0.622;
-
-      let T = T0c + 273.15;
-      let p = p0 * 100;   // Pa
-      const out = [];
-
-      for (; p >= pTop * 100; p += dp * 100) {
-        const Tc = T - 273.15;
-        const e = es_hpa(Tc) * 100; // Pa
-        const q = eps * e / Math.max(1e-6, (p - e)); // kg/kg (approx)
-        const Tv = T * (1 + 0.61 * q);
-
-        // moist adiabatic lapse rate (K/m)
-        const num = g * (1 + (Lv * q) / (Rd * T));
-        const den = cp + (Lv * Lv * q * eps) / (Rv * T * T);
-        const Gamma_m = num / den;
-
-        // hydrostatic: dp/dz = -rho g, rho ~ p/(Rd Tv)
-        const rho = p / (Rd * Tv);
-        const dpdz = -rho * g;
-
-        // dT/dp = (dT/dz) / (dp/dz)
-        const dTdp = (-Gamma_m) / dpdz;
-
-        out.push({ p_hpa: p / 100, Tc });
-
-        // step
-        T += dTdp * (dp * 100);
-      }
-      return out;
-    }
-
-    // Draw a wind barb at (x0,y0) for speed in knots and direction "from" in degrees
-    function drawWindBarb(ctx, x0, y0, spdKt, dirFromDeg, scale = 1.0) {
-      if (!Number.isFinite(spdKt) || !Number.isFinite(dirFromDeg)) return;
-
-      const speed = Math.max(0, spdKt);
-      const rad = dirFromDeg * Math.PI / 180;
-
-      // vector pointing TOWARDS where wind comes from (meteorological "from")
-      const dx = Math.sin(rad);
-      const dy = -Math.cos(rad);
-
-      const staffLen = 26 * scale;
-      const x1 = x0 + dx * staffLen;
-      const y1 = y0 + dy * staffLen;
-
-      ctx.save();
-      ctx.lineWidth = 2 * scale;
-      ctx.strokeStyle = "rgba(234,243,251,.92)";
-      ctx.beginPath();
-      ctx.moveTo(x0, y0);
-      ctx.lineTo(x1, y1);
-      ctx.stroke();
-
-      // Feathers drawn near the tip (x1,y1), angled back
-      const featherAngle = Math.PI * 0.60;
-      const fx = -dx, fy = -dy; // direction back toward base
-      const px = -fy, py = fx;  // perpendicular
-
-      let s = Math.round(speed / 5) * 5;
-      let flags = Math.floor(s / 50); s -= flags * 50;
-      let tens = Math.floor(s / 10); s -= tens * 10;
-      let fives = Math.floor(s / 5);
-
-      let pos = 0;
-      const step = 6.5 * scale;
-
-      function feather(len, filled) {
-        const bx = x1 + fx * pos;
-        const by = y1 + fy * pos;
-
-        const ex = bx + (fx * Math.cos(featherAngle) + px * Math.sin(featherAngle)) * len;
-        const ey = by + (fy * Math.cos(featherAngle) + py * Math.sin(featherAngle)) * len;
-
-        ctx.beginPath();
-        ctx.moveTo(bx, by);
-        ctx.lineTo(ex, ey);
-        ctx.stroke();
-
-        if (filled) {
-          // small triangular flag
-          const ex2 = bx + (fx * Math.cos(featherAngle) + px * Math.sin(featherAngle)) * (len * 0.9);
-          const ey2 = by + (fy * Math.cos(featherAngle) + py * Math.sin(featherAngle)) * (len * 0.9);
-
-          const cx = bx + fx * (step * 0.9);
-          const cy = by + fy * (step * 0.9);
-
-          ctx.fillStyle = "rgba(234,243,251,.92)";
-          ctx.beginPath();
-          ctx.moveTo(bx, by);
-          ctx.lineTo(ex2, ey2);
-          ctx.lineTo(cx, cy);
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
-
-      // draw flags (50kt)
-      for (let i = 0; i < flags; i++) { feather(18 * scale, true); pos += step * 1.4; }
-      for (let i = 0; i < tens; i++) { feather(16 * scale, false); pos += step; }
-      for (let i = 0; i < fives; i++) { feather(9 * scale, false); pos += step; }
-
-      ctx.restore();
-    }
-
-    const tephigramOverlay = {
-      id: "tephigramOverlay",
-      beforeDraw(chart, args, opts) {
-        if (!opts || !opts.enabled) return;
-        const { ctx, chartArea, scales } = chart;
-        if (!chartArea || !scales?.x || !scales?.y) return;
-
-        const xS = scales.x;
-        const yS = scales.y;
-
-        ctx.save();
-
-        // clip to chart area (prevents "out of bounds" lines)
-        ctx.beginPath();
-        ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
-        ctx.clip();
-
-        // Background grid: isotherms (vertical-ish), isobars (horizontal-ish)
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = "rgba(255,255,255,.06)";
-
-        // isotherms every 10°C across x-range
-        const xMin = xS.min ?? -60;
-        const xMax = xS.max ?? 40;
-        const tStart = Math.floor(xMin / 10) * 10;
-        const tEnd = Math.ceil(xMax / 10) * 10;
-
-        for (let T = tStart; T <= tEnd; T += 10) {
-          const x = xS.getPixelForValue(T);
-          ctx.beginPath();
-          ctx.moveTo(x, chartArea.top);
-          ctx.lineTo(x, chartArea.bottom);
-          ctx.stroke();
-        }
-
-        // isobars at common levels
-        const pLines = [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200];
-        for (const p of pLines) {
-          const y = yS.getPixelForValue(p);
-          ctx.beginPath();
-          ctx.moveTo(chartArea.left, y);
-          ctx.lineTo(chartArea.right, y);
-          ctx.stroke();
-        }
-
-        // Dry adiabats (theta lines)
-        // T(K)=theta*(p/1000)^k , k=0.286
-        const k = 0.286;
-        ctx.strokeStyle = "rgba(90,140,255,.10)";
-        ctx.lineWidth = 1;
-
-        const thetaLines = [260, 270, 280, 290, 300, 310, 320, 330, 340];
-        const pTop = 200;
-        const pBot = 1000;
-
-        for (const theta of thetaLines) {
-          ctx.beginPath();
-          let started = false;
-          for (let p = pBot; p >= pTop; p -= 10) {
-            const TK = theta * Math.pow(p / 1000, k);
-            const Tc = TK - 273.15;
-            const x = xS.getPixelForValue(Tc);
-            const y = yS.getPixelForValue(p);
-            if (!started) { ctx.moveTo(x, y); started = true; }
-            else ctx.lineTo(x, y);
-          }
-          ctx.stroke();
-        }
-
-        // Mixing ratio lines (g/kg) — teal-ish
-        ctx.strokeStyle = "rgba(34,184,167,.12)";
-        ctx.lineWidth = 1;
-
-        const w_gkg = [0.4, 1, 2, 3, 5, 8, 12, 16]; // g/kg
-        for (const wg of w_gkg) {
-          const w = wg / 1000; // kg/kg
-          ctx.beginPath();
-          let started = false;
-          for (let p = pBot; p >= pTop; p -= 10) {
-            const Tc = Tc_from_w_p(w, p);
-            const x = xS.getPixelForValue(Tc);
-            const y = yS.getPixelForValue(p);
-            if (!started) { ctx.moveTo(x, y); started = true; }
-            else ctx.lineTo(x, y);
-          }
-          ctx.stroke();
-        }
-
-        // Moist pseudo-adiabats (few) — faint orange
-        ctx.strokeStyle = "rgba(245,166,35,.10)";
-        ctx.lineWidth = 1;
-
-        const moistStarts = [-5, 0, 5, 10, 15, 20, 25];
-        for (const T0 of moistStarts) {
-          const curve = moistPseudoAdiabat(T0, 1000, 200, -5);
-          ctx.beginPath();
-          let started = false;
-          for (const pt of curve) {
-            const x = xS.getPixelForValue(pt.Tc);
-            const y = yS.getPixelForValue(pt.p_hpa);
-            if (!started) { ctx.moveTo(x, y); started = true; }
-            else ctx.lineTo(x, y);
-          }
-          ctx.stroke();
-        }
-
-        // Wind barbs (shift LEFT so they don't clash with y-axis labels)
-        const barbs = opts.windBarbs || [];
-        const xBarb = chartArea.right - (opts.barbInsetPx ?? 34); // <-- shift left
-        const sizeScale = opts.barbScale ?? 1.0;
-
-        // also clip barbs to chart area
-        for (const b of barbs) {
-          const y = yS.getPixelForValue(b.p);
-          if (y < chartArea.top - 4 || y > chartArea.bottom + 4) continue;
-          drawWindBarb(ctx, xBarb, y, b.spd, b.dir, sizeScale);
-        }
-
-        ctx.restore();
-      }
-    };
-
-    Chart.register(tephigramOverlay);
-
-    /* ========= Charts ========= */
-    function destroyChart(ch) { if (ch) ch.destroy(); }
-
-    // IMPORTANT FIX:
-    // Keep full-day data in the dataset BUT zoom the x-axis to the selected time window
-    // so the plots respond to Apply.
-    function renderWind(rows, highlightStart, highlightEnd) {
-      const ctx = document.getElementById("windCanvas");
-      const labels = rows.map(r => r.t);
-      const wind = rows.map(r => r.wind_speed_kt);
-      const gust = rows.map(r => r.wind_gust_kt);
-
-      destroyChart(charts.wind);
-      charts.wind = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels, datasets: [
-            {
-              label: "Wind (kt)",
-              data: wind,
-              tension: 0.25,
-              pointRadius: 2,
-              borderColor: "rgba(90, 170, 255, .95)",
-              backgroundColor: "rgba(90, 170, 255, .12)",
-              fill: false
-            },
-            {
-              label: "Gusts (kt)",
-              data: gust,
-              tension: 0.25,
-              pointRadius: 2,
-              borderColor: "rgba(255, 122, 156, .95)",
-              backgroundColor: "rgba(255, 122, 156, .10)",
-              fill: false
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              labels: { color: "#cfe0ef" }
-            },
-            tooltip: { mode: "index", intersect: false }
-          },
-          scales: {
-            x: {
-              type: "time",
-              min: highlightStart,
-              max: highlightEnd,
-              time: { unit: "hour", displayFormats: { hour: "HH:mm" } },
-              ticks: { color: "#9fb2c2" },
-              grid: { color: "rgba(255,255,255,.08)" }
-            },
-            y: {
-              ticks: { color: "#9fb2c2" },
-              grid: { color: "rgba(255,255,255,.08)" },
-              title: { display: true, text: "Knots", color: "#9fb2c2", font: { weight: "600" } }
-            }
-          }
-        }
-      });
-
-      document.getElementById("windMeta").textContent = `${timeStr(highlightStart)}–${timeStr(highlightEnd)} • ${TZ_LABEL}`;
-    }
-
-    function renderDir(rows, highlightStart, highlightEnd) {
-      const ctx = document.getElementById("dirCanvas");
-      const labels = rows.map(r => r.t);
-      const dir = rows.map(r => r.wind_dir_deg);
-
-      destroyChart(charts.dir);
-      charts.dir = new Chart(ctx, {
-        type: "line",
-        data: { labels, datasets: [{ label: "Direction (°)", data: dir, tension: 0.2, pointRadius: 1, borderColor: "rgba(140, 190, 255, .95)" }] },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false } },
-          scales: {
-            x: {
-              type: "time",
-              min: highlightStart,
-              max: highlightEnd,
-              time: { unit: "hour", displayFormats: { hour: "HH:mm" } },
-              ticks: { color: "#9fb2c2" },
-              grid: { color: "rgba(255,255,255,.08)" }
-            },
-            y: { min: 0, max: 360, ticks: { color: "#9fb2c2", stepSize: 90 }, grid: { color: "rgba(255,255,255,.08)" } }
-          }
-        }
-      });
-
-      const windowRows = rows.filter(r => r.t >= highlightStart && r.t <= highlightEnd);
-      const rowText = windowRows.slice(0, 6).map(r => `${timeStr(r.t)} ${Math.round(r.wind_dir_deg ?? 0)}° ${degToCardinal(r.wind_dir_deg)}`).join(" • ");
-      document.getElementById("dirMeta").textContent = rowText || `${timeStr(highlightStart)}–${timeStr(highlightEnd)}`;
-    }
-
-    function renderConditions(rows, highlightStart, highlightEnd) {
-      const ctx = document.getElementById("condCanvas");
-      const labels = rows.map(r => r.t);
-      const temp = rows.map(r => r.temperature_c);
-      const cloud = rows.map(r => r.cloud_cover_pct);
-      const rain = rows.map(r => r.precip_mm);
-
-      destroyChart(charts.cond);
-      charts.cond = new Chart(ctx, {
-        data: {
-          labels, datasets: [
-            { type: "line", label: "Temp (°C)", data: temp, tension: 0.25, pointRadius: 1, borderColor: "rgba(90, 170, 255, .95)" },
-            { type: "line", label: "Cloud (%)", data: cloud, tension: 0.2, pointRadius: 1, borderColor: "rgba(255, 122, 156, .85)" },
-            { type: "line", label: "Precip (mm)", data: rain, tension: 0.2, pointRadius: 1, borderColor: "rgba(245, 166, 35, .90)" }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { labels: { color: "#cfe0ef" } }, tooltip: { mode: "index", intersect: false } },
-          scales: {
-            x: {
-              type: "time",
-              min: highlightStart,
-              max: highlightEnd,
-              time: { unit: "hour", displayFormats: { hour: "HH:mm" } },
-              ticks: { color: "#9fb2c2" },
-              grid: { color: "rgba(255,255,255,.08)" }
-            },
-            y: { ticks: { color: "#9fb2c2" }, grid: { color: "rgba(255,255,255,.08)" } }
-          }
-        }
-      });
-
-      document.getElementById("condMeta").textContent = `${timeStr(highlightStart)}–${timeStr(highlightEnd)} (plots use this window)`;
-    }
-
-    function bestTwoHourWindow(rows) {
-      if (!rows || rows.length < 3) return null;
-      const r = rows.slice().sort((a, b) => a.t - b.t);
-      let best = null;
-      for (let i = 0; i < r.length - 2; i++) {
-        const t0 = r[i].t;
-        const t1 = new Date(t0); t1.setHours(t1.getHours() + 2);
-        const w = r.filter(x => x.t >= t0 && x.t <= t1);
-        if (w.length < 2) continue;
-        const wm = mean(w.map(x => x.wind_speed_kt)) ?? 0;
-        const sd = steadinessMetric(w.map(x => x.wind_dir_deg)) ?? 999;
-        const score = wm - 0.05 * sd;
-        if (!best || score > best.score) best = { score, label: `${timeStr(t0)}–${timeStr(t1)} (score ${fmt(score, 1)})` };
-      }
-      return best;
-    }
-
-    function renderSummary(rows, highlightStart, highlightEnd, stationLabel) {
-      const w = rows.filter(r => r.t >= highlightStart && r.t <= highlightEnd);
-      const windMean = mean(w.map(r => r.wind_speed_kt));
-      const gustMax = max(w.map(r => r.wind_gust_kt));
-      const dirMean = circularMean(w.map(r => r.wind_dir_deg));
-      const tempMean = mean(w.map(r => r.temperature_c));
-      const precipMax = max(w.map(r => r.precip_mm));
-      const cloudMean = mean(w.map(r => r.cloud_cover_pct));
-
-      const best = bestTwoHourWindow(rows);
-      const sd = steadinessMetric(w.map(r => r.wind_dir_deg));
-
-      document.getElementById("summaryMeta").textContent = `${stationLabel} • ${selectedDay.toUpperCase()} • ${timeStr(highlightStart)}–${timeStr(highlightEnd)} (${TZ_LABEL})`;
-
-      document.getElementById("kpiWind").innerHTML = `${fmt(windMean, 0)}<span class="unit">kt</span>`;
-      document.getElementById("kpiDir").textContent = dirMean == null ? "—" : `${Math.round(dirMean)}° ${degToCardinal(dirMean)}`;
-
-      document.getElementById("kpiGust").innerHTML = `${fmt(gustMax, 0)}<span class="unit">kt</span>`;
-      document.getElementById("kpiTemp").innerHTML = `${fmt(tempMean, 0)}<span class="unit">°C</span>`;
-
-      const precipStr = precipMax == null ? "—" : `${fmt(precipMax, 1)} mm`;
-      const cloudStr = cloudMean == null ? "—" : `${fmt(cloudMean, 0)}%`;
-      document.getElementById("kpiRainCloud").innerHTML =
-        `<span class="accent">${precipStr}</span><span class="unit">precip</span> &nbsp; <span>${cloudStr}</span><span class="unit">cloud</span>`;
-
-      document.getElementById("badgeBest").textContent = best ? `Best window: ${best.label}` : "Best window: —";
-      document.getElementById("badgeSteady").textContent = sd == null ? "Steadiness: —" : `Steadiness: ±${fmt(sd, 0)}°`;
-    }
-
-    function renderTephigram(teph) {
-      const ctx = document.getElementById("tephCanvas");
-      destroyChart(charts.teph);
-
-      const ptsT = teph.levels.map((p, i) => ({ x: teph.T[i], y: p })).filter(pt => pt.x != null);
-      const ptsTd = teph.levels.map((p, i) => ({ x: teph.Td[i], y: p })).filter(pt => pt.x != null);
-
-      // Determine x bounds nicely (keeps background lines within frame)
-      const allT = [...teph.T, ...teph.Td].filter(v => Number.isFinite(v));
-      const tMin = Math.min(...allT);
-      const tMax = Math.max(...allT);
-      const xMin = Math.floor((tMin - 18) / 5) * 5;
-      const xMax = Math.ceil((tMax + 18) / 5) * 5;
-
-      const barbData = teph.levels.map((p, i) => ({
-        p,
-        spd: teph.wspd[i],
-        dir: teph.wdir[i]
-      })).filter(b => Number.isFinite(b.spd) && Number.isFinite(b.dir));
-
-      charts.teph = new Chart(ctx, {
-        type: "scatter",
-        data: {
-          datasets: [
-            // T = RED
-            {
-              label: "T",
-              data: ptsT,
-              showLine: true,
-              pointRadius: 0,
-              borderWidth: 4,
-              borderColor: "rgba(255, 90, 90, .95)"
-            },
-            // Td = BLUE
-            {
-              label: "Td",
-              data: ptsTd,
-              showLine: true,
-              pointRadius: 0,
-              borderWidth: 4,
-              borderColor: "rgba(90, 170, 255, .95)"
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { labels: { color: "#cfe0ef" } },
-            tephigramOverlay: {
-              enabled: true,
-              windBarbs: barbData,
-              barbInsetPx: 44,   // <--- further left so no clash with right-side numbers
-              barbScale: 1.0
-            }
-          },
-          scales: {
-            x: {
-              min: xMin,
-              max: xMax,
-              title: { display: true, text: "Temperature (°C)", color: "#9fb2c2", font: { weight: "600" } },
-              ticks: { color: "#9fb2c2" },
-              grid: { color: "rgba(255,255,255,.08)" }
-            },
-            y: {
-              reverse: true,
-              min: 200,
-              max: 1000,
-              title: { display: true, text: "Pressure (hPa)", color: "#9fb2c2", font: { weight: "600" } },
-              ticks: { color: "#9fb2c2" },
-              grid: { color: "rgba(255,255,255,.08)" }
-            }
-          }
-        }
-      });
-
-      document.getElementById("tephMeta").textContent = `Fixed at 12:00 local • ${teph.timeLabel}`;
-      const qr = quickReadText(teph);
-      document.getElementById("tephComment").innerHTML = qr.lines.join("<br/>");
-      document.getElementById("tephCommentSub").textContent = qr.sub;
-    }
-
-    function setDay(which) {
-      selectedDay = which;
-      document.getElementById("btnToday").classList.toggle("active", which === "today");
-      document.getElementById("btnTomorrow").classList.toggle("active", which === "tomorrow");
-      setDefaultWindow();
-    }
-
-    function setDefaultWindow() {
-      const { start, end } = dayBoundsLocal(selectedDay);
-      const now = new Date();
-      let s = selectedDay === "today" ? roundUpToNextHour(now) : new Date(start);
-      s = clampToDay(s, start, end);
-      let e = new Date(s); e.setHours(e.getHours() + 2);
-      e = clampToDay(e, start, end);
-
-      document.getElementById("startTime").value = `${String(s.getHours()).padStart(2, "0")}:00`;
-      document.getElementById("endTime").value = `${String(e.getHours()).padStart(2, "0")}:00`;
-    }
-
-    function parseWindowTimes() {
-      const { start, end } = dayBoundsLocal(selectedDay);
-      const [sh, sm] = document.getElementById("startTime").value.split(":").map(Number);
-      const [eh, em] = document.getElementById("endTime").value.split(":").map(Number);
-      let a = new Date(start); a.setHours(sh || 0, sm || 0, 0, 0);
-      let b = new Date(start); b.setHours(eh || 0, em || 0, 0, 0);
-      if (b <= a) {
-        b = new Date(a); b.setHours(b.getHours() + 2);
-        b = clampToDay(b, start, end);
-      }
-      a = clampToDay(a, start, end);
-      b = clampToDay(b, start, end);
-      return { a, b };
-    }
-
-    async function apply() {
-      clearError();
+    async function loadForecast() {
       try {
-        const stationId = document.getElementById("stationSelect").value;
-        const st = stations.find(s => s.id === stationId);
-        if (!st) throw new Error("No station selected");
+        refreshBtn.disabled = true;
+        const stationId = stationSel.value;
+        if (!stationId) { setStatus("Pick a station"); return; }
 
-        const stationLabelRaw = (st.name && st.name.trim()) ? st.name : (st.code || st.id);
-        const stationLabel = prettifyLabel(stationLabelRaw);
+        setStatus("Loading forecast…");
 
-        const rows = await loadForecastDay(stationId, selectedDay);
-        if (!rows.length) throw new Error("No forecast rows returned for this station/day (check issue_time + valid_time).");
+        const { startISO, endISO } = isoWindow(selectedHours);
+        const url = `${FORECAST_URL}?station=${encodeURIComponent(stationId)}&start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}&ts=${Date.now()}`;
 
-        const { a, b } = parseWindowTimes();
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error(`Forecast HTTP ${res.status}`);
 
-        renderSummary(rows, a, b, stationLabel);
-        renderWind(rows, a, b);
-        renderDir(rows, a, b);
-        renderConditions(rows, a, b);
-
-        document.getElementById("tephComment").textContent = "Loading upper-air…";
-        document.getElementById("tephCommentSub").textContent = "";
-        try {
-          const teph = await loadTephigramAtNoon(st.latitude, st.longitude, selectedDay);
-          renderTephigram(teph);
-        } catch (e) {
-          console.warn("Upper-air failed:", e);
-          document.getElementById("tephMeta").textContent = "Fixed at 12:00 local • (no data)";
-          document.getElementById("tephComment").textContent = "Upper-air unavailable for this run.";
-          document.getElementById("tephCommentSub").textContent = "This can happen if pressure-level variables aren’t returned for the selected point/time.";
-          if (charts.teph) { charts.teph.destroy(); charts.teph = null; }
+        const rows = await res.json();
+        if (!Array.isArray(rows) || !rows.length) {
+          setStatus("No forecast rows returned");
+          return;
         }
 
+        // Make sure sorted
+        rows.sort((a, b) => new Date(a.valid_time) - new Date(b.valid_time));
+
+        upsertCharts(rows);
+
+        const stName = stations.find(s => s.id === stationId)?.name || "Station";
+        setStatus(`${stName} • ${selectedHours}h • updated ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
       } catch (e) {
         console.error(e);
-        showError(String(e.message || e));
+        setStatus("Forecast load failed");
+      } finally {
+        refreshBtn.disabled = false;
       }
     }
 
-    document.getElementById("btnToday").addEventListener("click", () => setDay("today"));
-    document.getElementById("btnTomorrow").addEventListener("click", () => setDay("tomorrow"));
-    document.getElementById("btnApply").addEventListener("click", apply);
+    /* ---------------- Events ---------------- */
+    stationSel.addEventListener("change", () => loadForecast());
+    refreshBtn.addEventListener("click", () => loadForecast());
 
-    (async function init() {
+    windowSeg.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-h]");
+      if (!btn) return;
+      [...windowSeg.querySelectorAll("button")].forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      selectedHours = parseInt(btn.dataset.h, 10);
+      loadForecast();
+    });
+
+    (async function main() {
       try {
         await loadStations();
-        setDefaultWindow();
-        await apply();
+        await loadForecast();
       } catch (e) {
         console.error(e);
-        showError(String(e.message || e));
+        setStatus("Init failed");
       }
     })();
   </script>
