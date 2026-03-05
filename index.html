@@ -521,7 +521,7 @@
 
                 if (window.attachTimeseriesTo) {
                     // ✅ default chart window 24h
-                    window.attachTimeseriesTo(mount, st.station_id, 24, popup);
+                    window.attachTimeseriesTo(mount, st.station_id, 24, popup, st.station_name);
                 }
             });
         }
@@ -1058,9 +1058,13 @@
             return `rgba(${r},${g},${b},${a})`;
         }
 
-        async function attachTimeseriesTo(containerEl, stationCodeOrId, defaultHours = 24, leafletPopup = null) {
+        async function attachTimeseriesTo(containerEl, stationCodeOrId, defaultHours = 24, leafletPopup = null, stationName = null) {
             if (containerEl.dataset.bound === "1") return;
             containerEl.dataset.bound = "1";
+
+            // Resolve display name: use passed name, or look up from stationsById, or prettify the ID
+            const displayName = stationName
+                || prettifyLabel((stationsById.get(stationCodeOrId) || {}).name || stationCodeOrId);
 
             containerEl.__tsState = {
                 req: 0,
@@ -1071,7 +1075,7 @@
 
             containerEl.innerHTML = `
       <div style="width:min(340px, 80vw);">
-        <div style="font-weight:800;font-size:14px;margin-bottom:6px;">${prettifyLabel(stationCodeOrId)}</div>
+        <div style="font-weight:800;font-size:14px;margin-bottom:6px;">${displayName}</div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
           <span style="font-size:12px;opacity:.7;">Window:</span>
           <select class="ts-window" style="font-size:12px;padding:2px 6px;border-radius:10px;">
