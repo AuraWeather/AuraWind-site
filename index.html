@@ -312,6 +312,7 @@
         // ✅ This is the one you asked for:
         // Map markers built from last 24h
         const MAP_OBS_HOURS = 24;
+        const STALE_MS = 3 * 60 * 60 * 1000; // 3 hours — obs older than this are dimmed
 
         // FLOW default OFF
         const FLOW_SETTINGS = {
@@ -440,12 +441,22 @@
         function addStationMarker(st) {
             if (st.lat == null || st.lon == null || st.wspd_kn == null || st.wdir_degT == null) return;
 
+            // Staleness check: dim arrows older than STALE_MS
+            const obsAge = st.observed_at ? (Date.now() - new Date(st.observed_at).getTime()) : Infinity;
+            const isStale = obsAge > STALE_MS;
+            const opacity = isStale ? 0.35 : 1.0;
+
             const color = colorForSpeed(st.wspd_kn);
             const rotate = rotateFromDirDeg(st.wdir_degT);
             const arrow = svgStationArrow(color, ARROW_SIZE_PX);
 
+            // Show wind speed normally, or a dim "?" if stale
+            const speedLabel = isStale
+                ? `<span style="color:#888;font-size:${ARROW_FONT_PX - 2}px">?</span>`
+                : `${Math.round(st.wspd_kn)}`;
+
             const html = `
-        <div style="transform:rotate(${rotate}deg)">${arrow}</div>
+        <div style="transform:rotate(${rotate}deg);opacity:${opacity}">${arrow}</div>
         <div style="
           position:relative;
           top:-${ARROW_SIZE_PX / 2 - 2}px;
@@ -453,8 +464,9 @@
           text-align:center;
           font:900 ${ARROW_FONT_PX}px/1 system-ui;
           color:#111;
+          opacity:${opacity};
           text-shadow:0 0 2px #fff,0 0 8px rgba(255,255,255,.95);
-        ">${Math.round(st.wspd_kn)}</div>
+        ">${speedLabel}</div>
       `;
 
             const icon = L.divIcon({
@@ -466,8 +478,11 @@
 
             const m = L.marker([st.lat, st.lon], { icon }).addTo(layerStations);
 
+            // Tooltip: include age if stale
             const gustText = st.gust_kn == null ? "" : ` gust ${Math.round(st.gust_kn)}`;
-            const label = `${st.station_name || st.station_id}<br>${Math.round(st.wspd_kn)} kt${gustText}`;
+            const ageHours = Math.round(obsAge / (60 * 60 * 1000) * 10) / 10;
+            const staleNote = isStale ? `<br><em style="color:#c44">Stale — ${ageHours}h ago</em>` : "";
+            const label = `${st.station_name || st.station_id}<br>${Math.round(st.wspd_kn)} kt${gustText}${staleNote}`;
             m.bindTooltip(label);
 
             m.on("click", (e) => {
